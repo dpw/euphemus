@@ -1,0 +1,75 @@
+This only difference between the regular parse function and a restart
+function is that the restart function takes a stack frame describing
+the state, and the regular function starts from scratch.  They both
+return an eu_parse_result.  eu_parse pops stack entries until the
+stack is gone, or a result other than EU_PARSE_OK comes.
+
+
+
+
+
+When we know what type is coming, can call a function to parse that
+type.  Just need the input buffer.
+
+Might need to copy, for keys, broken numbers, etc.  Can just use the
+chunk for this.  Multi-chunk support would be nice too.  But
+initially, realloc and ptrify.
+
+Allocation states:  Embedded, top-level, external too maybe.
+
+Child chunks on doubly-linked list?  Need to record the incoming ptr
+too!
+
+Need to be able to interrupt and resume parsing. So need a
+continuation stack.  But want to use normal returns too when possible.
+
+Struct metadata is:
+- Allocation info (size, alignment)
+- A hashtable from names to member descriptors, containing:
+  - Member parse function
+  - Member offset within struct
+  - Member number (for bitmap).
+  - Member metadata pointers (e.g. struct metadata for nested struct)
+
+Member parse function takes:
+
+- Pointer to member descriptor.
+- Pointer to containining struct.
+
+
+Need to distinguish pointer to struct from struct.  Pointer to struct
+has to allocate struct.  Doesn't need to to push to continuation stack.
+
+When parsing struct:
+
+- Allocate struct at on parse buffer.
+
+- Push entry onto stack.  This says continuation and state (e.g. parse
+  state, struct metadata ptr, bitmap of fields seen.  Continuation is
+  a restart function.
+
+
+
+
+A normal parse function takes context, metadata, pointer (later
+offset) for result.  Final pointer can be stashed at end of chunk?
+
+
+
+
+
+Optional fields are pointers.  Always.  NULL means absent field.  Thus
+even primitive types have to have a wrapper to determine allocation
+type.  Eek, how to deal with cross-linking?
+
+Wrapper can contain pointer to the chunk header (with alloc state in
+low bits).  That way, we can easily determine if passenger objects are
+in the same chunk.
+
+
+
+
+
+Array types:
+euphemus_xxx_array
+
