@@ -21,11 +21,15 @@ struct eu_parse {
 	int error;
 };
 
+
+typedef enum eu_parse_result (*eu_cont_func_t)(struct eu_parse *p,
+					       struct eu_parse_cont *cont);
+
 struct eu_parse_cont {
 	struct eu_parse_cont *next;
-	enum eu_parse_result (*restart)(struct eu_parse *p,
-					struct eu_parse_cont *cont);
+	eu_cont_func_t func;
 };
+
 
 
 static const char dummy_input[1] = { 0 };
@@ -37,6 +41,57 @@ void eu_parse_init(struct eu_parse *p, struct eu_parse_cont *s)
 	p->stack_top = p->stack_bottom = NULL;
 	p->result = NULL;
 	p->error = 0;
+}
+
+static void insert_cont(struct eu_parse *p, struct eu_parse_cont *c)
+{
+	c->next = NULL;
+	if (p->stack_bottom) {
+		p->stack_bottom->next = c;
+		p->stack_bottom = c;
+	}
+	else {
+		p->stack_top = p->stack_bottom = c;
+	}
+}
+
+
+typedef enum eu_parse_result (*eu_parse_func_t)(struct eu_parse *p,
+						void *metadata,
+						void *result);
+
+struct simple_cont {
+	struct eu_parse_cont cont;
+	eu_parse_func_t parse;
+	void *metadata;
+	void *result;
+};
+
+static enum eu_parse_result simple_cont_func(struct eu_parse *p,
+					     struct eu_parse_cont *gc)
+{
+	struct simple_cont *c = (struct simple_cont *)gc;
+	eu_parse_func_t parse = c->parse;
+	void *metadata = c->metadata;
+	void *result = c->result;
+
+	free(c);
+	return parse(p, metadata, result);
+}
+
+static int insert_simple_cont(struct eu_parse *p, eu_parse_func_t parse,
+			      void *metadata, void *result)
+{
+	struct simple_cont *c = malloc(sizeof *c);
+	if (!c)
+		return 0;
+
+	c->cont.func = simple_cont_func;
+	c->parse = parse;
+	c->metadata = metadata;
+	c->result = result;
+	insert_cont(p, (struct eu_parse_cont *)c);
+	return 1;
 }
 
 static void skip_whitespace(struct eu_parse *p)
@@ -82,7 +137,7 @@ int eu_parse(struct eu_parse *p, const char *input, size_t len)
 			break;
 
 		p->outer_stack = s->next;
-		res = s->restart(p, s);
+		res = s->func(p, s);
 		if (res == EU_PARSE_OK)
 			continue;
 
@@ -114,8 +169,7 @@ struct struct_member {
 	unsigned int offset;
 	unsigned int name_len;
 	const char *name;
-	enum eu_parse_result (*parse)(struct eu_parse *p, void *metadata,
-				      void *result);
+	eu_parse_func_t parse;
 	void *metadata;
 };
 
@@ -157,7 +211,7 @@ static enum eu_parse_result struct_parse(struct eu_parse *p, void *v_metadata,
 	/* Read the opening brace */
 	skip_whitespace(p);
 	if (p->input == p->input_end)
-		goto pause;
+		goto open_brace_pause;
 
 	if (*p->input != '{')
 		goto error;
@@ -249,6 +303,12 @@ static enum eu_parse_result struct_parse(struct eu_parse *p, void *v_metadata,
 	*(void **)result = s;
 	return EU_PARSE_OK;
 
+ open_brace_pause:
+	if (insert_simple_cont(p, struct_parse, metadata, result))
+		return EU_PARSE_PAUSED;
+	else
+		return EU_PARSE_ERROR;
+
  pause:
 	return EU_PARSE_PAUSED;
 
@@ -280,8 +340,8 @@ static struct struct_metadata foo_metadata = {
 	foo_members
 };
 
-enum eu_parse_result foo_start_restart(struct eu_parse *p,
-				       struct eu_parse_cont *cont)
+enum eu_parse_result foo_start_func(struct eu_parse *p,
+				    struct eu_parse_cont *cont)
 {
 	(void)cont;
 	return struct_parse(p, &foo_metadata, &p->result);
@@ -289,7 +349,7 @@ enum eu_parse_result foo_start_restart(struct eu_parse *p,
 
 struct eu_parse_cont foo_start[1] = {{
 	NULL,
-	foo_start_restart
+	foo_start_func
 }};
 
 void foo_destroy(struct foo *foo)
@@ -307,18 +367,20 @@ int main(void)
 	struct foo *foo;
 
 	eu_parse_init(&p, foo_start);
-
-	/* Give it data */
 	assert(eu_parse(&p, data, strlen(data)));
-
-	/* Finish and get result */
 	foo = eu_parse_finish(&p);
-
 	assert(foo);
 	assert(foo->bar);
 	assert(!foo->bar->bar);
+	foo_destroy(foo);
 
-	/* Release context */
+	eu_parse_init(&p, foo_start);
+	assert(eu_parse(&p, " ", 1));
+	assert(eu_parse(&p, data, strlen(data)));
+	foo = eu_parse_finish(&p);
+	assert(foo);
+	assert(foo->bar);
+	assert(!foo->bar->bar);
 	foo_destroy(foo);
 
 	return 0;

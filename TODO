@@ -1,0 +1,18 @@
+change convention so that whitespace is consumed before parse function
+called.  This is better for variants.
+
+Get struct parse to support all the pause states
+
+Add support for strings, numbers, arrays
+
+Add support for variants
+
+Add support for open structs
+
+Check for repeated members
+
+Error codes
+
+Load a json schema
+
+UTF-8 support
