@@ -1,7 +1,9 @@
-change convention so that whitespace is consumed before parse function
-called.  This is better for variants.
-
 Get struct parse to support all the pause states
+1 after initial '{' (waiting for '}' or '"')
+2 in member name
+3a after member name (waiting for ':')
+3b after colon (waiting for for non-whitespace)
+4 after value (waiting for '}' or ',')
 
 Add support for strings, numbers, arrays
 

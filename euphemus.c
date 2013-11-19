@@ -43,6 +43,20 @@ void eu_parse_init(struct eu_parse *p, struct eu_parse_cont *s)
 	p->error = 0;
 }
 
+static void set_only_cont(struct eu_parse *p, struct eu_parse_cont *c)
+{
+	assert(!p->outer_stack);
+	p->outer_stack = c;
+}
+
+/* A parse function expects that there is a non-whitespace character
+   available at the start of p->input.  So callers need to skip any
+   whitespace before calling the parse function. */
+typedef enum eu_parse_result (*eu_parse_func_t)(struct eu_parse *p,
+						void *metadata,
+						void *result);
+
+#if 0
 static void insert_cont(struct eu_parse *p, struct eu_parse_cont *c)
 {
 	c->next = NULL;
@@ -55,10 +69,6 @@ static void insert_cont(struct eu_parse *p, struct eu_parse_cont *c)
 	}
 }
 
-
-typedef enum eu_parse_result (*eu_parse_func_t)(struct eu_parse *p,
-						void *metadata,
-						void *result);
 
 struct simple_cont {
 	struct eu_parse_cont cont;
@@ -93,6 +103,7 @@ static int insert_simple_cont(struct eu_parse *p, eu_parse_func_t parse,
 	insert_cont(p, (struct eu_parse_cont *)c);
 	return 1;
 }
+#endif
 
 static void skip_whitespace(struct eu_parse *p)
 {
@@ -209,10 +220,6 @@ static enum eu_parse_result struct_parse(struct eu_parse *p, void *v_metadata,
 	enum eu_parse_result res;
 
 	/* Read the opening brace */
-	skip_whitespace(p);
-	if (p->input == p->input_end)
-		goto open_brace_pause;
-
 	if (*p->input != '{')
 		goto error;
 
@@ -269,6 +276,10 @@ static enum eu_parse_result struct_parse(struct eu_parse *p, void *v_metadata,
 			goto error;
 
 		p->input++;
+		skip_whitespace(p);
+		if (p->input == p->input_end)
+			goto pause;
+
 		res = member->parse(p, member->metadata, s + member->offset);
 		if (res != EU_PARSE_OK)
 			goto error;
@@ -303,12 +314,6 @@ static enum eu_parse_result struct_parse(struct eu_parse *p, void *v_metadata,
 	*(void **)result = s;
 	return EU_PARSE_OK;
 
- open_brace_pause:
-	if (insert_simple_cont(p, struct_parse, metadata, result))
-		return EU_PARSE_PAUSED;
-	else
-		return EU_PARSE_ERROR;
-
  pause:
 	return EU_PARSE_PAUSED;
 
@@ -340,17 +345,28 @@ static struct struct_metadata foo_metadata = {
 	foo_members
 };
 
-enum eu_parse_result foo_start_func(struct eu_parse *p,
-				    struct eu_parse_cont *cont)
-{
-	(void)cont;
-	return struct_parse(p, &foo_metadata, &p->result);
-}
+static enum eu_parse_result foo_start_func(struct eu_parse *p,
+					   struct eu_parse_cont *cont);
 
 struct eu_parse_cont foo_start[1] = {{
 	NULL,
 	foo_start_func
 }};
+
+static enum eu_parse_result foo_start_func(struct eu_parse *p,
+					   struct eu_parse_cont *cont)
+{
+	(void)cont;
+
+	skip_whitespace(p);
+
+	if (p->input != p->input_end)
+		return struct_parse(p, &foo_metadata, &p->result);
+
+	set_only_cont(p, foo_start);
+	return EU_PARSE_PAUSED;
+}
+
 
 void foo_destroy(struct foo *foo)
 {
