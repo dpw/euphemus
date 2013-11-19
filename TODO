@@ -1,13 +1,21 @@
 Add support for strings, numbers, arrays
 
-Add support for variants
-
 Add support for open structs
+
+Add support for variants
 
 Check for repeated members
 
 Error codes
 
+Track line, column
+
 Load a json schema
+
+Codegen from json schema
+
+string escapes
+
+Optimise scanning whitespace, strings
 
 UTF-8 support

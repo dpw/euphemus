@@ -44,6 +44,7 @@ void eu_parse_init(struct eu_parse *p, struct eu_parse_cont *s)
 	p->outer_stack = s;
 	p->stack_top = p->stack_bottom = NULL;
 	p->member_name_buf = NULL;
+	p->member_name_size = 0;
 	p->error = 0;
 }
 
@@ -84,17 +85,38 @@ static int set_member_name_buf(struct eu_parse *p, const char *start,
 {
 	size_t len = end - start;
 
-	if (!p->member_name_buf
-	    || (len > p->member_name_size && (free(p->member_name_buf), 1))) {
+	if (len > p->member_name_size) {
+		free(p->member_name_buf);
 		if (!(p->member_name_buf = malloc(len)))
 			return 0;
 
 		p->member_name_size = len;
 	}
 
-
 	memcpy(p->member_name_buf, start, len);
 	p->member_name_len = len;
+	return 1;
+}
+
+static int append_member_name_buf(struct eu_parse *p, const char *start,
+				  const char *end)
+{
+	size_t len = end - start;
+	size_t total_len = p->member_name_len + len;
+
+	if (total_len > p->member_name_size) {
+		char *buf = malloc(total_len);
+		if (!buf)
+			return 0;
+
+		p->member_name_size = total_len;
+		memcpy(buf, p->member_name_buf, p->member_name_len);
+		free(p->member_name_buf);
+		p->member_name_buf = buf;
+	}
+
+	memcpy(p->member_name_buf + p->member_name_len, start, len);
+	p->member_name_len = total_len;
 	return 1;
 }
 
@@ -450,9 +472,12 @@ static enum eu_parse_result struct_parse_restart(struct eu_parse *p,
 		/* The member name was split, so we can't simply
 		   resume in this case. */
 		for (i = p->input;; i++) {
-			if (i == p->input_end)
-				/* XXX need to accumulate into buffer */
-				goto error;
+			if (i == p->input_end) {
+				if (!append_member_name_buf(p, p->input, i))
+					goto alloc_error;
+
+				goto pause;
+			}
 
 			if (*i == '\"')
 				break;
@@ -552,6 +577,17 @@ int main(void)
 		assert(!foo->bar->bar);
 		foo_destroy(foo);
 	}
+
+	eu_parse_init(&p, foo_start);
+	for (i = 0; i < len; i++)
+		assert(eu_parse(&p, data + i, 1));
+
+	foo = eu_parse_finish(&p);
+	eu_parse_fini(&p);
+	assert(foo);
+	assert(foo->bar);
+	assert(!foo->bar->bar);
+	foo_destroy(foo);
 
 	return 0;
 }
