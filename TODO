@@ -1,4 +1,4 @@
-Add support for strings, numbers, arrays
+Add support for strings, numbers, arrays, bools
 
 Add support for open structs
 
@@ -19,3 +19,5 @@ string escapes
 Optimise scanning whitespace, strings
 
 UTF-8 support
+
+benchmark against json-c

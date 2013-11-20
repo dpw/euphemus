@@ -221,12 +221,9 @@ int eu_parse(struct eu_parse *p, const char *input, size_t len)
 	return 0;
 }
 
-void *eu_parse_finish(struct eu_parse *p)
+int eu_parse_finish(struct eu_parse *p)
 {
-	if (p->error || p->outer_stack || p->stack_top)
-		return NULL;
-
-	return p->result;
+	return !p->error && !p->outer_stack && !p->stack_top;
 }
 
 struct struct_member {
@@ -328,7 +325,6 @@ static enum eu_parse_result struct_parse(struct eu_metadata *gmetadata,
 	memset(s, 0, metadata->size);
 	*(void **)result = s;
 
-	/* Read the opening brace */
 	if (*p->input != '{')
 		goto error;
 
@@ -526,29 +522,91 @@ static void struct_parse_cont_dispose(struct eu_parse_cont *gcont)
 	free(cont);
 }
 
+
+
+struct eu_string {
+	char *string;
+	size_t len;
+};
+
+void eu_string_fini(struct eu_string *string)
+{
+	free(string->string);
+}
+
+static enum eu_parse_result string_parse(struct eu_metadata *metadata,
+					 struct eu_parse *ep,
+					 void *v_result)
+{
+	const char *p = ep->input;
+	struct eu_string *result = v_result;
+
+	(void)metadata;
+
+	if (*p != '\"')
+		goto error;
+
+	ep->input = ++p;
+
+	for (;; p++) {
+		if (p == ep->input_end)
+			goto pause;
+
+		if (*p == '\"')
+			break;
+	}
+
+	result->len = p - ep->input;
+	if (!(result->string = malloc(result->len)))
+		goto alloc_error;
+
+	memcpy(result->string, ep->input, result->len);
+	ep->input = p + 1;
+	return EU_PARSE_OK;
+
+ pause:
+ alloc_error:
+ error:
+	return EU_PARSE_ERROR;
+}
+
+struct eu_metadata eu_string_metadata = {
+	{
+		NULL,
+		metadata_cont_func,
+		noop_cont_dispose
+	},
+	string_parse,
+	NULL /*string_dispose*/
+};
+
+static struct eu_metadata *const eu_string_start = &eu_string_metadata;
+
+
+
 struct foo {
 	struct foo *bar;
 	struct foo *baz;
 };
 
-static struct struct_metadata foo_metadata;
+static struct struct_metadata struct_foo_metadata;
 
 static struct struct_member foo_members[] = {
 	{
 		offsetof(struct foo, bar),
 		3,
 		"bar",
-		&foo_metadata.base
+		&struct_foo_metadata.base
 	},
 	{
 		offsetof(struct foo, baz),
 		3,
 		"baz",
-		&foo_metadata.base
+		&struct_foo_metadata.base
 	}
 };
 
-static struct struct_metadata foo_metadata = {
+static struct struct_metadata struct_foo_metadata = {
 	{
 		{
 			NULL,
@@ -563,7 +621,7 @@ static struct struct_metadata foo_metadata = {
 	foo_members
 };
 
-static struct eu_metadata *const foo_start = &foo_metadata.base;
+static struct eu_metadata *const foo_start = &struct_foo_metadata.base;
 
 void foo_destroy(struct foo *foo)
 {
@@ -576,7 +634,7 @@ void foo_destroy(struct foo *foo)
 	free(foo);
 }
 
-int main(void)
+static void test_struct(void)
 {
 	struct eu_parse p;
 	const char data[] = "  {  \"bar\"  :  {  }  , \"baz\"  : {  } }  ";
@@ -588,7 +646,7 @@ int main(void)
 		eu_parse_init(&p, foo_start, &foo);
 		assert(eu_parse(&p, data, i));
 		assert(eu_parse(&p, data + i, len - i));
-		eu_parse_finish(&p);
+		assert(eu_parse_finish(&p));
 		eu_parse_fini(&p);
 
 		assert(foo);
@@ -601,7 +659,7 @@ int main(void)
 	for (i = 0; i < len; i++)
 		assert(eu_parse(&p, data + i, 1));
 
-	eu_parse_finish(&p);
+	assert(eu_parse_finish(&p));
 	eu_parse_fini(&p);
 
 	assert(foo);
@@ -616,6 +674,28 @@ int main(void)
 	eu_parse_init(&p, foo_start, &foo);
 	assert(eu_parse(&p, data, len / 2));
 	eu_parse_fini(&p);
+}
 
+void test_string(void)
+{
+	struct eu_parse p;
+	const char data[] = "  \"hello, world!\"    ";
+	size_t len = strlen(data);
+	struct eu_string string;
+
+	eu_parse_init(&p, eu_string_start, &string);
+	assert(eu_parse(&p, data, len));
+	assert(eu_parse_finish(&p));
+	eu_parse_fini(&p);
+
+	assert(string.len == 13);
+	assert(!memcmp(string.string, "hello, world!", 13));
+	eu_string_fini(&string);
+}
+
+int main(void)
+{
+	test_string();
+	test_struct();
 	return 0;
 }
