@@ -280,7 +280,7 @@ enum struct_parse_state {
 };
 
 struct struct_parse_cont {
-	struct eu_parse_cont cont;
+	struct eu_parse_cont base;
 	enum struct_parse_state state;
 	struct struct_metadata *metadata;
 	char *s;
@@ -419,8 +419,8 @@ RESUME_ONLY(case STRUCT_PARSE_COMMA:)                                 \
                                                                       \
  pause:                                                               \
 	cont = malloc(sizeof *cont);                                  \
-	cont->cont.resume = struct_parse_resume;                      \
-	cont->cont.dispose = struct_parse_cont_dispose;               \
+	cont->base.resume = struct_parse_resume;                      \
+	cont->base.dispose = struct_parse_cont_dispose;               \
 	cont->state = state;                                          \
 	cont->metadata = metadata;                                    \
 	cont->s = s;                                                  \
