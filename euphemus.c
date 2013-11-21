@@ -43,46 +43,46 @@ struct eu_metadata {
 	   need to skip any whitespace before calling the parse
 	   function. */
 	enum eu_parse_result (*parse)(struct eu_metadata *metadata,
-				      struct eu_parse *p,
+				      struct eu_parse *ep,
 				      void *result);
 	void (*dispose)(struct eu_metadata *metadata, void *value);
 };
 
 
-void eu_parse_init(struct eu_parse *p, struct eu_metadata *metadata,
+void eu_parse_init(struct eu_parse *ep, struct eu_metadata *metadata,
 		   void *result)
 {
-	p->outer_stack = &metadata->base;
-	p->stack_top = p->stack_bottom = NULL;
-	p->result = result;
-	p->member_name_buf = NULL;
-	p->member_name_size = 0;
-	p->error = 0;
+	ep->outer_stack = &metadata->base;
+	ep->stack_top = ep->stack_bottom = NULL;
+	ep->result = result;
+	ep->member_name_buf = NULL;
+	ep->member_name_size = 0;
+	ep->error = 0;
 }
 
-void eu_parse_fini(struct eu_parse *p)
+void eu_parse_fini(struct eu_parse *ep)
 {
 	struct eu_parse_cont *c, *next;
 
 	/* If the parse was unfinished, there might be stack frames to
 	   clean up. */
-	for (c = p->outer_stack; c; c = next) {
+	for (c = ep->outer_stack; c; c = next) {
 		next = c->next;
 		c->dispose(c);
 	}
 
-	for (c = p->stack_top; c; c = next) {
+	for (c = ep->stack_top; c; c = next) {
 		next = c->next;
 		c->dispose(c);
 	}
 
-	free(p->member_name_buf);
+	free(ep->member_name_buf);
 }
 
-static void set_only_cont(struct eu_parse *p, struct eu_parse_cont *c)
+static void set_only_cont(struct eu_parse *ep, struct eu_parse_cont *c)
 {
-	assert(!p->outer_stack);
-	p->outer_stack = c;
+	assert(!ep->outer_stack);
+	ep->outer_stack = c;
 }
 
 static void noop_cont_dispose(struct eu_parse_cont *cont)
@@ -90,64 +90,64 @@ static void noop_cont_dispose(struct eu_parse_cont *cont)
 	(void)cont;
 }
 
-static void insert_cont(struct eu_parse *p, struct eu_parse_cont *c)
+static void insert_cont(struct eu_parse *ep, struct eu_parse_cont *c)
 {
 	c->next = NULL;
-	if (p->stack_bottom) {
-		p->stack_bottom->next = c;
-		p->stack_bottom = c;
+	if (ep->stack_bottom) {
+		ep->stack_bottom->next = c;
+		ep->stack_bottom = c;
 	}
 	else {
-		p->stack_top = p->stack_bottom = c;
+		ep->stack_top = ep->stack_bottom = c;
 	}
 }
 
-static int set_member_name_buf(struct eu_parse *p, const char *start,
+static int set_member_name_buf(struct eu_parse *ep, const char *start,
 			       const char *end)
 {
 	size_t len = end - start;
 
-	if (len > p->member_name_size) {
-		free(p->member_name_buf);
-		if (!(p->member_name_buf = malloc(len)))
+	if (len > ep->member_name_size) {
+		free(ep->member_name_buf);
+		if (!(ep->member_name_buf = malloc(len)))
 			return 0;
 
-		p->member_name_size = len;
+		ep->member_name_size = len;
 	}
 
-	memcpy(p->member_name_buf, start, len);
-	p->member_name_len = len;
+	memcpy(ep->member_name_buf, start, len);
+	ep->member_name_len = len;
 	return 1;
 }
 
-static int append_member_name_buf(struct eu_parse *p, const char *start,
+static int append_member_name_buf(struct eu_parse *ep, const char *start,
 				  const char *end)
 {
 	size_t len = end - start;
-	size_t total_len = p->member_name_len + len;
+	size_t total_len = ep->member_name_len + len;
 
-	if (total_len > p->member_name_size) {
+	if (total_len > ep->member_name_size) {
 		char *buf = malloc(total_len);
 		if (!buf)
 			return 0;
 
-		p->member_name_size = total_len;
-		memcpy(buf, p->member_name_buf, p->member_name_len);
-		free(p->member_name_buf);
-		p->member_name_buf = buf;
+		ep->member_name_size = total_len;
+		memcpy(buf, ep->member_name_buf, ep->member_name_len);
+		free(ep->member_name_buf);
+		ep->member_name_buf = buf;
 	}
 
-	memcpy(p->member_name_buf + p->member_name_len, start, len);
-	p->member_name_len = total_len;
+	memcpy(ep->member_name_buf + ep->member_name_len, start, len);
+	ep->member_name_len = total_len;
 	return 1;
 }
 
-static void skip_whitespace(struct eu_parse *p)
+static const char *skip_whitespace(const char *p, const char *end)
 {
 	/* Not doing UTF-8 yet, so no error or pause returns */
 
-	for (; p->input != p->input_end; p->input++) {
-		switch (*p->input) {
+	for (; p != end; p++) {
+		switch (*p) {
 		case ' ':
 		case '\f':
 		case '\n':
@@ -157,51 +157,54 @@ static void skip_whitespace(struct eu_parse *p)
 			break;
 
 		default:
-			return;
+			goto out;
 		}
 	}
+
+ out:
+	return p;
 }
 
-static enum eu_parse_result metadata_cont_func(struct eu_parse *p,
+static enum eu_parse_result metadata_cont_func(struct eu_parse *ep,
 					       struct eu_parse_cont *cont)
 {
 	struct eu_metadata *metadata = (struct eu_metadata *)cont;
 
-	skip_whitespace(p);
+	ep->input = skip_whitespace(ep->input, ep->input_end);
 
-	if (p->input != p->input_end) {
-		return metadata->parse(metadata, p, p->result);
+	if (ep->input != ep->input_end) {
+		return metadata->parse(metadata, ep, ep->result);
 	}
 	else {
-		set_only_cont(p, cont);
+		set_only_cont(ep, cont);
 		return EU_PARSE_PAUSED;
 	}
 }
 
-int eu_parse(struct eu_parse *p, const char *input, size_t len)
+int eu_parse(struct eu_parse *ep, const char *input, size_t len)
 {
 	enum eu_parse_result res;
 
-	if (p->error)
+	if (ep->error)
 		return 0;
 
 	/* Need to concatenate the inner and outer stacks */
-	if (p->stack_top) {
-		p->stack_bottom->next = p->outer_stack;
-		p->outer_stack = p->stack_top;
-		p->stack_top = p->stack_bottom = NULL;
+	if (ep->stack_top) {
+		ep->stack_bottom->next = ep->outer_stack;
+		ep->outer_stack = ep->stack_top;
+		ep->stack_top = ep->stack_bottom = NULL;
 	}
 
-	p->input = input;
-	p->input_end = input + len;
+	ep->input = input;
+	ep->input_end = input + len;
 
 	for (;;) {
-		struct eu_parse_cont *s = p->outer_stack;
+		struct eu_parse_cont *s = ep->outer_stack;
 		if (!s)
 			break;
 
-		p->outer_stack = s->next;
-		res = s->resume(p, s);
+		ep->outer_stack = s->next;
+		res = s->resume(ep, s);
 		if (res == EU_PARSE_OK)
 			continue;
 
@@ -212,18 +215,18 @@ int eu_parse(struct eu_parse *p, const char *input, size_t len)
 
 	}
 
-	skip_whitespace(p);
-	if (p->input == p->input_end)
+	ep->input = skip_whitespace(ep->input, ep->input_end);
+	if (ep->input == ep->input_end)
 		return 1;
 
  error:
-	p->error = 1;
+	ep->error = 1;
 	return 0;
 }
 
-int eu_parse_finish(struct eu_parse *p)
+int eu_parse_finish(struct eu_parse *ep)
 {
-	return !p->error && !p->outer_stack && !p->stack_top;
+	return !ep->error && !ep->outer_stack && !ep->stack_top;
 }
 
 struct struct_member {
@@ -301,13 +304,13 @@ struct struct_parse_cont {
 	struct struct_member *member;
 };
 
-static enum eu_parse_result struct_parse_resume(struct eu_parse *p,
+static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 						struct eu_parse_cont *gcont);
 static void struct_parse_cont_dispose(struct eu_parse_cont *cont);
 
 /* This parses, allocating a fresh struct. */
 static enum eu_parse_result struct_parse(struct eu_metadata *gmetadata,
-					 struct eu_parse *p,
+					 struct eu_parse *ep,
 					 void *result)
 {
 	struct struct_parse_cont *cont;
@@ -315,9 +318,9 @@ static enum eu_parse_result struct_parse(struct eu_metadata *gmetadata,
 	enum struct_parse_state state;
 	char *s = malloc(metadata->size);
 	struct struct_member *member;
-
 	enum eu_parse_result res;
-	const char *i;
+	const char *p = ep->input;
+	const char *end = ep->input_end;
 
 	if (!s)
 		goto alloc_error;
@@ -325,24 +328,23 @@ static enum eu_parse_result struct_parse(struct eu_metadata *gmetadata,
 	memset(s, 0, metadata->size);
 	*(void **)result = s;
 
-	if (*p->input != '{')
+	if (*p != '{')
 		goto error;
 
-	p->input++;
+	p++;
 
 #define STRUCT_PARSE_BODY                                             \
 	state = STRUCT_PARSE_OPEN;                                    \
 RESUME_ONLY(case STRUCT_PARSE_OPEN:)                                  \
-	skip_whitespace(p);                                           \
-	if (p->input == p->input_end)                                 \
+	p = skip_whitespace(p, end);				      \
+	if (p == end)                                                 \
 		goto pause;                                           \
                                                                       \
-	switch (*p->input) {                                          \
+	switch (*p) {                                                 \
 	case '\"':                                                    \
 		break;                                                \
                                                                       \
 	case '}':                                                     \
-		p->input++;                                           \
 		goto done;                                            \
                                                                       \
 	default:                                                      \
@@ -350,99 +352,110 @@ RESUME_ONLY(case STRUCT_PARSE_OPEN:)                                  \
 	}                                                             \
                                                                       \
 	for (;;) {                                                    \
-		for (i = ++p->input;; i++) {                          \
-			if (i == p->input_end)                        \
+		/* Record the start of the member name */             \
+		ep->input = ++p;                                      \
+		for (;; p++) {                                        \
+			if (p == end)                                 \
 				goto pause_in_member_name;            \
                                                                       \
-			if (*i == '\"')                               \
+			if (*p == '\"')                               \
 				break;                                \
 		}                                                     \
                                                                       \
-		member = lookup_member(metadata, p->input, i);        \
+		member = lookup_member(metadata, ep->input, p);       \
 RESUME_ONLY(looked_up_member:)                                        \
 		if (!member)                                          \
 			goto error;                                   \
                                                                       \
-		p->input = i + 1;                                     \
+		p++;                                                  \
 		state = STRUCT_PARSE_MEMBER_NAME;                     \
 RESUME_ONLY(case STRUCT_PARSE_MEMBER_NAME:)                           \
-		skip_whitespace(p);                                   \
-		if (p->input == p->input_end)                         \
+		p = skip_whitespace(p, end);                          \
+		if (p == end)                                         \
 			goto pause;                                   \
                                                                       \
-		if (*p->input != ':')                                 \
+		if (*p != ':')                                        \
 			goto error;                                   \
                                                                       \
-		p->input++;                                           \
+		p++;                                                  \
 		state = STRUCT_PARSE_COLON;                           \
 RESUME_ONLY(case STRUCT_PARSE_COLON:)                                 \
-		skip_whitespace(p);                                   \
-		if (p->input == p->input_end)                         \
+		p = skip_whitespace(p, end);                          \
+		if (p == end)                                         \
 			goto pause;                                   \
                                                                       \
 		state = STRUCT_PARSE_MEMBER_VALUE;                    \
-		res = member->metadata->parse(member->metadata, p,    \
+		ep->input = p;                                        \
+		res = member->metadata->parse(member->metadata, ep,   \
 		                              s + member->offset);    \
 		switch (res) {                                        \
 		case EU_PARSE_OK:                                     \
 			break;                                        \
                                                                       \
 		case EU_PARSE_PAUSED:                                 \
-			goto pause;                                   \
+			goto pause_input_set;                         \
                                                                       \
 		default:                                              \
-			goto error;                                   \
+			goto error_input_set;                         \
 		}                                                     \
                                                                       \
+		end = ep->input_end;                                  \
 RESUME_ONLY(case STRUCT_PARSE_MEMBER_VALUE:)                          \
-		skip_whitespace(p);                                   \
-		if (p->input == p->input_end)                         \
+		p = skip_whitespace(ep->input, end);                  \
+		if (p == end)                                         \
 			goto pause;                                   \
                                                                       \
-		switch (*p->input) {                                  \
+		switch (*p) {                                         \
 		case ',':                                             \
-			p->input++;                                   \
 			break;                                        \
                                                                       \
 		case '}':                                             \
-			p->input++;                                   \
 			goto done;                                    \
                                                                       \
 		default:                                              \
 			goto error;                                   \
 		}                                                     \
                                                                       \
+		p++;                                                  \
 		state = STRUCT_PARSE_COMMA;                           \
 RESUME_ONLY(case STRUCT_PARSE_COMMA:)                                 \
-		skip_whitespace(p);                                   \
-		if (p->input == p->input_end)                         \
+		p = skip_whitespace(p, end);                          \
+		if (p == end)                                         \
 			goto pause;                                   \
                                                                       \
-		if (*p->input != '\"')                                \
+		if (*p != '\"')                                       \
 			goto error;                                   \
 	}                                                             \
                                                                       \
  done:                                                                \
+	ep->input = p + 1;                                            \
 	return EU_PARSE_OK;                                           \
                                                                       \
  pause_in_member_name:                                                \
 	state = STRUCT_PARSE_IN_MEMBER_NAME;                          \
-	if (!set_member_name_buf(p, p->input, i))                     \
+	if (!set_member_name_buf(ep, ep->input, p))                   \
 		goto alloc_error;                                     \
                                                                       \
  pause:                                                               \
+	ep->input = p;                                                \
+ pause_input_set:                                                     \
 	cont = malloc(sizeof *cont);                                  \
+	if (!cont)                                                    \
+		goto alloc_error;                                     \
+                                                                      \
 	cont->base.resume = struct_parse_resume;                      \
 	cont->base.dispose = struct_parse_cont_dispose;               \
 	cont->state = state;                                          \
 	cont->metadata = metadata;                                    \
 	cont->s = s;                                                  \
 	cont->member = member;                                        \
-	insert_cont(p, (struct eu_parse_cont *)cont);                 \
+	insert_cont(ep, (struct eu_parse_cont *)cont);                \
 	return EU_PARSE_PAUSED;                                       \
                                                                       \
  alloc_error:                                                         \
  error:                                                               \
+	ep->input = p;                                                \
+ error_input_set:                                                     \
 	return EU_PARSE_ERROR;
 
 #define RESUME_ONLY(x)
@@ -451,7 +464,7 @@ RESUME_ONLY(case STRUCT_PARSE_COMMA:)                                 \
 }
 
 /* This parses, allocating a fresh struct. */
-static enum eu_parse_result struct_parse_resume(struct eu_parse *p,
+static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 						struct eu_parse_cont *gcont)
 {
 	struct struct_parse_cont *cont = (struct struct_parse_cont *)gcont;
@@ -459,9 +472,9 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *p,
 	struct struct_metadata *metadata = cont->metadata;
 	char *s = cont->s;
 	struct struct_member *member = cont->member;
-
 	enum eu_parse_result res;
-	const char *i;
+	const char *p = ep->input;
+	const char *end = ep->input_end;
 
 	free(cont);
 
@@ -472,20 +485,20 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *p,
 	case STRUCT_PARSE_IN_MEMBER_NAME:
 		/* The member name was split, so we can't simply
 		   resume in this case. */
-		for (i = p->input;; i++) {
-			if (i == p->input_end) {
-				if (!append_member_name_buf(p, p->input, i))
+		for (;; p++) {
+			if (p == end) {
+				if (!append_member_name_buf(ep, ep->input, p))
 					goto alloc_error;
 
 				goto pause;
 			}
 
-			if (*i == '\"')
+			if (*p == '\"')
 				break;
 		}
 
-		member = lookup_member_2(metadata, p->member_name_buf,
-					 p->member_name_len, p->input, i);
+		member = lookup_member_2(metadata, ep->member_name_buf,
+					 ep->member_name_len, ep->input, p);
 		goto looked_up_member;
 
 	default:
@@ -636,18 +649,18 @@ void foo_destroy(struct foo *foo)
 
 static void test_struct(void)
 {
-	struct eu_parse p;
+	struct eu_parse ep;
 	const char data[] = "  {  \"bar\"  :  {  }  , \"baz\"  : {  } }  ";
 	size_t len = strlen(data);
 	struct foo *foo;
 	size_t i;
 
 	for (i = 0; i < len; i++) {
-		eu_parse_init(&p, foo_start, &foo);
-		assert(eu_parse(&p, data, i));
-		assert(eu_parse(&p, data + i, len - i));
-		assert(eu_parse_finish(&p));
-		eu_parse_fini(&p);
+		eu_parse_init(&ep, foo_start, &foo);
+		assert(eu_parse(&ep, data, i));
+		assert(eu_parse(&ep, data + i, len - i));
+		assert(eu_parse_finish(&ep));
+		eu_parse_fini(&ep);
 
 		assert(foo);
 		assert(foo->bar);
@@ -655,12 +668,12 @@ static void test_struct(void)
 		foo_destroy(foo);
 	}
 
-	eu_parse_init(&p, foo_start, &foo);
+	eu_parse_init(&ep, foo_start, &foo);
 	for (i = 0; i < len; i++)
-		assert(eu_parse(&p, data + i, 1));
+		assert(eu_parse(&ep, data + i, 1));
 
-	assert(eu_parse_finish(&p));
-	eu_parse_fini(&p);
+	assert(eu_parse_finish(&ep));
+	eu_parse_fini(&ep);
 
 	assert(foo);
 	assert(foo->bar);
@@ -668,25 +681,25 @@ static void test_struct(void)
 	foo_destroy(foo);
 
 	/* Test that resources are released after an unfinished parse. */
-	eu_parse_init(&p, foo_start, &foo);
-	eu_parse_fini(&p);
+	eu_parse_init(&ep, foo_start, &foo);
+	eu_parse_fini(&ep);
 
-	eu_parse_init(&p, foo_start, &foo);
-	assert(eu_parse(&p, data, len / 2));
-	eu_parse_fini(&p);
+	eu_parse_init(&ep, foo_start, &foo);
+	assert(eu_parse(&ep, data, len / 2));
+	eu_parse_fini(&ep);
 }
 
 void test_string(void)
 {
-	struct eu_parse p;
+	struct eu_parse ep;
 	const char data[] = "  \"hello, world!\"    ";
 	size_t len = strlen(data);
 	struct eu_string string;
 
-	eu_parse_init(&p, eu_string_start, &string);
-	assert(eu_parse(&p, data, len));
-	assert(eu_parse_finish(&p));
-	eu_parse_fini(&p);
+	eu_parse_init(&ep, eu_string_start, &string);
+	assert(eu_parse(&ep, data, len));
+	assert(eu_parse_finish(&ep));
+	eu_parse_fini(&ep);
 
 	assert(string.len == 13);
 	assert(!memcmp(string.string, "hello, world!", 13));

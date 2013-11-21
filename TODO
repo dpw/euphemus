@@ -18,6 +18,8 @@ string escapes
 
 Optimise scanning whitespace, strings
 
+Optimise: Use contiguous memory for stack frames
+
 UTF-8 support
 
 benchmark against json-c
