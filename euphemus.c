@@ -710,7 +710,7 @@ static struct eu_metadata *const eu_string_start = &eu_string_metadata;
 
 struct foo {
 	struct foo *bar;
-	struct foo *baz;
+	struct eu_string baz;
 };
 
 static struct struct_metadata struct_foo_metadata;
@@ -726,7 +726,7 @@ static struct struct_member foo_members[] = {
 		offsetof(struct foo, baz),
 		3,
 		"baz",
-		&struct_foo_metadata.base
+		&eu_string_metadata
 	}
 };
 
@@ -752,9 +752,7 @@ void foo_destroy(struct foo *foo)
 	if (foo->bar)
 		foo_destroy(foo->bar);
 
-	if (foo->baz)
-		foo_destroy(foo->baz);
-
+	eu_string_fini(&foo->baz);
 	free(foo);
 }
 
@@ -800,28 +798,6 @@ static void test_parse(const char *json, struct eu_metadata *start,
 	eu_parse_fini(&ep);
 }
 
-static void validate_foo(void *v_foo)
-{
-	struct foo *foo = *(struct foo **)v_foo;
-
-	assert(foo);
-	assert(foo->bar);
-	assert(!foo->bar->bar);
-	assert(!foo->bar->baz);
-	assert(foo->baz);
-	assert(!foo->baz->bar);
-	assert(!foo->baz->baz);
-	foo_destroy(foo);
-}
-
-static void test_struct(void)
-{
-	struct foo *foo;
-
-	test_parse("  {  \"bar\"  :  {  }  , \"baz\"  : {  } }  ", foo_start,
-		   &foo, validate_foo);
-}
-
 static void validate_string(void *v_string)
 {
 	struct eu_string *string = v_string;
@@ -837,6 +813,27 @@ void test_string(void)
 
 	test_parse("  \"hello, world!\"  ", eu_string_start,
 		   &string, validate_string);
+}
+
+static void validate_foo(void *v_foo)
+{
+	struct foo *foo = *(struct foo **)v_foo;
+
+	assert(foo);
+	assert(foo->bar);
+	assert(!foo->bar->bar);
+	assert(!foo->bar->baz.len);
+	assert(foo->baz.len == 1);
+	assert(*foo->baz.string == 'x');
+	foo_destroy(foo);
+}
+
+static void test_struct(void)
+{
+	struct foo *foo;
+
+	test_parse("  {  \"bar\"  :  {  }  , \"baz\"  :  \"x\"  }  ", foo_start,
+		   &foo, validate_foo);
 }
 
 int main(void)

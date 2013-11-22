@@ -1,8 +1,8 @@
-Add support for strings, numbers, arrays, bools
-
 Add support for open structs
 
 Add support for variants
+
+Add support for numbers, arrays, bools
 
 Check for repeated members
 
