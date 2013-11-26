@@ -54,9 +54,9 @@ int eu_parse(struct eu_parse *ep, const char *input, size_t len);
 int eu_parse_finish(struct eu_parse *ep);
 void eu_parse_fini(struct eu_parse *ep);
 
-void noop_cont_dispose(struct eu_parse_cont *cont);
-enum eu_parse_result metadata_cont_func(struct eu_parse *ep,
-					struct eu_parse_cont *cont);
+void eu_parse_cont_noop_dispose(struct eu_parse_cont *cont);
+enum eu_parse_result eu_parse_metadata_resume(struct eu_parse *ep,
+					      struct eu_parse_cont *cont);
 
 /* Structs */
 

@@ -3,6 +3,7 @@
 #include <assert.h>
 
 #include "euphemus.h"
+#include "euphemus_int.h"
 
 void eu_parse_init(struct eu_parse *ep, struct eu_metadata *metadata,
 		   void *result)
@@ -40,12 +41,7 @@ static void set_only_cont(struct eu_parse *ep, struct eu_parse_cont *c)
 	ep->outer_stack = c;
 }
 
-void noop_cont_dispose(struct eu_parse_cont *cont)
-{
-	(void)cont;
-}
-
-void insert_cont(struct eu_parse *ep, struct eu_parse_cont *c)
+void eu_parse_insert_cont(struct eu_parse *ep, struct eu_parse_cont *c)
 {
 	c->next = NULL;
 	if (ep->stack_bottom) {
@@ -57,7 +53,8 @@ void insert_cont(struct eu_parse *ep, struct eu_parse_cont *c)
 	}
 }
 
-int set_member_name(struct eu_parse *ep, const char *start, const char *end)
+int eu_parse_set_member_name(struct eu_parse *ep, const char *start,
+			     const char *end)
 {
 	size_t len = end - start;
 
@@ -74,7 +71,8 @@ int set_member_name(struct eu_parse *ep, const char *start, const char *end)
 	return 1;
 }
 
-int append_member_name(struct eu_parse *ep, const char *start, const char *end)
+int eu_parse_append_member_name(struct eu_parse *ep, const char *start,
+				const char *end)
 {
 	size_t len = end - start;
 	size_t total_len = ep->member_name_len + len;
@@ -95,31 +93,8 @@ int append_member_name(struct eu_parse *ep, const char *start, const char *end)
 	return 1;
 }
 
-const char *skip_whitespace(const char *p, const char *end)
-{
-	/* Not doing UTF-8 yet, so no error or pause returns */
-
-	for (; p != end; p++) {
-		switch (*p) {
-		case ' ':
-		case '\f':
-		case '\n':
-		case '\r':
-		case '\t':
-		case '\v':
-			break;
-
-		default:
-			goto out;
-		}
-	}
-
- out:
-	return p;
-}
-
-enum eu_parse_result metadata_cont_func(struct eu_parse *ep,
-					struct eu_parse_cont *cont)
+enum eu_parse_result eu_parse_metadata_resume(struct eu_parse *ep,
+					      struct eu_parse_cont *cont)
 {
 	struct eu_metadata *metadata = (struct eu_metadata *)cont;
 
@@ -132,6 +107,11 @@ enum eu_parse_result metadata_cont_func(struct eu_parse *ep,
 		set_only_cont(ep, cont);
 		return EU_PARSE_PAUSED;
 	}
+}
+
+void eu_parse_cont_noop_dispose(struct eu_parse_cont *cont)
+{
+	(void)cont;
 }
 
 int eu_parse(struct eu_parse *ep, const char *input, size_t len)

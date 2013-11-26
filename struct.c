@@ -193,7 +193,7 @@ RESUME_ONLY(case STRUCT_PARSE_COMMA:)                                 \
                                                                       \
  pause_in_member_name:                                                \
 	state = STRUCT_PARSE_IN_MEMBER_NAME;                          \
-	if (!set_member_name(ep, ep->input, p))                       \
+	if (!eu_parse_set_member_name(ep, ep->input, p))              \
 		goto alloc_error;                                     \
                                                                       \
  pause:                                                               \
@@ -209,7 +209,7 @@ RESUME_ONLY(case STRUCT_PARSE_COMMA:)                                 \
 	cont->metadata = metadata;                                    \
 	cont->s = s;                                                  \
 	cont->member = member;                                        \
-	insert_cont(ep, &cont->base);                                 \
+	eu_parse_insert_cont(ep, &cont->base);                        \
 	return EU_PARSE_PAUSED;                                       \
                                                                       \
  alloc_error:                                                         \
@@ -246,7 +246,7 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 		   resume in this case. */
 		for (;; p++) {
 			if (p == end) {
-				if (!append_member_name(ep, ep->input, p))
+				if (!eu_parse_append_member_name(ep, ep->input, p))
 					goto alloc_error;
 
 				goto pause;

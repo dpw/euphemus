@@ -1,10 +1,33 @@
 #ifndef EUPHEMUS_EUPHEMUS_INT_H
 #define EUPHEMUS_EUPHEMUS_INT_H
 
-void insert_cont(struct eu_parse *ep, struct eu_parse_cont *c);
-int set_member_name(struct eu_parse *ep, const char *start, const char *end);
-int append_member_name(struct eu_parse *ep, const char *start, const char *end);
+void eu_parse_insert_cont(struct eu_parse *ep, struct eu_parse_cont *c);
+int eu_parse_set_member_name(struct eu_parse *ep, const char *start,
+			     const char *end);
+int eu_parse_append_member_name(struct eu_parse *ep, const char *start,
+				const char *end);
 
-const char *skip_whitespace(const char *p, const char *end);
+static __inline__ const char *skip_whitespace(const char *p, const char *end)
+{
+	/* Not doing UTF-8 yet, so no error or pause returns */
+
+	for (; p != end; p++) {
+		switch (*p) {
+		case ' ':
+		case '\f':
+		case '\n':
+		case '\r':
+		case '\t':
+		case '\v':
+			break;
+
+		default:
+			goto out;
+		}
+	}
+
+ out:
+	return p;
+}
 
 #endif

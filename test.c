@@ -30,8 +30,8 @@ static struct struct_metadata struct_foo_metadata = {
 	{
 		{
 			NULL,
-			metadata_cont_func,
-			noop_cont_dispose
+			eu_parse_metadata_resume,
+			eu_parse_cont_noop_dispose
 		},
 		struct_parse,
 		struct_dispose

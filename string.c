@@ -61,7 +61,7 @@ static enum eu_parse_result string_parse(struct eu_metadata *metadata,
 	if (cont->buf) {
 		memcpy(cont->buf, ep->input, cont->len);
 		ep->input = p;
-		insert_cont(ep, &cont->base);
+		eu_parse_insert_cont(ep, &cont->base);
 		return EU_PARSE_PAUSED;
 	}
 
@@ -124,7 +124,7 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 	memcpy(cont->buf + cont->len, ep->input, len);
 	cont->len = total_len;
 	ep->input = p + 1;
-	insert_cont(ep, &cont->base);
+	eu_parse_insert_cont(ep, &cont->base);
 	return EU_PARSE_PAUSED;
 
  alloc_error:
@@ -153,8 +153,8 @@ static void string_dispose(struct eu_metadata *metadata, void *value)
 struct eu_metadata eu_string_metadata = {
 	{
 		NULL,
-		metadata_cont_func,
-		noop_cont_dispose
+		eu_parse_metadata_resume,
+		eu_parse_cont_noop_dispose
 	},
 	string_parse,
 	string_dispose
