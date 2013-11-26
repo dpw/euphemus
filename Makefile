@@ -1,11 +1,11 @@
 CFLAGS=-Wall -Wextra -ansi -g
 
 .PHONY:
-all:: euphemus
+all:: test
 
-euphemus: euphemus.c
-	$(CC) $(CFLAGS) euphemus.c -o euphemus
+test: test.c parse.c struct.c string.c
+	$(CC) $(CFLAGS) $^ -o $@
 
 .PHONY: clean
 clean::
-	rm -f euphemus
+	rm -f test
