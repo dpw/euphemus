@@ -38,7 +38,9 @@ static void variant_dispose(struct eu_metadata *metadata, void *value)
 {
 	struct eu_variant *var = value;
 	(void)metadata;
-	var->metadata->dispose(var->metadata, &var->u);
+
+	if (var->metadata)
+		var->metadata->dispose(var->metadata, &var->u);
 }
 
 struct eu_metadata eu_variant_metadata = {

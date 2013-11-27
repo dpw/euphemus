@@ -7,6 +7,7 @@
 struct foo {
 	struct foo *bar;
 	struct eu_string baz;
+	struct struct_extra *extras;
 };
 
 static struct struct_metadata struct_foo_metadata;
@@ -27,7 +28,7 @@ static struct struct_member foo_members[] = {
 };
 
 static struct struct_metadata struct_foo_metadata
-	= EU_STRUCT_METADATA_INITIALIZER(foo, foo_members);
+	= EU_STRUCT_METADATA_INITIALIZER(struct foo, foo_members);
 
 static struct eu_metadata *const foo_start = &struct_foo_metadata.base;
 
@@ -37,6 +38,7 @@ void foo_destroy(struct foo *foo)
 		foo_destroy(foo->bar);
 
 	eu_string_fini(&foo->baz);
+	eu_struct_destroy_extras(foo->extras);
 	free(foo);
 }
 
@@ -137,10 +139,26 @@ static void test_struct(void)
 		   &foo, validate_foo);
 }
 
+static void validate_extras(void *v_foo)
+{
+	struct foo *foo = *(struct foo **)v_foo;
+	assert(foo->extras);
+	foo_destroy(foo);
+}
+
+static void test_extras(void)
+{
+	struct foo *foo;
+
+	test_parse("  {  \"quux\"  :  \"x\"  }  ", foo_start,
+		   &foo, validate_extras);
+}
+
 int main(void)
 {
 	test_string();
 	test_struct();
 	test_variant();
+	test_extras();
 	return 0;
 }

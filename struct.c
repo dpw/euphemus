@@ -3,13 +3,33 @@
 #include "euphemus.h"
 #include "euphemus_int.h"
 
-static struct eu_metadata *lookup_member(struct struct_metadata *md,
-					 const char *name,
-					 const char *name_end,
-					 char *s, void **value)
+static struct eu_metadata *add_extra(struct struct_metadata *md, char *s,
+				     char *name, size_t name_len,
+				     void **value)
 {
-	unsigned int name_len = name_end - name;
+	struct struct_extra **extras = (void *)(s + md->extras_offset);
+	struct struct_extra *e = malloc(sizeof *e);
+	if (!e) {
+		free(name);
+		return NULL;
+	}
+
+	e->name = name;
+	e->name_len = name_len;
+	e->next = *extras;
+	e->value.metadata = NULL;
+	*extras = e;
+	*value = &e->value;
+	return &eu_variant_metadata;
+}
+
+static struct eu_metadata *lookup_member(struct struct_metadata *md,
+					 char *s, const char *name,
+					 const char *name_end, void **value)
+{
+	size_t name_len = name_end - name;
 	int i;
+	char *name_copy;
 
 	for (i = 0; i < md->n_members; i++) {
 		struct struct_member *m = &md->members[i];
@@ -22,19 +42,24 @@ static struct eu_metadata *lookup_member(struct struct_metadata *md,
 		}
 	}
 
-	return NULL;
+	name_copy = malloc(name_len);
+	if (!name_copy)
+		return NULL;
+
+	memcpy(name_copy, name, name_len);
+	return add_extra(md, s, name_copy, name_len, value);
 }
 
 static struct eu_metadata *lookup_member_2(struct struct_metadata *md,
-					   const char *buf,
-					   size_t buf_len,
-					   const char *more,
+					   char *s, const char *buf,
+					   size_t buf_len, const char *more,
 					   const char *more_end,
-					   char *s, void **value)
+					   void **value)
 {
 	size_t more_len = more_end - more;
 	size_t name_len = buf_len + more_len;
 	int i;
+	char *name_copy;
 
 	for (i = 0; i < md->n_members; i++) {
 		struct struct_member *m = &md->members[i];
@@ -48,7 +73,13 @@ static struct eu_metadata *lookup_member_2(struct struct_metadata *md,
 		}
 	}
 
-	return NULL;
+	name_copy = malloc(name_len);
+	if (!name_copy)
+		return NULL;
+
+	memcpy(name_copy, buf, buf_len);
+	memcpy(name_copy + buf_len, more, more_len);
+	return add_extra(md, s, name_copy, name_len, value);
 }
 
 /* A state name refers to the token the precedes it (except for
@@ -129,8 +160,8 @@ RESUME_ONLY(case STRUCT_PARSE_OPEN:)                                  \
 				break;                                \
 		}                                                     \
                                                                       \
-		member_metadata = lookup_member(metadata, ep->input,  \
-						p, s, &member_value); \
+		member_metadata = lookup_member(metadata, s, ep->input, \
+						p, &member_value);    \
 RESUME_ONLY(looked_up_member:)                                        \
 		if (!member_metadata)                                 \
 			goto error;                                   \
@@ -265,16 +296,27 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 				break;
 		}
 
-		member_metadata = lookup_member_2(metadata, ep->member_name_buf,
+		member_metadata = lookup_member_2(metadata, s,
+						  ep->member_name_buf,
 						  ep->member_name_len,
-						  ep->input, p,
-						  s, &member_value);
+						  ep->input, p, &member_value);
 		goto looked_up_member;
 
 	default:
 		goto error;
 	}
 #undef RESUME_ONLY
+}
+
+void eu_struct_destroy_extras(struct struct_extra *extras)
+{
+	while (extras) {
+		struct struct_extra *next = extras->next;
+		eu_variant_fini(&extras->value);
+		free(extras->name);
+		free(extras);
+		extras = next;
+	}
 }
 
 static void struct_free(struct struct_metadata *metadata, char *s)
@@ -289,6 +331,8 @@ static void struct_free(struct struct_metadata *metadata, char *s)
 		member->metadata->dispose(member->metadata, s + member->offset);
 	}
 
+	eu_struct_destroy_extras(
+		       *(struct struct_extra **)(s + metadata->extras_offset));
 	free(s);
 }
 

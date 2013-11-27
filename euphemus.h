@@ -65,40 +65,6 @@ void eu_parse_cont_noop_dispose(struct eu_parse_cont *cont);
 		eu_parse_cont_noop_dispose                            \
 	}
 
-
-/* Structs */
-
-struct struct_member {
-	unsigned int offset;
-	unsigned int name_len;
-	const char *name;
-	struct eu_metadata *metadata;
-};
-
-struct struct_metadata {
-	struct eu_metadata base;
-	unsigned int size;
-	int n_members;
-	struct struct_member *members;
-};
-
-enum eu_parse_result struct_parse(struct eu_metadata *gmetadata,
-				  struct eu_parse *ep,
-				  void *result);
-void struct_dispose(struct eu_metadata *gmetadata, void *value);
-
-#define EU_STRUCT_METADATA_INITIALIZER(struct_name, struct_members)   \
-	{                                                             \
-		{                                                     \
-			EU_METADATA_BASE_INITIALIZER,                 \
-			struct_parse,                                 \
-			struct_dispose                                \
-		},                                                    \
-		sizeof(struct struct_name),                           \
-		sizeof(struct_members) / sizeof(struct struct_member), \
-		struct_members                                        \
-	}
-
 /* Strings */
 
 struct eu_string {
@@ -128,7 +94,51 @@ static struct eu_metadata *const eu_variant_start = &eu_variant_metadata;
 
 static __inline__ void eu_variant_fini(struct eu_variant *variant)
 {
-	variant->metadata->dispose(variant->metadata, &variant->u);
+	if (variant->metadata)
+		variant->metadata->dispose(variant->metadata, &variant->u);
 }
+
+/* Structs */
+
+struct struct_member {
+	unsigned int offset;
+	unsigned int name_len;
+	const char *name;
+	struct eu_metadata *metadata;
+};
+
+struct struct_metadata {
+	struct eu_metadata base;
+	unsigned int size;
+	unsigned int extras_offset;
+	int n_members;
+	struct struct_member *members;
+};
+
+struct struct_extra {
+	char *name;
+	size_t name_len;
+	struct eu_variant value;
+	struct struct_extra *next;
+};
+
+enum eu_parse_result struct_parse(struct eu_metadata *gmetadata,
+				  struct eu_parse *ep,
+				  void *result);
+void struct_dispose(struct eu_metadata *gmetadata, void *value);
+void eu_struct_destroy_extras(struct struct_extra *extras);
+
+#define EU_STRUCT_METADATA_INITIALIZER(struct_name, struct_members)   \
+	{                                                             \
+		{                                                     \
+			EU_METADATA_BASE_INITIALIZER,                 \
+			struct_parse,                                 \
+			struct_dispose                                \
+		},                                                    \
+		sizeof(struct_name),                                  \
+		offsetof(struct foo, extras),                         \
+		sizeof(struct_members) / sizeof(struct struct_member), \
+		struct_members                                        \
+	}
 
 #endif
