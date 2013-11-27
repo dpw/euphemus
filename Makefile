@@ -3,7 +3,7 @@ CFLAGS=-Wall -Wextra -ansi -g
 .PHONY:
 all:: test
 
-test: test.c parse.c struct.c string.c
+test: test.c parse.c struct.c string.c variant.c
 	$(CC) $(CFLAGS) $^ -o $@
 
 .PHONY: clean

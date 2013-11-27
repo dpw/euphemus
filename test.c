@@ -99,6 +99,23 @@ void test_string(void)
 		   &string, validate_string);
 }
 
+static void validate_variant(void *v_variant)
+{
+	struct eu_variant *var = v_variant;
+
+	assert(var->u.string.len == 13);
+	assert(!memcmp(var->u.string.string, "hello, world!", 13));
+	eu_variant_fini(var);
+}
+
+void test_variant(void)
+{
+	struct eu_variant var;
+
+	test_parse("  \"hello, world!\"  ", eu_variant_start,
+		   &var, validate_variant);
+}
+
 static void validate_foo(void *v_foo)
 {
 	struct foo *foo = *(struct foo **)v_foo;
@@ -124,5 +141,6 @@ int main(void)
 {
 	test_string();
 	test_struct();
+	test_variant();
 	return 0;
 }

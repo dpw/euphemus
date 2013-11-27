@@ -114,4 +114,21 @@ static __inline__ void eu_string_fini(struct eu_string *string)
 extern struct eu_metadata eu_string_metadata;
 static struct eu_metadata *const eu_string_start = &eu_string_metadata;
 
+/* Variants */
+
+struct eu_variant {
+	struct eu_metadata *metadata;
+	union {
+		struct eu_string string;
+	} u;
+};
+
+extern struct eu_metadata eu_variant_metadata;
+static struct eu_metadata *const eu_variant_start = &eu_variant_metadata;
+
+static __inline__ void eu_variant_fini(struct eu_variant *variant)
+{
+	variant->metadata->dispose(variant->metadata, &variant->u);
+}
+
 #endif

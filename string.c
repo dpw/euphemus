@@ -144,9 +144,7 @@ static void string_parse_cont_dispose(struct eu_parse_cont *gcont)
 static void string_dispose(struct eu_metadata *metadata, void *value)
 {
 	struct eu_string *str = value;
-
 	(void)metadata;
-
 	free(str->string);
 }
 
