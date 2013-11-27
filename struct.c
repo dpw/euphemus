@@ -3,9 +3,10 @@
 #include "euphemus.h"
 #include "euphemus_int.h"
 
-static struct struct_member *lookup_member(struct struct_metadata *md,
-					   const char *name,
-					   const char *name_end)
+static struct eu_metadata *lookup_member(struct struct_metadata *md,
+					 const char *name,
+					 const char *name_end,
+					 char *s, void **value)
 {
 	unsigned int name_len = name_end - name;
 	int i;
@@ -15,18 +16,21 @@ static struct struct_member *lookup_member(struct struct_metadata *md,
 		if (m->name_len != name_len)
 			continue;
 
-		if (!memcmp(m->name, name, name_len))
-			return m;
+		if (!memcmp(m->name, name, name_len)) {
+			*value = s + m->offset;
+			return m->metadata;
+		}
 	}
 
 	return NULL;
 }
 
-static struct struct_member *lookup_member_2(struct struct_metadata *md,
-					     const char *buf,
-					     size_t buf_len,
-					     const char *more,
-					     const char *more_end)
+static struct eu_metadata *lookup_member_2(struct struct_metadata *md,
+					   const char *buf,
+					   size_t buf_len,
+					   const char *more,
+					   const char *more_end,
+					   char *s, void **value)
 {
 	size_t more_len = more_end - more;
 	size_t name_len = buf_len + more_len;
@@ -38,8 +42,10 @@ static struct struct_member *lookup_member_2(struct struct_metadata *md,
 			continue;
 
 		if (!memcmp(m->name, buf, buf_len)
-		    && !memcmp(m->name + buf_len, more, more_len))
-			return m;
+		    && !memcmp(m->name + buf_len, more, more_len)) {
+			*value = s + m->offset;
+			return m->metadata;
+		}
 	}
 
 	return NULL;
@@ -60,8 +66,9 @@ struct struct_parse_cont {
 	struct eu_parse_cont base;
 	enum struct_parse_state state;
 	struct struct_metadata *metadata;
-	char *s;
-	struct struct_member *member;
+	void *s;
+	struct eu_metadata *member_metadata;
+	void *member_value;
 };
 
 static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
@@ -76,11 +83,11 @@ enum eu_parse_result struct_parse(struct eu_metadata *gmetadata,
 	struct struct_parse_cont *cont;
 	struct struct_metadata *metadata = (struct struct_metadata *)gmetadata;
 	enum struct_parse_state state;
-	char *s = malloc(metadata->size);
-	struct struct_member *member;
-	enum eu_parse_result res;
+	struct eu_metadata *member_metadata;
+	void *member_value;
 	const char *p = ep->input;
 	const char *end = ep->input_end;
+	void *s = malloc(metadata->size);
 
 	if (!s)
 		goto alloc_error;
@@ -122,9 +129,10 @@ RESUME_ONLY(case STRUCT_PARSE_OPEN:)                                  \
 				break;                                \
 		}                                                     \
                                                                       \
-		member = lookup_member(metadata, ep->input, p);       \
+		member_metadata = lookup_member(metadata, ep->input,  \
+						p, s, &member_value); \
 RESUME_ONLY(looked_up_member:)                                        \
-		if (!member)                                          \
+		if (!member_metadata)                                 \
 			goto error;                                   \
                                                                       \
 		p++;                                                  \
@@ -146,9 +154,8 @@ RESUME_ONLY(case STRUCT_PARSE_COLON:)                                 \
                                                                       \
 		state = STRUCT_PARSE_MEMBER_VALUE;                    \
 		ep->input = p;                                        \
-		res = member->metadata->parse(member->metadata, ep,   \
-		                              s + member->offset);    \
-		switch (res) {                                        \
+		switch (member_metadata->parse(member_metadata, ep,   \
+					       member_value)) {       \
 		case EU_PARSE_OK:                                     \
 			break;                                        \
                                                                       \
@@ -208,7 +215,8 @@ RESUME_ONLY(case STRUCT_PARSE_COMMA:)                                 \
 	cont->state = state;                                          \
 	cont->metadata = metadata;                                    \
 	cont->s = s;                                                  \
-	cont->member = member;                                        \
+	cont->member_metadata = member_metadata;                      \
+	cont->member_value = member_value;                            \
 	eu_parse_insert_cont(ep, &cont->base);                        \
 	return EU_PARSE_PAUSED;                                       \
                                                                       \
@@ -229,9 +237,9 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 	struct struct_parse_cont *cont = (struct struct_parse_cont *)gcont;
 	enum struct_parse_state state = cont->state;
 	struct struct_metadata *metadata = cont->metadata;
-	char *s = cont->s;
-	struct struct_member *member = cont->member;
-	enum eu_parse_result res;
+	void *s = cont->s;
+	struct eu_metadata *member_metadata = cont->member_metadata;
+	void *member_value = cont->member_value;
 	const char *p = ep->input;
 	const char *end = ep->input_end;
 
@@ -246,7 +254,8 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 		   resume in this case. */
 		for (;; p++) {
 			if (p == end) {
-				if (!eu_parse_append_member_name(ep, ep->input, p))
+				if (!eu_parse_append_member_name(ep, ep->input,
+								 p))
 					goto alloc_error;
 
 				goto pause;
@@ -256,8 +265,10 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 				break;
 		}
 
-		member = lookup_member_2(metadata, ep->member_name_buf,
-					 ep->member_name_len, ep->input, p);
+		member_metadata = lookup_member_2(metadata, ep->member_name_buf,
+						  ep->member_name_len,
+						  ep->input, p,
+						  s, &member_value);
 		goto looked_up_member;
 
 	default:
