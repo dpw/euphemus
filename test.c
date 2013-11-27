@@ -26,20 +26,8 @@ static struct struct_member foo_members[] = {
 	}
 };
 
-static struct struct_metadata struct_foo_metadata = {
-	{
-		{
-			NULL,
-			eu_parse_metadata_resume,
-			eu_parse_cont_noop_dispose
-		},
-		struct_parse,
-		struct_dispose
-	},
-	sizeof(struct foo),
-	2,
-	foo_members
-};
+static struct struct_metadata struct_foo_metadata
+	= EU_STRUCT_METADATA_INITIALIZER(foo, foo_members);
 
 static struct eu_metadata *const foo_start = &struct_foo_metadata.base;
 

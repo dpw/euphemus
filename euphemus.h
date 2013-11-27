@@ -54,9 +54,17 @@ int eu_parse(struct eu_parse *ep, const char *input, size_t len);
 int eu_parse_finish(struct eu_parse *ep);
 void eu_parse_fini(struct eu_parse *ep);
 
-void eu_parse_cont_noop_dispose(struct eu_parse_cont *cont);
 enum eu_parse_result eu_parse_metadata_resume(struct eu_parse *ep,
 					      struct eu_parse_cont *cont);
+void eu_parse_cont_noop_dispose(struct eu_parse_cont *cont);
+
+#define EU_METADATA_BASE_INITIALIZER                                  \
+	{                                                             \
+		NULL,                                                 \
+		eu_parse_metadata_resume,                             \
+		eu_parse_cont_noop_dispose                            \
+	}
+
 
 /* Structs */
 
@@ -78,6 +86,18 @@ enum eu_parse_result struct_parse(struct eu_metadata *gmetadata,
 				  struct eu_parse *ep,
 				  void *result);
 void struct_dispose(struct eu_metadata *gmetadata, void *value);
+
+#define EU_STRUCT_METADATA_INITIALIZER(struct_name, struct_members)   \
+	{                                                             \
+		{                                                     \
+			EU_METADATA_BASE_INITIALIZER,                 \
+			struct_parse,                                 \
+			struct_dispose                                \
+		},                                                    \
+		sizeof(struct struct_name),                           \
+		sizeof(struct_members) / sizeof(struct struct_member), \
+		struct_members                                        \
+	}
 
 /* Strings */
 

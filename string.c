@@ -151,11 +151,7 @@ static void string_dispose(struct eu_metadata *metadata, void *value)
 }
 
 struct eu_metadata eu_string_metadata = {
-	{
-		NULL,
-		eu_parse_metadata_resume,
-		eu_parse_cont_noop_dispose
-	},
+	EU_METADATA_BASE_INITIALIZER,
 	string_parse,
 	string_dispose
 };
