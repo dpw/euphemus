@@ -118,8 +118,8 @@ struct struct_metadata {
 struct struct_extra {
 	char *name;
 	size_t name_len;
-	struct eu_variant value;
 	struct struct_extra *next;
+	struct eu_variant value;
 };
 
 enum eu_parse_result struct_parse(struct eu_metadata *gmetadata,
@@ -127,6 +127,8 @@ enum eu_parse_result struct_parse(struct eu_metadata *gmetadata,
 				  void *result);
 void struct_dispose(struct eu_metadata *gmetadata, void *value);
 void eu_struct_destroy_extras(struct struct_extra *extras);
+struct eu_variant *eu_struct_get_extra(struct struct_extra *extras,
+				       const char *name);
 
 #define EU_STRUCT_METADATA_INITIALIZER(struct_name, struct_members)   \
 	{                                                             \

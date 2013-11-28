@@ -142,7 +142,11 @@ static void test_struct(void)
 static void validate_extras(void *v_foo)
 {
 	struct foo *foo = *(struct foo **)v_foo;
-	assert(foo->extras);
+	struct eu_variant *var = eu_struct_get_extra(foo->extras, "quux");
+
+	assert(var);
+	assert(var->u.string.len == 1);
+	assert(!memcmp(var->u.string.string, "x", 1));
 	foo_destroy(foo);
 }
 

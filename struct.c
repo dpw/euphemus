@@ -319,6 +319,20 @@ void eu_struct_destroy_extras(struct struct_extra *extras)
 	}
 }
 
+struct eu_variant *eu_struct_get_extra(struct struct_extra *extras,
+				       const char *name)
+{
+	while (extras) {
+		if (!strncmp(name, extras->name, extras->name_len)
+		    && name[extras->name_len] == 0)
+			return &extras->value;
+
+		extras = extras->next;
+	}
+
+	return NULL;
+}
+
 static void struct_free(struct struct_metadata *metadata, char *s)
 {
 	int i;
