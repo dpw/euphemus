@@ -31,13 +31,26 @@ static struct eu_struct_metadata struct_foo_metadata
 
 static struct eu_metadata *const foo_start = &struct_foo_metadata.base;
 
-void foo_destroy(struct foo *foo)
+static struct eu_struct_metadata inline_struct_foo_metadata
+	= EU_INLINE_STRUCT_METADATA_INITIALIZER(struct foo, foo_members);
+
+static struct eu_metadata *const inline_foo_start
+	= &inline_struct_foo_metadata.base;
+
+void foo_destroy(struct foo *foo);
+
+void foo_fini(struct foo *foo)
 {
 	if (foo->bar)
 		foo_destroy(foo->bar);
 
 	eu_string_fini(&foo->baz);
 	eu_open_struct_fini(&foo->open);
+}
+
+void foo_destroy(struct foo *foo)
+{
+	foo_fini(foo);
 	free(foo);
 }
 
@@ -117,16 +130,21 @@ static void test_variant(void)
 		   &var, validate_variant);
 }
 
-static void validate_foo(void *v_foo)
+static void validate_foo(struct foo *foo)
 {
-	struct foo *foo = *(struct foo **)v_foo;
-
-	assert(foo);
 	assert(foo->bar);
 	assert(!foo->bar->bar);
 	assert(!foo->bar->baz.len);
 	assert(foo->baz.len == 1);
 	assert(*foo->baz.string == 'x');
+}
+
+static void validate_struct_foo(void *v_foo_ptr)
+{
+	struct foo *foo = *(struct foo **)v_foo_ptr;
+
+	assert(foo);
+	validate_foo(foo);
 	foo_destroy(foo);
 }
 
@@ -135,8 +153,25 @@ static void test_struct(void)
 	struct foo *foo;
 
 	test_parse("  {  \"bar\"  :  {  }  , \"baz\"  :  \"x\"  }  ", foo_start,
-		   &foo, validate_foo);
+		   &foo, validate_struct_foo);
 }
+
+static void validate_inline_struct_foo(void *v_foo)
+{
+	struct foo *foo = v_foo;
+
+	validate_foo(foo);
+	foo_fini(foo);
+}
+
+static void test_inline_struct(void)
+{
+	struct foo foo;
+
+	test_parse("  {  \"bar\"  :  {  }  , \"baz\"  :  \"x\"  }  ",
+		   inline_foo_start, &foo, validate_inline_struct_foo);
+}
+
 
 static void validate_extras(void *v_foo)
 {
@@ -161,6 +196,7 @@ int main(void)
 {
 	test_string();
 	test_struct();
+	test_inline_struct();
 	test_variant();
 	test_extras();
 	return 0;

@@ -97,7 +97,8 @@ struct struct_parse_cont {
 	struct eu_parse_cont base;
 	enum struct_parse_state state;
 	struct eu_struct_metadata *metadata;
-	void *s;
+	void *result;
+	void **result_ptr;
 	struct eu_metadata *member_metadata;
 	void *member_value;
 };
@@ -107,23 +108,20 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 static void struct_parse_cont_destroy(struct eu_parse_cont *cont);
 
 /* This parses, allocating a fresh struct. */
-enum eu_parse_result eu_struct_parse(struct eu_metadata *gmetadata,
-				     struct eu_parse *ep, void *result)
+enum eu_parse_result struct_parse(struct eu_metadata *gmetadata,
+				  struct eu_parse *ep, void *result,
+				  void **result_ptr)
 {
 	struct struct_parse_cont *cont;
-	struct eu_struct_metadata *metadata = (struct eu_struct_metadata *)gmetadata;
+	struct eu_struct_metadata *metadata
+		= (struct eu_struct_metadata *)gmetadata;
 	enum struct_parse_state state;
 	struct eu_metadata *member_metadata;
 	void *member_value;
 	const char *p = ep->input;
 	const char *end = ep->input_end;
-	void *s = malloc(metadata->size);
 
-	if (!s)
-		goto alloc_error;
-
-	memset(s, 0, metadata->size);
-	*(void **)result = s;
+	memset(result, 0, metadata->size);
 
 	if (*p != '{')
 		goto error;
@@ -159,7 +157,7 @@ RESUME_ONLY(case STRUCT_PARSE_OPEN:)                                  \
 				break;                                \
 		}                                                     \
                                                                       \
-		member_metadata = lookup_member(metadata, s, ep->input, \
+		member_metadata = lookup_member(metadata, result, ep->input, \
 						p, &member_value);    \
 RESUME_ONLY(looked_up_member:)                                        \
 		if (!member_metadata)                                 \
@@ -244,7 +242,8 @@ RESUME_ONLY(case STRUCT_PARSE_COMMA:)                                 \
 	cont->base.destroy = struct_parse_cont_destroy;               \
 	cont->state = state;                                          \
 	cont->metadata = metadata;                                    \
-	cont->s = s;                                                  \
+	cont->result = result;                                        \
+	cont->result_ptr = result_ptr;                                \
 	cont->member_metadata = member_metadata;                      \
 	cont->member_value = member_value;                            \
 	eu_parse_insert_cont(ep, &cont->base);                        \
@@ -254,6 +253,9 @@ RESUME_ONLY(case STRUCT_PARSE_COMMA:)                                 \
  error:                                                               \
 	ep->input = p;                                                \
  error_input_set:                                                     \
+	if (result_ptr)                                               \
+		*result_ptr = NULL;                                   \
+                                                                      \
 	return EU_PARSE_ERROR;
 
 #define RESUME_ONLY(x)
@@ -267,7 +269,8 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 	struct struct_parse_cont *cont = (struct struct_parse_cont *)gcont;
 	enum struct_parse_state state = cont->state;
 	struct eu_struct_metadata *metadata = cont->metadata;
-	void *s = cont->s;
+	void *result = cont->result;
+	void **result_ptr = cont->result_ptr;
 	struct eu_metadata *member_metadata = cont->member_metadata;
 	void *member_value = cont->member_value;
 	const char *p = ep->input;
@@ -295,7 +298,7 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 				break;
 		}
 
-		member_metadata = lookup_member_2(metadata, s,
+		member_metadata = lookup_member_2(metadata, result,
 						  ep->member_name_buf,
 						  ep->member_name_len,
 						  ep->input, p, &member_value);
@@ -307,33 +310,66 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 #undef RESUME_ONLY
 }
 
-static void struct_free(struct eu_struct_metadata *metadata, char *s)
+enum eu_parse_result eu_struct_parse(struct eu_metadata *gmetadata,
+				     struct eu_parse *ep, void *result)
 {
-	int i;
+	struct eu_struct_metadata *metadata
+		= (struct eu_struct_metadata *)gmetadata;
+	void *s = malloc(metadata->size);
 
-	if (!s)
-		return;
+	if (s) {
+		*(void **)result = s;
+		return struct_parse(gmetadata, ep, s, (void **)result);
+	}
+	else {
+		*(void **)result = NULL;
+		return EU_PARSE_ERROR;
+	}
+}
+
+enum eu_parse_result eu_inline_struct_parse(struct eu_metadata *gmetadata,
+					    struct eu_parse *ep, void *result)
+{
+	return struct_parse(gmetadata, ep, result, NULL);
+}
+
+void eu_inline_struct_destroy(struct eu_metadata *gmetadata, void *s)
+{
+	struct eu_struct_metadata *metadata
+		= (struct eu_struct_metadata *)gmetadata;
+	int i;
 
 	for (i = 0; i < metadata->n_members; i++) {
 		struct eu_struct_member *member = &metadata->members[i];
-		member->metadata->destroy(member->metadata, s + member->offset);
+		member->metadata->destroy(member->metadata,
+					  (char *)s + member->offset);
 	}
 
 	eu_open_struct_fini(
 			  (struct eu_open_struct *)(s + metadata->open_offset));
-	free(s);
 }
 
 void eu_struct_destroy(struct eu_metadata *gmetadata, void *value)
 {
-	struct_free((struct eu_struct_metadata *)gmetadata,
-		    *(void **)value);
+	void *s = *(void **)value;
+
+	if (s) {
+		eu_inline_struct_destroy(gmetadata, s);
+		free(s);
+		*(void **)value = NULL;
+	}
 }
 
 static void struct_parse_cont_destroy(struct eu_parse_cont *gcont)
 {
 	struct struct_parse_cont *cont = (struct struct_parse_cont *)gcont;
-	struct_free(cont->metadata, cont->s);
+
+	eu_inline_struct_destroy(&cont->metadata->base, cont->result);
+	if (cont->result_ptr) {
+		free(cont->result);
+		*cont->result_ptr = NULL;
+	}
+
 	free(cont);
 }
 
@@ -342,6 +378,19 @@ struct eu_struct_metadata eu_open_struct_metadata = {
 		EU_METADATA_BASE_INITIALIZER,
 		eu_struct_parse,
 		eu_struct_destroy
+	},
+	sizeof(struct eu_open_struct),
+	0,
+	0,
+	NULL
+};
+
+
+struct eu_struct_metadata eu_inline_open_struct_metadata = {
+	{
+		EU_METADATA_BASE_INITIALIZER,
+		eu_inline_struct_parse,
+		eu_inline_struct_destroy
 	},
 	sizeof(struct eu_open_struct),
 	0,

@@ -132,6 +132,11 @@ enum eu_parse_result eu_struct_parse(struct eu_metadata *gmetadata,
 				     void *result);
 void eu_struct_destroy(struct eu_metadata *gmetadata, void *value);
 
+enum eu_parse_result eu_inline_struct_parse(struct eu_metadata *gmetadata,
+					    struct eu_parse *ep,
+					    void *result);
+void eu_inline_struct_destroy(struct eu_metadata *gmetadata, void *value);
+
 void eu_open_struct_fini(struct eu_open_struct *os);
 struct eu_variant *eu_open_struct_get(struct eu_open_struct *os,
 				      const char *name);
@@ -142,6 +147,19 @@ struct eu_variant *eu_open_struct_get(struct eu_open_struct *os,
 			EU_METADATA_BASE_INITIALIZER,                 \
 			eu_struct_parse,                              \
 			eu_struct_destroy                             \
+		},                                                    \
+		sizeof(struct_name),                                  \
+		offsetof(struct foo, open),                           \
+		sizeof(struct_members) / sizeof(struct eu_struct_member), \
+		struct_members                                        \
+	}
+
+#define EU_INLINE_STRUCT_METADATA_INITIALIZER(struct_name, struct_members) \
+	{                                                             \
+		{                                                     \
+			EU_METADATA_BASE_INITIALIZER,                 \
+			eu_inline_struct_parse,                       \
+			eu_inline_struct_destroy                      \
 		},                                                    \
 		sizeof(struct_name),                                  \
 		offsetof(struct foo, open),                           \
