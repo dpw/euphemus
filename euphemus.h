@@ -1,6 +1,7 @@
 #ifndef EUPHEMUS_EUPHEMUS_H
 #define EUPHEMUS_EUPHEMUS_H
 
+#include <stddef.h>
 #include <stdlib.h>
 
 struct eu_parse {
@@ -110,7 +111,7 @@ struct eu_struct_member {
 struct eu_struct_metadata {
 	struct eu_metadata base;
 	unsigned int size;
-	unsigned int extras_offset;
+	unsigned int open_offset;
 	int n_members;
 	struct eu_struct_member *members;
 };
@@ -122,13 +123,18 @@ struct eu_struct_extra {
 	struct eu_variant value;
 };
 
+struct eu_open_struct {
+	struct eu_struct_extra *extras;
+};
+
 enum eu_parse_result eu_struct_parse(struct eu_metadata *gmetadata,
 				     struct eu_parse *ep,
 				     void *result);
 void eu_struct_destroy(struct eu_metadata *gmetadata, void *value);
-void eu_struct_destroy_extras(struct eu_struct_extra *extras);
-struct eu_variant *eu_struct_get_extra(struct eu_struct_extra *extras,
-				       const char *name);
+
+void eu_open_struct_fini(struct eu_open_struct *os);
+struct eu_variant *eu_open_struct_get(struct eu_open_struct *os,
+				      const char *name);
 
 #define EU_STRUCT_METADATA_INITIALIZER(struct_name, struct_members)   \
 	{                                                             \
@@ -138,9 +144,11 @@ struct eu_variant *eu_struct_get_extra(struct eu_struct_extra *extras,
 			eu_struct_destroy                             \
 		},                                                    \
 		sizeof(struct_name),                                  \
-		offsetof(struct foo, extras),                         \
+		offsetof(struct foo, open),                           \
 		sizeof(struct_members) / sizeof(struct eu_struct_member), \
 		struct_members                                        \
 	}
+
+extern struct eu_struct_metadata eu_open_struct_metadata;
 
 #endif

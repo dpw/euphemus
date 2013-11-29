@@ -1,13 +1,12 @@
 #include "euphemus.h"
 
-#include <stddef.h>
 #include <string.h>
 #include <assert.h>
 
 struct foo {
 	struct foo *bar;
 	struct eu_string baz;
-	struct eu_struct_extra *extras;
+	struct eu_open_struct open;
 };
 
 static struct eu_struct_metadata struct_foo_metadata;
@@ -38,7 +37,7 @@ void foo_destroy(struct foo *foo)
 		foo_destroy(foo->bar);
 
 	eu_string_fini(&foo->baz);
-	eu_struct_destroy_extras(foo->extras);
+	eu_open_struct_fini(&foo->open);
 	free(foo);
 }
 
@@ -142,7 +141,7 @@ static void test_struct(void)
 static void validate_extras(void *v_foo)
 {
 	struct foo *foo = *(struct foo **)v_foo;
-	struct eu_variant *var = eu_struct_get_extra(foo->extras, "quux");
+	struct eu_variant *var = eu_open_struct_get(&foo->open, "quux");
 
 	assert(var);
 	assert(var->u.string.len == 1);

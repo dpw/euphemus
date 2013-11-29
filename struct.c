@@ -7,7 +7,7 @@ static struct eu_metadata *add_extra(struct eu_struct_metadata *md, char *s,
 				     char *name, size_t name_len,
 				     void **value)
 {
-	struct eu_struct_extra **extras = (void *)(s + md->extras_offset);
+	struct eu_open_struct *open = (void *)(s + md->open_offset);
 	struct eu_struct_extra *e = malloc(sizeof *e);
 	if (!e) {
 		free(name);
@@ -16,9 +16,9 @@ static struct eu_metadata *add_extra(struct eu_struct_metadata *md, char *s,
 
 	e->name = name;
 	e->name_len = name_len;
-	e->next = *extras;
+	e->next = open->extras;
 	e->value.metadata = NULL;
-	*extras = e;
+	open->extras = e;
 	*value = &e->value;
 	return &eu_variant_metadata;
 }
@@ -307,31 +307,6 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 #undef RESUME_ONLY
 }
 
-void eu_struct_destroy_extras(struct eu_struct_extra *extras)
-{
-	while (extras) {
-		struct eu_struct_extra *next = extras->next;
-		eu_variant_fini(&extras->value);
-		free(extras->name);
-		free(extras);
-		extras = next;
-	}
-}
-
-struct eu_variant *eu_struct_get_extra(struct eu_struct_extra *extras,
-				       const char *name)
-{
-	while (extras) {
-		if (!strncmp(name, extras->name, extras->name_len)
-		    && name[extras->name_len] == 0)
-			return &extras->value;
-
-		extras = extras->next;
-	}
-
-	return NULL;
-}
-
 static void struct_free(struct eu_struct_metadata *metadata, char *s)
 {
 	int i;
@@ -344,8 +319,8 @@ static void struct_free(struct eu_struct_metadata *metadata, char *s)
 		member->metadata->destroy(member->metadata, s + member->offset);
 	}
 
-	eu_struct_destroy_extras(
-		       *(struct eu_struct_extra **)(s + metadata->extras_offset));
+	eu_open_struct_fini(
+			  (struct eu_open_struct *)(s + metadata->open_offset));
 	free(s);
 }
 
@@ -360,4 +335,45 @@ static void struct_parse_cont_destroy(struct eu_parse_cont *gcont)
 	struct struct_parse_cont *cont = (struct struct_parse_cont *)gcont;
 	struct_free(cont->metadata, cont->s);
 	free(cont);
+}
+
+struct eu_struct_metadata eu_open_struct_metadata = {
+	{
+		EU_METADATA_BASE_INITIALIZER,
+		eu_struct_parse,
+		eu_struct_destroy
+	},
+	sizeof(struct eu_open_struct),
+	0,
+	0,
+	NULL
+};
+
+void eu_open_struct_fini(struct eu_open_struct *os)
+{
+	struct eu_struct_extra *extras = os->extras;
+
+	while (extras) {
+		struct eu_struct_extra *next = extras->next;
+		eu_variant_fini(&extras->value);
+		free(extras->name);
+		free(extras);
+		extras = next;
+	}
+}
+
+struct eu_variant *eu_open_struct_get(struct eu_open_struct *os,
+				      const char *name)
+{
+	struct eu_struct_extra *extras = os->extras;
+
+	while (extras) {
+		if (!strncmp(name, extras->name, extras->name_len)
+		    && name[extras->name_len] == 0)
+			return &extras->value;
+
+		extras = extras->next;
+	}
+
+	return NULL;
 }
