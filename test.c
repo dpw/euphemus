@@ -91,9 +91,11 @@ static void test_parse(const char *json, struct eu_metadata *start,
 	eu_parse_init(&ep, start, result);
 	eu_parse_fini(&ep);
 
-	eu_parse_init(&ep, start, result);
-	assert(eu_parse(&ep, json, len / 2));
-	eu_parse_fini(&ep);
+	for (i = 0; i < len; i++) {
+		eu_parse_init(&ep, start, result);
+		assert(eu_parse(&ep, json, i));
+		eu_parse_fini(&ep);
+	}
 }
 
 static void validate_string(void *v_string)

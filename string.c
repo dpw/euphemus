@@ -13,7 +13,8 @@ struct string_parse_cont {
 
 static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 						struct eu_parse_cont *gcont);
-static void string_parse_cont_destroy(struct eu_parse_cont *cont);
+static void string_parse_cont_destroy(struct eu_parse *ep,
+				      struct eu_parse_cont *cont);
 
 static enum eu_parse_result string_parse(struct eu_metadata *metadata,
 					 struct eu_parse *ep,
@@ -23,11 +24,15 @@ static enum eu_parse_result string_parse(struct eu_metadata *metadata,
 	const char *end = ep->input_end;
 	struct eu_string *result = v_result;
 	struct string_parse_cont *cont;
+	size_t len;
 
 	(void)metadata;
 
 	if (*p != '\"')
 		goto error;
+
+	result->len = 0;
+	result->string = NULL;
 
 	ep->input = ++p;
 
@@ -39,11 +44,12 @@ static enum eu_parse_result string_parse(struct eu_metadata *metadata,
 			break;
 	}
 
-	result->len = p - ep->input;
-	if (!(result->string = malloc(result->len)))
+	len = p - ep->input;
+	if (!(result->string = malloc(len)))
 		goto alloc_error;
 
-	memcpy(result->string, ep->input, result->len);
+	memcpy(result->string, ep->input, len);
+	result->len = len;
 	ep->input = p + 1;
 	return EU_PARSE_OK;
 
@@ -133,9 +139,12 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 	return EU_PARSE_ERROR;
 }
 
-static void string_parse_cont_destroy(struct eu_parse_cont *gcont)
+static void string_parse_cont_destroy(struct eu_parse *ep,
+				      struct eu_parse_cont *gcont)
 {
 	struct string_parse_cont *cont = (struct string_parse_cont *)gcont;
+
+	(void)ep;
 
 	free(cont->buf);
 	free(cont);
@@ -145,7 +154,11 @@ static void string_destroy(struct eu_metadata *metadata, void *value)
 {
 	struct eu_string *str = value;
 	(void)metadata;
-	free(str->string);
+
+	if (str->string) {
+		free(str->string);
+		str->string = NULL;
+	}
 }
 
 struct eu_metadata eu_string_metadata = {

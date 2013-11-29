@@ -105,7 +105,8 @@ struct struct_parse_cont {
 
 static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 						struct eu_parse_cont *gcont);
-static void struct_parse_cont_destroy(struct eu_parse_cont *cont);
+static void struct_parse_cont_destroy(struct eu_parse *ep,
+				      struct eu_parse_cont *cont);
 
 /* This parses, allocating a fresh struct. */
 enum eu_parse_result struct_parse(struct eu_metadata *gmetadata,
@@ -360,9 +361,12 @@ void eu_struct_destroy(struct eu_metadata *gmetadata, void *value)
 	}
 }
 
-static void struct_parse_cont_destroy(struct eu_parse_cont *gcont)
+static void struct_parse_cont_destroy(struct eu_parse *ep,
+				      struct eu_parse_cont *gcont)
 {
 	struct struct_parse_cont *cont = (struct struct_parse_cont *)gcont;
+
+	(void)ep;
 
 	eu_inline_struct_destroy(&cont->metadata->base, cont->result);
 	if (cont->result_ptr) {

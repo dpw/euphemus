@@ -9,7 +9,9 @@ struct eu_parse {
 	struct eu_parse_cont *stack_top;
 	struct eu_parse_cont *stack_bottom;
 
+	struct eu_metadata *metadata;
 	void *result;
+
 	const char *input;
 	const char *input_end;
 
@@ -31,7 +33,7 @@ struct eu_parse_cont {
 	struct eu_parse_cont *next;
 	enum eu_parse_result (*resume)(struct eu_parse *p,
 				       struct eu_parse_cont *cont);
-	void (*destroy)(struct eu_parse_cont *cont);
+	void (*destroy)(struct eu_parse *ep, struct eu_parse_cont *cont);
 };
 
 /* A description of a type of data (including things like how to
@@ -55,15 +57,16 @@ int eu_parse(struct eu_parse *ep, const char *input, size_t len);
 int eu_parse_finish(struct eu_parse *ep);
 void eu_parse_fini(struct eu_parse *ep);
 
-enum eu_parse_result eu_parse_metadata_resume(struct eu_parse *ep,
-					      struct eu_parse_cont *cont);
-void eu_parse_cont_noop_destroy(struct eu_parse_cont *cont);
+enum eu_parse_result eu_parse_metadata_cont_resume(struct eu_parse *ep,
+						   struct eu_parse_cont *cont);
+void eu_parse_metadata_cont_destroy(struct eu_parse *ep,
+				    struct eu_parse_cont *cont);
 
 #define EU_METADATA_BASE_INITIALIZER                                  \
 	{                                                             \
 		NULL,                                                 \
-		eu_parse_metadata_resume,                             \
-		eu_parse_cont_noop_destroy                            \
+		eu_parse_metadata_cont_resume,                        \
+		eu_parse_metadata_cont_destroy                        \
 	}
 
 /* Strings */

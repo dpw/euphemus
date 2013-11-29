@@ -10,6 +10,7 @@ void eu_parse_init(struct eu_parse *ep, struct eu_metadata *metadata,
 {
 	ep->outer_stack = &metadata->base;
 	ep->stack_top = ep->stack_bottom = NULL;
+	ep->metadata = metadata;
 	ep->result = result;
 	ep->member_name_buf = NULL;
 	ep->member_name_size = 0;
@@ -24,13 +25,18 @@ void eu_parse_fini(struct eu_parse *ep)
 	   clean up. */
 	for (c = ep->outer_stack; c; c = next) {
 		next = c->next;
-		c->destroy(c);
+		c->destroy(ep, c);
 	}
 
 	for (c = ep->stack_top; c; c = next) {
 		next = c->next;
-		c->destroy(c);
+		c->destroy(ep, c);
 	}
+
+	/* Clean up the result, if it wasn't claimed via
+	   eu_parse_finish. */
+	if (ep->result)
+		ep->metadata->destroy(ep->metadata, ep->result);
 
 	free(ep->member_name_buf);
 }
@@ -93,8 +99,8 @@ int eu_parse_append_member_name(struct eu_parse *ep, const char *start,
 	return 1;
 }
 
-enum eu_parse_result eu_parse_metadata_resume(struct eu_parse *ep,
-					      struct eu_parse_cont *cont)
+enum eu_parse_result eu_parse_metadata_cont_resume(struct eu_parse *ep,
+						   struct eu_parse_cont *cont)
 {
 	struct eu_metadata *metadata = (struct eu_metadata *)cont;
 
@@ -109,9 +115,13 @@ enum eu_parse_result eu_parse_metadata_resume(struct eu_parse *ep,
 	}
 }
 
-void eu_parse_cont_noop_destroy(struct eu_parse_cont *cont)
+void eu_parse_metadata_cont_destroy(struct eu_parse *ep,
+				    struct eu_parse_cont *cont)
 {
 	(void)cont;
+
+	/* No parsing occured, so don't finalize the result. */
+	ep->result = NULL;
 }
 
 int eu_parse(struct eu_parse *ep, const char *input, size_t len)
@@ -159,5 +169,10 @@ int eu_parse(struct eu_parse *ep, const char *input, size_t len)
 
 int eu_parse_finish(struct eu_parse *ep)
 {
-	return !ep->error && !ep->outer_stack && !ep->stack_top;
+	if (ep->error || ep->outer_stack || ep->stack_top)
+		return 0;
+
+	/* The client now has responsiblity for the result */
+	ep->result = NULL;
+	return 1;
 }
