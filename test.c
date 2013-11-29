@@ -7,12 +7,12 @@
 struct foo {
 	struct foo *bar;
 	struct eu_string baz;
-	struct struct_extra *extras;
+	struct eu_struct_extra *extras;
 };
 
-static struct struct_metadata struct_foo_metadata;
+static struct eu_struct_metadata struct_foo_metadata;
 
-static struct struct_member foo_members[] = {
+static struct eu_struct_member foo_members[] = {
 	{
 		offsetof(struct foo, bar),
 		3,
@@ -27,7 +27,7 @@ static struct struct_member foo_members[] = {
 	}
 };
 
-static struct struct_metadata struct_foo_metadata
+static struct eu_struct_metadata struct_foo_metadata
 	= EU_STRUCT_METADATA_INITIALIZER(struct foo, foo_members);
 
 static struct eu_metadata *const foo_start = &struct_foo_metadata.base;
@@ -93,7 +93,7 @@ static void validate_string(void *v_string)
 	eu_string_fini(string);
 }
 
-void test_string(void)
+static void test_string(void)
 {
 	struct eu_string string;
 
@@ -110,7 +110,7 @@ static void validate_variant(void *v_variant)
 	eu_variant_fini(var);
 }
 
-void test_variant(void)
+static void test_variant(void)
 {
 	struct eu_variant var;
 

@@ -3,12 +3,12 @@
 #include "euphemus.h"
 #include "euphemus_int.h"
 
-static struct eu_metadata *add_extra(struct struct_metadata *md, char *s,
+static struct eu_metadata *add_extra(struct eu_struct_metadata *md, char *s,
 				     char *name, size_t name_len,
 				     void **value)
 {
-	struct struct_extra **extras = (void *)(s + md->extras_offset);
-	struct struct_extra *e = malloc(sizeof *e);
+	struct eu_struct_extra **extras = (void *)(s + md->extras_offset);
+	struct eu_struct_extra *e = malloc(sizeof *e);
 	if (!e) {
 		free(name);
 		return NULL;
@@ -23,7 +23,7 @@ static struct eu_metadata *add_extra(struct struct_metadata *md, char *s,
 	return &eu_variant_metadata;
 }
 
-static struct eu_metadata *lookup_member(struct struct_metadata *md,
+static struct eu_metadata *lookup_member(struct eu_struct_metadata *md,
 					 char *s, const char *name,
 					 const char *name_end, void **value)
 {
@@ -32,7 +32,7 @@ static struct eu_metadata *lookup_member(struct struct_metadata *md,
 	char *name_copy;
 
 	for (i = 0; i < md->n_members; i++) {
-		struct struct_member *m = &md->members[i];
+		struct eu_struct_member *m = &md->members[i];
 		if (m->name_len != name_len)
 			continue;
 
@@ -50,7 +50,7 @@ static struct eu_metadata *lookup_member(struct struct_metadata *md,
 	return add_extra(md, s, name_copy, name_len, value);
 }
 
-static struct eu_metadata *lookup_member_2(struct struct_metadata *md,
+static struct eu_metadata *lookup_member_2(struct eu_struct_metadata *md,
 					   char *s, const char *buf,
 					   size_t buf_len, const char *more,
 					   const char *more_end,
@@ -62,7 +62,7 @@ static struct eu_metadata *lookup_member_2(struct struct_metadata *md,
 	char *name_copy;
 
 	for (i = 0; i < md->n_members; i++) {
-		struct struct_member *m = &md->members[i];
+		struct eu_struct_member *m = &md->members[i];
 		if (m->name_len != name_len)
 			continue;
 
@@ -96,7 +96,7 @@ enum struct_parse_state {
 struct struct_parse_cont {
 	struct eu_parse_cont base;
 	enum struct_parse_state state;
-	struct struct_metadata *metadata;
+	struct eu_struct_metadata *metadata;
 	void *s;
 	struct eu_metadata *member_metadata;
 	void *member_value;
@@ -107,12 +107,11 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 static void struct_parse_cont_dispose(struct eu_parse_cont *cont);
 
 /* This parses, allocating a fresh struct. */
-enum eu_parse_result struct_parse(struct eu_metadata *gmetadata,
-					 struct eu_parse *ep,
-					 void *result)
+enum eu_parse_result eu_struct_parse(struct eu_metadata *gmetadata,
+				     struct eu_parse *ep, void *result)
 {
 	struct struct_parse_cont *cont;
-	struct struct_metadata *metadata = (struct struct_metadata *)gmetadata;
+	struct eu_struct_metadata *metadata = (struct eu_struct_metadata *)gmetadata;
 	enum struct_parse_state state;
 	struct eu_metadata *member_metadata;
 	void *member_value;
@@ -267,7 +266,7 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 {
 	struct struct_parse_cont *cont = (struct struct_parse_cont *)gcont;
 	enum struct_parse_state state = cont->state;
-	struct struct_metadata *metadata = cont->metadata;
+	struct eu_struct_metadata *metadata = cont->metadata;
 	void *s = cont->s;
 	struct eu_metadata *member_metadata = cont->member_metadata;
 	void *member_value = cont->member_value;
@@ -308,10 +307,10 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 #undef RESUME_ONLY
 }
 
-void eu_struct_destroy_extras(struct struct_extra *extras)
+void eu_struct_destroy_extras(struct eu_struct_extra *extras)
 {
 	while (extras) {
-		struct struct_extra *next = extras->next;
+		struct eu_struct_extra *next = extras->next;
 		eu_variant_fini(&extras->value);
 		free(extras->name);
 		free(extras);
@@ -319,7 +318,7 @@ void eu_struct_destroy_extras(struct struct_extra *extras)
 	}
 }
 
-struct eu_variant *eu_struct_get_extra(struct struct_extra *extras,
+struct eu_variant *eu_struct_get_extra(struct eu_struct_extra *extras,
 				       const char *name)
 {
 	while (extras) {
@@ -333,7 +332,7 @@ struct eu_variant *eu_struct_get_extra(struct struct_extra *extras,
 	return NULL;
 }
 
-static void struct_free(struct struct_metadata *metadata, char *s)
+static void struct_free(struct eu_struct_metadata *metadata, char *s)
 {
 	int i;
 
@@ -341,18 +340,18 @@ static void struct_free(struct struct_metadata *metadata, char *s)
 		return;
 
 	for (i = 0; i < metadata->n_members; i++) {
-		struct struct_member *member = &metadata->members[i];
+		struct eu_struct_member *member = &metadata->members[i];
 		member->metadata->dispose(member->metadata, s + member->offset);
 	}
 
 	eu_struct_destroy_extras(
-		       *(struct struct_extra **)(s + metadata->extras_offset));
+		       *(struct eu_struct_extra **)(s + metadata->extras_offset));
 	free(s);
 }
 
-void struct_dispose(struct eu_metadata *gmetadata, void *value)
+void eu_struct_dispose(struct eu_metadata *gmetadata, void *value)
 {
-	struct_free((struct struct_metadata *)gmetadata,
+	struct_free((struct eu_struct_metadata *)gmetadata,
 		    *(void **)value);
 }
 

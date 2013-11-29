@@ -100,46 +100,46 @@ static __inline__ void eu_variant_fini(struct eu_variant *variant)
 
 /* Structs */
 
-struct struct_member {
+struct eu_struct_member {
 	unsigned int offset;
 	unsigned int name_len;
 	const char *name;
 	struct eu_metadata *metadata;
 };
 
-struct struct_metadata {
+struct eu_struct_metadata {
 	struct eu_metadata base;
 	unsigned int size;
 	unsigned int extras_offset;
 	int n_members;
-	struct struct_member *members;
+	struct eu_struct_member *members;
 };
 
-struct struct_extra {
+struct eu_struct_extra {
 	char *name;
 	size_t name_len;
-	struct struct_extra *next;
+	struct eu_struct_extra *next;
 	struct eu_variant value;
 };
 
-enum eu_parse_result struct_parse(struct eu_metadata *gmetadata,
-				  struct eu_parse *ep,
-				  void *result);
-void struct_dispose(struct eu_metadata *gmetadata, void *value);
-void eu_struct_destroy_extras(struct struct_extra *extras);
-struct eu_variant *eu_struct_get_extra(struct struct_extra *extras,
+enum eu_parse_result eu_struct_parse(struct eu_metadata *gmetadata,
+				     struct eu_parse *ep,
+				     void *result);
+void eu_struct_dispose(struct eu_metadata *gmetadata, void *value);
+void eu_struct_destroy_extras(struct eu_struct_extra *extras);
+struct eu_variant *eu_struct_get_extra(struct eu_struct_extra *extras,
 				       const char *name);
 
 #define EU_STRUCT_METADATA_INITIALIZER(struct_name, struct_members)   \
 	{                                                             \
 		{                                                     \
 			EU_METADATA_BASE_INITIALIZER,                 \
-			struct_parse,                                 \
-			struct_dispose                                \
+			eu_struct_parse,                              \
+			eu_struct_dispose                             \
 		},                                                    \
 		sizeof(struct_name),                                  \
 		offsetof(struct foo, extras),                         \
-		sizeof(struct_members) / sizeof(struct struct_member), \
+		sizeof(struct_members) / sizeof(struct eu_struct_member), \
 		struct_members                                        \
 	}
 
