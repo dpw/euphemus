@@ -13,7 +13,7 @@ struct string_parse_cont {
 
 static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 						struct eu_parse_cont *gcont);
-static void string_parse_cont_dispose(struct eu_parse_cont *cont);
+static void string_parse_cont_destroy(struct eu_parse_cont *cont);
 
 static enum eu_parse_result string_parse(struct eu_metadata *metadata,
 					 struct eu_parse *ep,
@@ -53,7 +53,7 @@ static enum eu_parse_result string_parse(struct eu_metadata *metadata,
 		goto alloc_error;
 
 	cont->base.resume = string_parse_resume;
-	cont->base.dispose = string_parse_cont_dispose;
+	cont->base.destroy = string_parse_cont_destroy;
 	cont->result = result;
 	cont->len = p - ep->input;
 	cont->capacity = cont->len * 2;
@@ -133,7 +133,7 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 	return EU_PARSE_ERROR;
 }
 
-static void string_parse_cont_dispose(struct eu_parse_cont *gcont)
+static void string_parse_cont_destroy(struct eu_parse_cont *gcont)
 {
 	struct string_parse_cont *cont = (struct string_parse_cont *)gcont;
 
@@ -141,7 +141,7 @@ static void string_parse_cont_dispose(struct eu_parse_cont *gcont)
 	free(cont);
 }
 
-static void string_dispose(struct eu_metadata *metadata, void *value)
+static void string_destroy(struct eu_metadata *metadata, void *value)
 {
 	struct eu_string *str = value;
 	(void)metadata;
@@ -151,6 +151,6 @@ static void string_dispose(struct eu_metadata *metadata, void *value)
 struct eu_metadata eu_string_metadata = {
 	EU_METADATA_BASE_INITIALIZER,
 	string_parse,
-	string_dispose
+	string_destroy
 };
 

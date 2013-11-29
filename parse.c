@@ -24,12 +24,12 @@ void eu_parse_fini(struct eu_parse *ep)
 	   clean up. */
 	for (c = ep->outer_stack; c; c = next) {
 		next = c->next;
-		c->dispose(c);
+		c->destroy(c);
 	}
 
 	for (c = ep->stack_top; c; c = next) {
 		next = c->next;
-		c->dispose(c);
+		c->destroy(c);
 	}
 
 	free(ep->member_name_buf);
@@ -109,7 +109,7 @@ enum eu_parse_result eu_parse_metadata_resume(struct eu_parse *ep,
 	}
 }
 
-void eu_parse_cont_noop_dispose(struct eu_parse_cont *cont)
+void eu_parse_cont_noop_destroy(struct eu_parse_cont *cont)
 {
 	(void)cont;
 }

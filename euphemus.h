@@ -30,7 +30,7 @@ struct eu_parse_cont {
 	struct eu_parse_cont *next;
 	enum eu_parse_result (*resume)(struct eu_parse *p,
 				       struct eu_parse_cont *cont);
-	void (*dispose)(struct eu_parse_cont *cont);
+	void (*destroy)(struct eu_parse_cont *cont);
 };
 
 /* A description of a type of data (including things like how to
@@ -45,7 +45,7 @@ struct eu_metadata {
 	enum eu_parse_result (*parse)(struct eu_metadata *metadata,
 				      struct eu_parse *ep,
 				      void *result);
-	void (*dispose)(struct eu_metadata *metadata, void *value);
+	void (*destroy)(struct eu_metadata *metadata, void *value);
 };
 
 void eu_parse_init(struct eu_parse *ep, struct eu_metadata *metadata,
@@ -56,13 +56,13 @@ void eu_parse_fini(struct eu_parse *ep);
 
 enum eu_parse_result eu_parse_metadata_resume(struct eu_parse *ep,
 					      struct eu_parse_cont *cont);
-void eu_parse_cont_noop_dispose(struct eu_parse_cont *cont);
+void eu_parse_cont_noop_destroy(struct eu_parse_cont *cont);
 
 #define EU_METADATA_BASE_INITIALIZER                                  \
 	{                                                             \
 		NULL,                                                 \
 		eu_parse_metadata_resume,                             \
-		eu_parse_cont_noop_dispose                            \
+		eu_parse_cont_noop_destroy                            \
 	}
 
 /* Strings */
@@ -95,7 +95,7 @@ static struct eu_metadata *const eu_variant_start = &eu_variant_metadata;
 static __inline__ void eu_variant_fini(struct eu_variant *variant)
 {
 	if (variant->metadata)
-		variant->metadata->dispose(variant->metadata, &variant->u);
+		variant->metadata->destroy(variant->metadata, &variant->u);
 }
 
 /* Structs */
@@ -125,7 +125,7 @@ struct eu_struct_extra {
 enum eu_parse_result eu_struct_parse(struct eu_metadata *gmetadata,
 				     struct eu_parse *ep,
 				     void *result);
-void eu_struct_dispose(struct eu_metadata *gmetadata, void *value);
+void eu_struct_destroy(struct eu_metadata *gmetadata, void *value);
 void eu_struct_destroy_extras(struct eu_struct_extra *extras);
 struct eu_variant *eu_struct_get_extra(struct eu_struct_extra *extras,
 				       const char *name);
@@ -135,7 +135,7 @@ struct eu_variant *eu_struct_get_extra(struct eu_struct_extra *extras,
 		{                                                     \
 			EU_METADATA_BASE_INITIALIZER,                 \
 			eu_struct_parse,                              \
-			eu_struct_dispose                             \
+			eu_struct_destroy                             \
 		},                                                    \
 		sizeof(struct_name),                                  \
 		offsetof(struct foo, extras),                         \

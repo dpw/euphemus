@@ -104,7 +104,7 @@ struct struct_parse_cont {
 
 static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 						struct eu_parse_cont *gcont);
-static void struct_parse_cont_dispose(struct eu_parse_cont *cont);
+static void struct_parse_cont_destroy(struct eu_parse_cont *cont);
 
 /* This parses, allocating a fresh struct. */
 enum eu_parse_result eu_struct_parse(struct eu_metadata *gmetadata,
@@ -241,7 +241,7 @@ RESUME_ONLY(case STRUCT_PARSE_COMMA:)                                 \
 		goto alloc_error;                                     \
                                                                       \
 	cont->base.resume = struct_parse_resume;                      \
-	cont->base.dispose = struct_parse_cont_dispose;               \
+	cont->base.destroy = struct_parse_cont_destroy;               \
 	cont->state = state;                                          \
 	cont->metadata = metadata;                                    \
 	cont->s = s;                                                  \
@@ -341,7 +341,7 @@ static void struct_free(struct eu_struct_metadata *metadata, char *s)
 
 	for (i = 0; i < metadata->n_members; i++) {
 		struct eu_struct_member *member = &metadata->members[i];
-		member->metadata->dispose(member->metadata, s + member->offset);
+		member->metadata->destroy(member->metadata, s + member->offset);
 	}
 
 	eu_struct_destroy_extras(
@@ -349,13 +349,13 @@ static void struct_free(struct eu_struct_metadata *metadata, char *s)
 	free(s);
 }
 
-void eu_struct_dispose(struct eu_metadata *gmetadata, void *value)
+void eu_struct_destroy(struct eu_metadata *gmetadata, void *value)
 {
 	struct_free((struct eu_struct_metadata *)gmetadata,
 		    *(void **)value);
 }
 
-static void struct_parse_cont_dispose(struct eu_parse_cont *gcont)
+static void struct_parse_cont_destroy(struct eu_parse_cont *gcont)
 {
 	struct struct_parse_cont *cont = (struct struct_parse_cont *)gcont;
 	struct_free(cont->metadata, cont->s);
