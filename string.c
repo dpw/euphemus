@@ -29,13 +29,13 @@ static enum eu_parse_result string_parse(struct eu_metadata *metadata,
 	(void)metadata;
 
 	if (unlikely(*p != '\"')) {
-		enum eu_parse_result res = eu_consume_whitespace(metadata,
-								 ep, result);
-		if (res != EU_PARSE_OK)
+		enum eu_parse_result res = eu_consume_whitespace(ep, metadata,
+								 result);
+		if (unlikely(res != EU_PARSE_OK))
 			return res;
 
 		p = ep->input;
-		if (*p != '\"')
+		if (unlikely(*p != '\"'))
 			return EU_PARSE_ERROR;
 	}
 

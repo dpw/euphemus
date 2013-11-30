@@ -40,8 +40,21 @@ static __inline__ const char *skip_whitespace(const char *p, const char *end)
 	return p;
 }
 
-enum eu_parse_result eu_consume_whitespace(struct eu_metadata *metadata,
-					   struct eu_parse *ep,
-					   void *result);
+enum eu_parse_result eu_insert_whitespace_cont(struct eu_parse *ep,
+					       struct eu_metadata *metadata,
+					       void *result);
+
+static __inline__ enum eu_parse_result eu_consume_whitespace(
+						struct eu_parse *ep,
+						struct eu_metadata *metadata,
+						void *result)
+{
+	const char *end = ep->input_end;
+	ep->input = skip_whitespace(ep->input, end);
+	if (ep->input != end)
+		return EU_PARSE_OK;
+	else
+		return eu_insert_whitespace_cont(ep, metadata, result);
+}
 
 #endif

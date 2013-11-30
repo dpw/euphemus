@@ -188,19 +188,11 @@ static enum eu_parse_result consume_ws_resume(struct eu_parse *ep,
 static void consume_ws_destroy(struct eu_parse *ep,
 			       struct eu_parse_cont *cont);
 
-enum eu_parse_result eu_consume_whitespace(struct eu_metadata *metadata,
-					   struct eu_parse *ep,
-					   void *result)
+enum eu_parse_result eu_insert_whitespace_cont(struct eu_parse *ep,
+					       struct eu_metadata *metadata,
+					       void *result)
 {
-	const char *p = ep->input;
-	const char *end = ep->input_end;
-	struct consume_ws_cont *cont;
-
-	ep->input = p = skip_whitespace(p, end);
-	if (p != end)
-		return EU_PARSE_OK;
-
-	cont = malloc(sizeof *cont);
+	struct consume_ws_cont *cont = malloc(sizeof *cont);
 	if (!cont)
 		return EU_PARSE_ERROR;
 

@@ -77,7 +77,7 @@ static enum eu_parse_result consume_ws(struct eu_metadata *metadata,
 				       struct eu_parse *ep,
 				       void *result)
 {
-	enum eu_parse_result res = eu_consume_whitespace(metadata, ep, result);
+	enum eu_parse_result res = eu_consume_whitespace(ep, metadata, result);
 	if (res == EU_PARSE_OK)
 		return variant_parse(metadata, ep,
 			       (char *)result - offsetof(struct eu_variant, u));
