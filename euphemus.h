@@ -44,11 +44,16 @@ struct eu_metadata {
 	/* A parse function expects that there is a non-whitespace
 	   character available at the start of p->input.  So callers
 	   need to skip any whitespace before calling the parse
-	   function. */
+	   function.
+
+	   The memory range allocated to the value is cleared before
+	   this is called. */
 	enum eu_parse_result (*parse)(struct eu_metadata *metadata,
 				      struct eu_parse *ep,
 				      void *result);
-	void (*destroy)(struct eu_metadata *metadata, void *value);
+
+	/* Release any resources associated with the value.*/
+	void (*fini)(struct eu_metadata *metadata, void *value);
 
 	unsigned int size;
 };
@@ -101,7 +106,7 @@ static struct eu_metadata *const eu_variant_start = &eu_variant_metadata;
 static __inline__ void eu_variant_fini(struct eu_variant *variant)
 {
 	if (variant->metadata)
-		variant->metadata->destroy(variant->metadata, &variant->u);
+		variant->metadata->fini(variant->metadata, &variant->u);
 }
 
 /* Structs */
@@ -135,12 +140,12 @@ struct eu_open_struct {
 enum eu_parse_result eu_struct_parse(struct eu_metadata *gmetadata,
 				     struct eu_parse *ep,
 				     void *result);
-void eu_struct_destroy(struct eu_metadata *gmetadata, void *value);
+void eu_struct_fini(struct eu_metadata *gmetadata, void *value);
 
 enum eu_parse_result eu_inline_struct_parse(struct eu_metadata *gmetadata,
 					    struct eu_parse *ep,
 					    void *result);
-void eu_inline_struct_destroy(struct eu_metadata *gmetadata, void *value);
+void eu_inline_struct_fini(struct eu_metadata *gmetadata, void *value);
 
 void eu_open_struct_fini(struct eu_open_struct *os);
 struct eu_variant *eu_open_struct_get(struct eu_open_struct *os,
@@ -151,7 +156,7 @@ struct eu_variant *eu_open_struct_get(struct eu_open_struct *os,
 		{                                                     \
 			EU_METADATA_BASE_INITIALIZER,                 \
 			eu_struct_parse,                              \
-			eu_struct_destroy,                            \
+			eu_struct_fini,                               \
 			sizeof(struct_name *)                         \
 		},                                                    \
 		sizeof(struct_name),                                  \
@@ -165,7 +170,7 @@ struct eu_variant *eu_open_struct_get(struct eu_open_struct *os,
 		{                                                     \
 			EU_METADATA_BASE_INITIALIZER,                 \
 			eu_inline_struct_parse,                       \
-			eu_inline_struct_destroy,                     \
+			eu_inline_struct_fini,                        \
 			sizeof(struct_name)                           \
 		},                                                    \
 		-1,                                                   \

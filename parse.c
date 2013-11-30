@@ -38,7 +38,7 @@ void eu_parse_fini(struct eu_parse *ep)
 	/* Clean up the result, if it wasn't claimed via
 	   eu_parse_finish. */
 	if (ep->result)
-		ep->metadata->destroy(ep->metadata, ep->result);
+		ep->metadata->fini(ep->metadata, ep->result);
 
 	free(ep->member_name_buf);
 }

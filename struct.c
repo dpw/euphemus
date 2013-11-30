@@ -333,7 +333,7 @@ enum eu_parse_result eu_inline_struct_parse(struct eu_metadata *gmetadata,
 	return struct_parse(gmetadata, ep, result, NULL);
 }
 
-void eu_inline_struct_destroy(struct eu_metadata *gmetadata, void *s)
+void eu_inline_struct_fini(struct eu_metadata *gmetadata, void *s)
 {
 	struct eu_struct_metadata *metadata
 		= (struct eu_struct_metadata *)gmetadata;
@@ -341,20 +341,20 @@ void eu_inline_struct_destroy(struct eu_metadata *gmetadata, void *s)
 
 	for (i = 0; i < metadata->n_members; i++) {
 		struct eu_struct_member *member = &metadata->members[i];
-		member->metadata->destroy(member->metadata,
-					  (char *)s + member->offset);
+		member->metadata->fini(member->metadata,
+				       (char *)s + member->offset);
 	}
 
 	eu_open_struct_fini(
 			  (struct eu_open_struct *)(s + metadata->open_offset));
 }
 
-void eu_struct_destroy(struct eu_metadata *gmetadata, void *value)
+void eu_struct_fini(struct eu_metadata *gmetadata, void *value)
 {
 	void *s = *(void **)value;
 
 	if (s) {
-		eu_inline_struct_destroy(gmetadata, s);
+		eu_inline_struct_fini(gmetadata, s);
 		free(s);
 		*(void **)value = NULL;
 	}
@@ -367,7 +367,7 @@ static void struct_parse_cont_destroy(struct eu_parse *ep,
 
 	(void)ep;
 
-	eu_inline_struct_destroy(&cont->metadata->base, cont->result);
+	eu_inline_struct_fini(&cont->metadata->base, cont->result);
 	if (cont->result_ptr) {
 		free(cont->result);
 		*cont->result_ptr = NULL;
@@ -380,7 +380,7 @@ struct eu_struct_metadata eu_open_struct_metadata = {
 	{
 		EU_METADATA_BASE_INITIALIZER,
 		eu_struct_parse,
-		eu_struct_destroy,
+		eu_struct_fini,
 		sizeof(struct eu_open_struct *)
 	},
 	sizeof(struct eu_open_struct),
@@ -394,7 +394,7 @@ struct eu_struct_metadata eu_inline_open_struct_metadata = {
 	{
 		EU_METADATA_BASE_INITIALIZER,
 		eu_inline_struct_parse,
-		eu_inline_struct_destroy,
+		eu_inline_struct_fini,
 		sizeof(struct eu_open_struct)
 	},
 	-1,

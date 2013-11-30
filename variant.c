@@ -34,18 +34,20 @@ static enum eu_parse_result variant_parse(struct eu_metadata *metadata,
 	return EU_PARSE_ERROR;
 }
 
-static void variant_destroy(struct eu_metadata *metadata, void *value)
+static void variant_fini(struct eu_metadata *metadata, void *value)
 {
 	struct eu_variant *var = value;
 	(void)metadata;
 
-	if (var->metadata)
-		var->metadata->destroy(var->metadata, &var->u);
+	if (var->metadata) {
+		var->metadata->fini(var->metadata, &var->u);
+		var->metadata = NULL;
+	}
 }
 
 struct eu_metadata eu_variant_metadata = {
 	EU_METADATA_BASE_INITIALIZER,
 	variant_parse,
-	variant_destroy,
+	variant_fini,
 	sizeof(struct eu_variant)
 };

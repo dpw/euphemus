@@ -147,7 +147,7 @@ static void string_parse_cont_destroy(struct eu_parse *ep,
 	free(cont);
 }
 
-static void string_destroy(struct eu_metadata *metadata, void *value)
+static void string_fini(struct eu_metadata *metadata, void *value)
 {
 	struct eu_string *str = value;
 	(void)metadata;
@@ -161,7 +161,7 @@ static void string_destroy(struct eu_metadata *metadata, void *value)
 struct eu_metadata eu_string_metadata = {
 	EU_METADATA_BASE_INITIALIZER,
 	string_parse,
-	string_destroy,
+	string_fini,
 	sizeof(struct eu_string)
 };
 
