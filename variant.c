@@ -100,3 +100,8 @@ struct eu_metadata eu_variant_metadata = {
 	sizeof(struct eu_variant),
 	EU_JSON_INVALID
 };
+
+void eu_parse_init_variant(struct eu_parse *ep, struct eu_variant *var)
+{
+	eu_parse_init(ep, &eu_variant_metadata, var);
+}

@@ -29,13 +29,8 @@ static struct eu_struct_member foo_members[] = {
 static struct eu_struct_metadata struct_foo_metadata
 	= EU_STRUCT_METADATA_INITIALIZER(struct foo, foo_members);
 
-static struct eu_metadata *const foo_start = &struct_foo_metadata.base;
-
 static struct eu_struct_metadata inline_struct_foo_metadata
 	= EU_INLINE_STRUCT_METADATA_INITIALIZER(struct foo, foo_members);
-
-static struct eu_metadata *const inline_foo_start
-	= &inline_struct_foo_metadata.base;
 
 void foo_destroy(struct foo *foo);
 
@@ -54,15 +49,26 @@ void foo_destroy(struct foo *foo)
 	free(foo);
 }
 
-static void test_parse(const char *json, struct eu_metadata *start,
-		       void *result, void (*validate)(void *result))
+void eu_parse_init_struct_foo(struct eu_parse *ep, struct foo **foo)
+{
+	eu_parse_init(ep, &struct_foo_metadata.base, foo);
+}
+
+void eu_parse_init_inline_struct_foo(struct eu_parse *ep, struct foo *foo)
+{
+	eu_parse_init(ep, &inline_struct_foo_metadata.base, foo);
+}
+
+static void test_parse(const char *json, void *result,
+		       void (*parse_init)(struct eu_parse *ep, void *result),
+		       void (*validate)(void *result))
 {
 	struct eu_parse ep;
 	size_t len = strlen(json);
 	size_t i;
 
 	/* Test parsing in one go */
-	eu_parse_init(&ep, start, result);
+	parse_init(&ep, result);
 	assert(eu_parse(&ep, json, len));
 	assert(eu_parse_finish(&ep));
 	eu_parse_fini(&ep);
@@ -70,7 +76,7 @@ static void test_parse(const char *json, struct eu_metadata *start,
 
 	/* Test parsing broken at each position within the json */
 	for (i = 0; i < len; i++) {
-		eu_parse_init(&ep, start, result);
+		parse_init(&ep, result);
 		assert(eu_parse(&ep, json, i));
 		assert(eu_parse(&ep, json + i, len - i));
 		assert(eu_parse_finish(&ep));
@@ -79,7 +85,7 @@ static void test_parse(const char *json, struct eu_metadata *start,
 	}
 
 	/* Test parsing with the json broken into individual bytes */
-	eu_parse_init(&ep, start, result);
+	parse_init(&ep, result);
 	for (i = 0; i < len; i++)
 		assert(eu_parse(&ep, json + i, 1));
 
@@ -88,11 +94,11 @@ static void test_parse(const char *json, struct eu_metadata *start,
 	validate(result);
 
 	/* Test that resources are released after an unfinished parse. */
-	eu_parse_init(&ep, start, result);
+	parse_init(&ep, result);
 	eu_parse_fini(&ep);
 
 	for (i = 0; i < len; i++) {
-		eu_parse_init(&ep, start, result);
+		parse_init(&ep, result);
 		assert(eu_parse(&ep, json, i));
 		eu_parse_fini(&ep);
 	}
@@ -107,12 +113,90 @@ static void validate_string(void *v_string)
 	eu_string_fini(string);
 }
 
+static void parse_init_string(struct eu_parse *ep, void *str)
+{
+	eu_parse_init_string(ep, str);
+}
+
 static void test_string(void)
 {
 	struct eu_string string;
 
-	test_parse("  \"hello, world!\"  ", eu_string_start,
-		   &string, validate_string);
+	test_parse("  \"hello, world!\"  ", &string,
+		   parse_init_string, validate_string);
+}
+
+
+static void validate_foo(struct foo *foo)
+{
+	assert(foo->bar);
+	assert(!foo->bar->bar);
+	assert(!foo->bar->baz.len);
+	assert(foo->baz.len == 1);
+	assert(*foo->baz.string == 'x');
+}
+
+static void validate_foo_ptr(void *v_foo_ptr)
+{
+	struct foo *foo = *(struct foo **)v_foo_ptr;
+
+	assert(foo);
+	validate_foo(foo);
+	foo_destroy(foo);
+}
+
+static void parse_init_foo_ptr(struct eu_parse *ep, void *foo_ptr)
+{
+	eu_parse_init_struct_foo(ep, foo_ptr);
+}
+
+static void test_struct_ptr(void)
+{
+	struct foo *foo;
+
+	test_parse("  {  \"bar\"  :  {  }  , \"baz\"  :  \"x\"  }  ", &foo,
+		   parse_init_foo_ptr, validate_foo_ptr);
+}
+
+static void validate_inline_foo(void *v_foo)
+{
+	struct foo *foo = v_foo;
+
+	validate_foo(foo);
+	foo_fini(foo);
+}
+
+static void parse_init_inline_foo(struct eu_parse *ep, void *foo)
+{
+	eu_parse_init_inline_struct_foo(ep, foo);
+}
+
+static void test_inline_struct(void)
+{
+	struct foo foo;
+
+	test_parse("  {  \"bar\"  :  {  }  , \"baz\"  :  \"x\"  }  ", &foo,
+		   parse_init_inline_foo, validate_inline_foo);
+}
+
+static void validate_extras(void *v_foo)
+{
+	struct foo *foo = v_foo;
+
+	struct eu_variant *var = eu_open_struct_get(&foo->open, "quux");
+	assert(var);
+	assert(var->u.string.len == 1);
+	assert(!memcmp(var->u.string.string, "x", 1));
+
+	foo_fini(foo);
+}
+
+static void test_extras(void)
+{
+	struct foo foo;
+
+	test_parse("  {  \"quux\"  :  \"x\"  }  ", &foo,
+		   parse_init_inline_foo, validate_extras);
 }
 
 static void validate_variant(void *v_variant)
@@ -138,83 +222,26 @@ static void validate_variant(void *v_variant)
 	eu_variant_fini(var);
 }
 
+static void parse_init_variant(struct eu_parse *ep, void *var)
+{
+	eu_parse_init_variant(ep, var);
+}
+
 static void test_variant(void)
 {
 	struct eu_variant var;
 
 	test_parse("  {  \"foo\":  \"hello, world!\","
-		   "  \"bar\":  {  \"baz\"  :  \"bye!\"  }  }  ",
-		   eu_variant_start, &var, validate_variant);
-}
-
-static void validate_foo(struct foo *foo)
-{
-	assert(foo->bar);
-	assert(!foo->bar->bar);
-	assert(!foo->bar->baz.len);
-	assert(foo->baz.len == 1);
-	assert(*foo->baz.string == 'x');
-}
-
-static void validate_struct_foo(void *v_foo_ptr)
-{
-	struct foo *foo = *(struct foo **)v_foo_ptr;
-
-	assert(foo);
-	validate_foo(foo);
-	foo_destroy(foo);
-}
-
-static void test_struct(void)
-{
-	struct foo *foo;
-
-	test_parse("  {  \"bar\"  :  {  }  , \"baz\"  :  \"x\"  }  ", foo_start,
-		   &foo, validate_struct_foo);
-}
-
-static void validate_inline_struct_foo(void *v_foo)
-{
-	struct foo *foo = v_foo;
-
-	validate_foo(foo);
-	foo_fini(foo);
-}
-
-static void test_inline_struct(void)
-{
-	struct foo foo;
-
-	test_parse("  {  \"bar\"  :  {  }  , \"baz\"  :  \"x\"  }  ",
-		   inline_foo_start, &foo, validate_inline_struct_foo);
-}
-
-
-static void validate_extras(void *v_foo)
-{
-	struct foo *foo = *(struct foo **)v_foo;
-	struct eu_variant *var = eu_open_struct_get(&foo->open, "quux");
-
-	assert(var);
-	assert(var->u.string.len == 1);
-	assert(!memcmp(var->u.string.string, "x", 1));
-	foo_destroy(foo);
-}
-
-static void test_extras(void)
-{
-	struct foo *foo;
-
-	test_parse("  {  \"quux\"  :  \"x\"  }  ", foo_start,
-		   &foo, validate_extras);
+		   "  \"bar\":  {  \"baz\"  :  \"bye!\"  }  }  ", &var,
+		   parse_init_variant, validate_variant);
 }
 
 int main(void)
 {
 	test_string();
-	test_struct();
+	test_struct_ptr();
 	test_inline_struct();
-	test_variant();
 	test_extras();
+	test_variant();
 	return 0;
 }

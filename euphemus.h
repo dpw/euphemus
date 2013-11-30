@@ -108,7 +108,7 @@ static __inline__ void eu_string_fini(struct eu_string *string)
 }
 
 extern struct eu_metadata eu_string_metadata;
-static struct eu_metadata *const eu_string_start = &eu_string_metadata;
+void eu_parse_init_string(struct eu_parse *ep, struct eu_string *str);
 
 /* Variants */
 
@@ -121,7 +121,7 @@ struct eu_variant {
 };
 
 extern struct eu_metadata eu_variant_metadata;
-static struct eu_metadata *const eu_variant_start = &eu_variant_metadata;
+void eu_parse_init_variant(struct eu_parse *ep, struct eu_variant *var);
 
 static __inline__ enum eu_json_type eu_variant_type(struct eu_variant *variant)
 {

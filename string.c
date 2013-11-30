@@ -173,3 +173,7 @@ struct eu_metadata eu_string_metadata = {
 	EU_JSON_STRING
 };
 
+void eu_parse_init_string(struct eu_parse *ep, struct eu_string *str)
+{
+	eu_parse_init(ep, &eu_string_metadata, str);
+}
