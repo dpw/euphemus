@@ -15,6 +15,8 @@ void eu_parse_init(struct eu_parse *ep, struct eu_metadata *metadata,
 	ep->member_name_buf = NULL;
 	ep->member_name_size = 0;
 	ep->error = 0;
+
+	memset(result, 0, metadata->size);
 }
 
 void eu_parse_fini(struct eu_parse *ep)

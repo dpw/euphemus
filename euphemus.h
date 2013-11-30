@@ -49,6 +49,8 @@ struct eu_metadata {
 				      struct eu_parse *ep,
 				      void *result);
 	void (*destroy)(struct eu_metadata *metadata, void *value);
+
+	unsigned int size;
 };
 
 void eu_parse_init(struct eu_parse *ep, struct eu_metadata *metadata,
@@ -113,7 +115,7 @@ struct eu_struct_member {
 
 struct eu_struct_metadata {
 	struct eu_metadata base;
-	unsigned int size;
+	unsigned int struct_size;
 	unsigned int open_offset;
 	int n_members;
 	struct eu_struct_member *members;
@@ -149,7 +151,8 @@ struct eu_variant *eu_open_struct_get(struct eu_open_struct *os,
 		{                                                     \
 			EU_METADATA_BASE_INITIALIZER,                 \
 			eu_struct_parse,                              \
-			eu_struct_destroy                             \
+			eu_struct_destroy,                            \
+			sizeof(struct_name *)                         \
 		},                                                    \
 		sizeof(struct_name),                                  \
 		offsetof(struct foo, open),                           \
@@ -162,9 +165,10 @@ struct eu_variant *eu_open_struct_get(struct eu_open_struct *os,
 		{                                                     \
 			EU_METADATA_BASE_INITIALIZER,                 \
 			eu_inline_struct_parse,                       \
-			eu_inline_struct_destroy                      \
+			eu_inline_struct_destroy,                     \
+			sizeof(struct_name)                           \
 		},                                                    \
-		sizeof(struct_name),                                  \
+		-1,                                                   \
 		offsetof(struct foo, open),                           \
 		sizeof(struct_members) / sizeof(struct eu_struct_member), \
 		struct_members                                        \

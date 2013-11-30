@@ -46,5 +46,6 @@ static void variant_destroy(struct eu_metadata *metadata, void *value)
 struct eu_metadata eu_variant_metadata = {
 	EU_METADATA_BASE_INITIALIZER,
 	variant_parse,
-	variant_destroy
+	variant_destroy,
+	sizeof(struct eu_variant)
 };

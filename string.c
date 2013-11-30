@@ -31,9 +31,6 @@ static enum eu_parse_result string_parse(struct eu_metadata *metadata,
 	if (*p != '\"')
 		goto error;
 
-	result->len = 0;
-	result->string = NULL;
-
 	ep->input = ++p;
 
 	for (;; p++) {
@@ -164,6 +161,7 @@ static void string_destroy(struct eu_metadata *metadata, void *value)
 struct eu_metadata eu_string_metadata = {
 	EU_METADATA_BASE_INITIALIZER,
 	string_parse,
-	string_destroy
+	string_destroy,
+	sizeof(struct eu_string)
 };
 

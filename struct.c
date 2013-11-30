@@ -17,7 +17,7 @@ static struct eu_metadata *add_extra(struct eu_struct_metadata *md, char *s,
 	e->name = name;
 	e->name_len = name_len;
 	e->next = open->extras;
-	e->value.metadata = NULL;
+	memset(&e->value, 0, sizeof e->value);
 	open->extras = e;
 	*value = &e->value;
 	return &eu_variant_metadata;
@@ -121,8 +121,6 @@ enum eu_parse_result struct_parse(struct eu_metadata *gmetadata,
 	void *member_value;
 	const char *p = ep->input;
 	const char *end = ep->input_end;
-
-	memset(result, 0, metadata->size);
 
 	if (*p != '{')
 		goto error;
@@ -316,10 +314,11 @@ enum eu_parse_result eu_struct_parse(struct eu_metadata *gmetadata,
 {
 	struct eu_struct_metadata *metadata
 		= (struct eu_struct_metadata *)gmetadata;
-	void *s = malloc(metadata->size);
+	void *s = malloc(metadata->struct_size);
 
 	if (s) {
 		*(void **)result = s;
+		memset(s, 0, metadata->struct_size);
 		return struct_parse(gmetadata, ep, s, (void **)result);
 	}
 	else {
@@ -381,7 +380,8 @@ struct eu_struct_metadata eu_open_struct_metadata = {
 	{
 		EU_METADATA_BASE_INITIALIZER,
 		eu_struct_parse,
-		eu_struct_destroy
+		eu_struct_destroy,
+		sizeof(struct eu_open_struct *)
 	},
 	sizeof(struct eu_open_struct),
 	0,
@@ -394,9 +394,10 @@ struct eu_struct_metadata eu_inline_open_struct_metadata = {
 	{
 		EU_METADATA_BASE_INITIALIZER,
 		eu_inline_struct_parse,
-		eu_inline_struct_destroy
+		eu_inline_struct_destroy,
+		sizeof(struct eu_open_struct)
 	},
-	sizeof(struct eu_open_struct),
+	-1,
 	0,
 	0,
 	NULL
