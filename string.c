@@ -166,7 +166,6 @@ static void string_fini(struct eu_metadata *metadata, void *value)
 }
 
 struct eu_metadata eu_string_metadata = {
-	EU_METADATA_BASE_INITIALIZER,
 	string_parse,
 	string_fini,
 	sizeof(struct eu_string),

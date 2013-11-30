@@ -5,10 +5,38 @@
 #include "euphemus.h"
 #include "euphemus_int.h"
 
+static enum eu_parse_result initial_parse_resume(struct eu_parse *ep,
+						 struct eu_parse_cont *cont)
+{
+	if (ep->input != ep->input_end) {
+		return ep->metadata->parse(ep->metadata, ep, ep->result);
+	}
+	else {
+		assert(!ep->outer_stack);
+		ep->outer_stack = cont;
+		return EU_PARSE_PAUSED;
+	}
+}
+
+static void initial_parse_destroy(struct eu_parse *ep,
+				  struct eu_parse_cont *cont)
+{
+	(void)cont;
+
+	/* No parsing occured, so don't finalize the result. */
+	ep->result = NULL;
+}
+
+struct eu_parse_cont initial_parse_cont = {
+	NULL,
+	initial_parse_resume,
+	initial_parse_destroy
+};
+
 void eu_parse_init(struct eu_parse *ep, struct eu_metadata *metadata,
 		   void *result)
 {
-	ep->outer_stack = &metadata->base;
+	ep->outer_stack = &initial_parse_cont;
 	ep->stack_top = ep->stack_bottom = NULL;
 	ep->metadata = metadata;
 	ep->result = result;
@@ -41,12 +69,6 @@ void eu_parse_fini(struct eu_parse *ep)
 		ep->metadata->fini(ep->metadata, ep->result);
 
 	free(ep->member_name_buf);
-}
-
-static void set_only_cont(struct eu_parse *ep, struct eu_parse_cont *c)
-{
-	assert(!ep->outer_stack);
-	ep->outer_stack = c;
 }
 
 void eu_parse_insert_cont(struct eu_parse *ep, struct eu_parse_cont *c)
@@ -99,29 +121,6 @@ int eu_parse_append_member_name(struct eu_parse *ep, const char *start,
 	memcpy(ep->member_name_buf + ep->member_name_len, start, len);
 	ep->member_name_len = total_len;
 	return 1;
-}
-
-enum eu_parse_result eu_parse_metadata_cont_resume(struct eu_parse *ep,
-						   struct eu_parse_cont *cont)
-{
-	struct eu_metadata *metadata = (struct eu_metadata *)cont;
-
-	if (ep->input != ep->input_end) {
-		return metadata->parse(metadata, ep, ep->result);
-	}
-	else {
-		set_only_cont(ep, cont);
-		return EU_PARSE_PAUSED;
-	}
-}
-
-void eu_parse_metadata_cont_destroy(struct eu_parse *ep,
-				    struct eu_parse_cont *cont)
-{
-	(void)cont;
-
-	/* No parsing occured, so don't finalize the result. */
-	ep->result = NULL;
 }
 
 int eu_parse(struct eu_parse *ep, const char *input, size_t len)

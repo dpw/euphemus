@@ -393,7 +393,6 @@ static void struct_parse_cont_destroy(struct eu_parse *ep,
 
 struct eu_struct_metadata eu_open_struct_metadata = {
 	{
-		EU_METADATA_BASE_INITIALIZER,
 		eu_struct_parse,
 		eu_struct_fini,
 		sizeof(struct eu_open_struct *),
@@ -408,7 +407,6 @@ struct eu_struct_metadata eu_open_struct_metadata = {
 
 struct eu_struct_metadata eu_inline_open_struct_metadata = {
 	{
-		EU_METADATA_BASE_INITIALIZER,
 		eu_inline_struct_parse,
 		eu_inline_struct_fini,
 		sizeof(struct eu_open_struct),

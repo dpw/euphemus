@@ -18,7 +18,6 @@ static void ws_noop_fini(struct eu_metadata *metadata, void *value)
 }
 
 struct eu_metadata ws_metadata = {
-	EU_METADATA_BASE_INITIALIZER,
 	consume_ws,
 	ws_noop_fini,
 	0,
@@ -94,7 +93,6 @@ struct eu_variant *eu_variant_get(struct eu_variant *variant, const char *name)
 }
 
 struct eu_metadata eu_variant_metadata = {
-	EU_METADATA_BASE_INITIALIZER,
 	variant_parse,
 	variant_fini,
 	sizeof(struct eu_variant),

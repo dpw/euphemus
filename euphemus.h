@@ -46,8 +46,6 @@ enum eu_json_type {
 /* A description of a type of data (including things like how to
    allocate, release etc.) */
 struct eu_metadata {
-	struct eu_parse_cont base;
-
 	/* A parse function expects that there is at least one
 	   character available in ep->input.  But it might be
 	   whitespace.
@@ -75,13 +73,6 @@ enum eu_parse_result eu_parse_metadata_cont_resume(struct eu_parse *ep,
 						   struct eu_parse_cont *cont);
 void eu_parse_metadata_cont_destroy(struct eu_parse *ep,
 				    struct eu_parse_cont *cont);
-
-#define EU_METADATA_BASE_INITIALIZER                                  \
-	{                                                             \
-		NULL,                                                 \
-		eu_parse_metadata_cont_resume,                        \
-		eu_parse_metadata_cont_destroy                        \
-	}
 
 /* Open structs */
 
@@ -173,7 +164,6 @@ void eu_inline_struct_fini(struct eu_metadata *gmetadata, void *value);
 #define EU_STRUCT_METADATA_INITIALIZER(struct_name, struct_members)   \
 	{                                                             \
 		{                                                     \
-			EU_METADATA_BASE_INITIALIZER,                 \
 			eu_struct_parse,                              \
 			eu_struct_fini,                               \
 			sizeof(struct_name *),                        \
@@ -188,7 +178,6 @@ void eu_inline_struct_fini(struct eu_metadata *gmetadata, void *value);
 #define EU_INLINE_STRUCT_METADATA_INITIALIZER(struct_name, struct_members) \
 	{                                                             \
 		{                                                     \
-			EU_METADATA_BASE_INITIALIZER,                 \
 			eu_inline_struct_parse,                       \
 			eu_inline_struct_fini,                        \
 			sizeof(struct_name),                          \
