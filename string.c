@@ -28,8 +28,16 @@ static enum eu_parse_result string_parse(struct eu_metadata *metadata,
 
 	(void)metadata;
 
-	if (*p != '\"')
-		goto error;
+	if (unlikely(*p != '\"')) {
+		enum eu_parse_result res = eu_consume_whitespace(metadata,
+								 ep, result);
+		if (res != EU_PARSE_OK)
+			return res;
+
+		p = ep->input;
+		if (*p != '\"')
+			return EU_PARSE_ERROR;
+	}
 
 	ep->input = ++p;
 
@@ -71,7 +79,6 @@ static enum eu_parse_result string_parse(struct eu_metadata *metadata,
 	free(cont);
 
  alloc_error:
- error:
 	ep->input = p;
 	return EU_PARSE_ERROR;
 }

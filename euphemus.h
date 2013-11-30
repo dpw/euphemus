@@ -48,10 +48,9 @@ enum eu_json_type {
 struct eu_metadata {
 	struct eu_parse_cont base;
 
-	/* A parse function expects that there is a non-whitespace
-	   character available at the start of p->input.  So callers
-	   need to skip any whitespace before calling the parse
-	   function.
+	/* A parse function expects that there is at least one
+	   character available in ep->input.  But it might be
+	   whitespace.
 
 	   The memory range allocated to the value is cleared before
 	   this is called. */

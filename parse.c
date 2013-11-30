@@ -106,8 +106,6 @@ enum eu_parse_result eu_parse_metadata_cont_resume(struct eu_parse *ep,
 {
 	struct eu_metadata *metadata = (struct eu_metadata *)cont;
 
-	ep->input = skip_whitespace(ep->input, ep->input_end);
-
 	if (ep->input != ep->input_end) {
 		return metadata->parse(metadata, ep, ep->result);
 	}
@@ -177,4 +175,65 @@ int eu_parse_finish(struct eu_parse *ep)
 	/* The client now has responsiblity for the result */
 	ep->result = NULL;
 	return 1;
+}
+
+struct consume_ws_cont {
+	struct eu_parse_cont base;
+	struct eu_metadata *metadata;
+	void *result;
+};
+
+static enum eu_parse_result consume_ws_resume(struct eu_parse *ep,
+					      struct eu_parse_cont *gcont);
+static void consume_ws_destroy(struct eu_parse *ep,
+			       struct eu_parse_cont *cont);
+
+enum eu_parse_result eu_consume_whitespace(struct eu_metadata *metadata,
+					   struct eu_parse *ep,
+					   void *result)
+{
+	const char *p = ep->input;
+	const char *end = ep->input_end;
+	struct consume_ws_cont *cont;
+
+	ep->input = p = skip_whitespace(p, end);
+	if (p != end)
+		return EU_PARSE_OK;
+
+	cont = malloc(sizeof *cont);
+	if (!cont)
+		return EU_PARSE_ERROR;
+
+	cont->base.resume = consume_ws_resume;
+	cont->base.destroy = consume_ws_destroy;
+	cont->metadata = metadata;
+	cont->result = result;
+	eu_parse_insert_cont(ep, &cont->base);
+	return EU_PARSE_PAUSED;
+}
+
+static enum eu_parse_result consume_ws_resume(struct eu_parse *ep,
+					      struct eu_parse_cont *gcont)
+{
+	struct consume_ws_cont *cont = (struct consume_ws_cont *)gcont;
+	const char *p = ep->input;
+	const char *end = ep->input_end;
+
+	ep->input = p = skip_whitespace(p, end);
+	if (p != end) {
+		struct eu_metadata *metadata = cont->metadata;
+		void *result = cont->result;
+		free(cont);
+		return metadata->parse(metadata, ep, result);
+	}
+
+	eu_parse_insert_cont(ep, &cont->base);
+	return EU_PARSE_PAUSED;
+}
+
+static void consume_ws_destroy(struct eu_parse *ep,
+			       struct eu_parse_cont *cont)
+{
+	(void)ep;
+	free(cont);
 }

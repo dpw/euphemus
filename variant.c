@@ -1,15 +1,46 @@
 #include "euphemus.h"
 #include "euphemus_int.h"
 
-static struct eu_metadata *json_type_metadata[EU_JSON_MAX] = {
+/* We handle leading whitespace with a fake metadata which has a a
+   parse funciton that consumes the whitespace then tries
+   variant_parse again. */
+
+#define EU_JSON_WS EU_JSON_MAX
+
+static enum eu_parse_result consume_ws(struct eu_metadata *metadata,
+				       struct eu_parse *ep,
+				       void *result);
+
+static void ws_noop_fini(struct eu_metadata *metadata, void *value)
+{
+	(void)metadata;
+	(void)value;
+}
+
+struct eu_metadata ws_metadata = {
+	EU_METADATA_BASE_INITIALIZER,
+	consume_ws,
+	ws_noop_fini,
+	0,
+	0
+};
+
+static struct eu_metadata *json_type_metadata[EU_JSON_MAX+1] = {
 	[EU_JSON_STRING] = &eu_string_metadata,
 	[EU_JSON_OBJECT]
 		= (struct eu_metadata *)&eu_inline_open_struct_metadata,
+	[EU_JSON_WS] = &ws_metadata
 };
 
 static unsigned char char_json_types[256] = {
 	['\"'] = EU_JSON_STRING,
 	['{'] = EU_JSON_OBJECT,
+
+	[' '] = EU_JSON_WS,
+	['\f'] = EU_JSON_WS,
+	['\n'] = EU_JSON_WS,
+	['\t'] = EU_JSON_WS,
+	['\v'] = EU_JSON_WS,
 };
 
 static enum eu_parse_result variant_parse(struct eu_metadata *metadata,
@@ -40,6 +71,18 @@ static void variant_fini(struct eu_metadata *metadata, void *value)
 		var->metadata->fini(var->metadata, &var->u);
 		var->metadata = NULL;
 	}
+}
+
+static enum eu_parse_result consume_ws(struct eu_metadata *metadata,
+				       struct eu_parse *ep,
+				       void *result)
+{
+	enum eu_parse_result res = eu_consume_whitespace(metadata, ep, result);
+	if (res == EU_PARSE_OK)
+		return variant_parse(metadata, ep,
+			       (char *)result - offsetof(struct eu_variant, u));
+	else
+		return res;
 }
 
 struct eu_variant *eu_variant_get(struct eu_variant *variant, const char *name)

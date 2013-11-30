@@ -82,8 +82,8 @@ static struct eu_metadata *lookup_member_2(struct eu_struct_metadata *md,
 	return add_extra(md, s, name_copy, name_len, value);
 }
 
-/* A state name refers to the token the precedes it (except for
-   *_IN_*). */
+/* A state name refers to the token that precedes it, except for
+   STRUCT_PARSE_IN_MEMBER_NAME. */
 enum struct_parse_state {
 	STRUCT_PARSE_OPEN,
 	STRUCT_PARSE_IN_MEMBER_NAME,
@@ -119,13 +119,8 @@ enum eu_parse_result struct_parse(struct eu_metadata *gmetadata,
 	enum struct_parse_state state;
 	struct eu_metadata *member_metadata;
 	void *member_value;
-	const char *p = ep->input;
+	const char *p = ep->input + 1;
 	const char *end = ep->input_end;
-
-	if (*p != '{')
-		goto error;
-
-	p++;
 
 #define STRUCT_PARSE_BODY                                             \
 	state = STRUCT_PARSE_OPEN;                                    \
@@ -175,7 +170,6 @@ RESUME_ONLY(case STRUCT_PARSE_MEMBER_NAME:)                           \
 		p++;                                                  \
 		state = STRUCT_PARSE_COLON;                           \
 RESUME_ONLY(case STRUCT_PARSE_COLON:)                                 \
-		p = skip_whitespace(p, end);                          \
 		if (p == end)                                         \
 			goto pause;                                   \
                                                                       \
@@ -314,8 +308,19 @@ enum eu_parse_result eu_struct_parse(struct eu_metadata *gmetadata,
 {
 	struct eu_struct_metadata *metadata
 		= (struct eu_struct_metadata *)gmetadata;
-	void *s = malloc(metadata->struct_size);
+	void *s;
 
+	if (unlikely(*ep->input != '{')) {
+		enum eu_parse_result res = eu_consume_whitespace(gmetadata,
+								 ep, result);
+		if (res != EU_PARSE_OK)
+			return res;
+
+		if (*ep->input != '{')
+			return EU_PARSE_ERROR;
+	}
+
+	s = malloc(metadata->struct_size);
 	if (s) {
 		*(void **)result = s;
 		memset(s, 0, metadata->struct_size);
@@ -330,6 +335,16 @@ enum eu_parse_result eu_struct_parse(struct eu_metadata *gmetadata,
 enum eu_parse_result eu_inline_struct_parse(struct eu_metadata *gmetadata,
 					    struct eu_parse *ep, void *result)
 {
+	if (unlikely(*ep->input != '{')) {
+		enum eu_parse_result res = eu_consume_whitespace(gmetadata,
+								 ep, result);
+		if (res != EU_PARSE_OK)
+			return res;
+
+		if (*ep->input != '{')
+			return EU_PARSE_ERROR;
+	}
+
 	return struct_parse(gmetadata, ep, result, NULL);
 }
 
