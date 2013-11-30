@@ -7,6 +7,8 @@ int eu_parse_set_member_name(struct eu_parse *ep, const char *start,
 int eu_parse_append_member_name(struct eu_parse *ep, const char *start,
 				const char *end);
 
+extern struct eu_struct_metadata eu_inline_open_struct_metadata;
+
 static __inline__ const char *skip_whitespace(const char *p, const char *end)
 {
 	/* Not doing UTF-8 yet, so no error or pause returns */

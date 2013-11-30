@@ -118,9 +118,23 @@ static void test_string(void)
 static void validate_variant(void *v_variant)
 {
 	struct eu_variant *var = v_variant;
+	struct eu_variant *foo, *bar, *baz;
 
-	assert(var->u.string.len == 13);
-	assert(!memcmp(var->u.string.string, "hello, world!", 13));
+	assert(eu_variant_type(var) == EU_JSON_OBJECT);
+	assert(foo = eu_variant_get(var, "foo"));
+	assert(bar = eu_variant_get(var, "bar"));
+
+	assert(eu_variant_type(foo) == EU_JSON_STRING);
+	assert(foo->u.string.len = 13);
+	assert(!memcmp(foo->u.string.string, "hello, world!", 13));
+
+	assert(eu_variant_type(bar) == EU_JSON_OBJECT);
+	assert(baz = eu_variant_get(bar, "baz"));
+
+	assert(eu_variant_type(baz) == EU_JSON_STRING);
+	assert(baz->u.string.len = 4);
+	assert(!memcmp(baz->u.string.string, "bye!", 4));
+
 	eu_variant_fini(var);
 }
 
@@ -128,8 +142,9 @@ static void test_variant(void)
 {
 	struct eu_variant var;
 
-	test_parse("  \"hello, world!\"  ", eu_variant_start,
-		   &var, validate_variant);
+	test_parse("  {  \"foo\":  \"hello, world!\","
+		   "  \"bar\":  {  \"baz\"  :  \"bye!\"  }  }  ",
+		   eu_variant_start, &var, validate_variant);
 }
 
 static void validate_foo(struct foo *foo)

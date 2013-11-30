@@ -381,7 +381,8 @@ struct eu_struct_metadata eu_open_struct_metadata = {
 		EU_METADATA_BASE_INITIALIZER,
 		eu_struct_parse,
 		eu_struct_fini,
-		sizeof(struct eu_open_struct *)
+		sizeof(struct eu_open_struct *),
+		EU_JSON_OBJECT
 	},
 	sizeof(struct eu_open_struct),
 	0,
@@ -395,7 +396,8 @@ struct eu_struct_metadata eu_inline_open_struct_metadata = {
 		EU_METADATA_BASE_INITIALIZER,
 		eu_inline_struct_parse,
 		eu_inline_struct_fini,
-		sizeof(struct eu_open_struct)
+		sizeof(struct eu_open_struct),
+		EU_JSON_OBJECT
 	},
 	-1,
 	0,
@@ -414,6 +416,8 @@ void eu_open_struct_fini(struct eu_open_struct *os)
 		free(extras);
 		extras = next;
 	}
+
+	os->extras = NULL;
 }
 
 struct eu_variant *eu_open_struct_get(struct eu_open_struct *os,

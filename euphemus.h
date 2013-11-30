@@ -36,6 +36,13 @@ struct eu_parse_cont {
 	void (*destroy)(struct eu_parse *ep, struct eu_parse_cont *cont);
 };
 
+enum eu_json_type {
+	EU_JSON_INVALID,
+	EU_JSON_STRING,
+	EU_JSON_OBJECT,
+	EU_JSON_MAX
+};
+
 /* A description of a type of data (including things like how to
    allocate, release etc.) */
 struct eu_metadata {
@@ -56,6 +63,7 @@ struct eu_metadata {
 	void (*fini)(struct eu_metadata *metadata, void *value);
 
 	unsigned int size;
+	unsigned char json_type;
 };
 
 void eu_parse_init(struct eu_parse *ep, struct eu_metadata *metadata,
@@ -75,6 +83,18 @@ void eu_parse_metadata_cont_destroy(struct eu_parse *ep,
 		eu_parse_metadata_cont_resume,                        \
 		eu_parse_metadata_cont_destroy                        \
 	}
+
+/* Open structs */
+
+struct eu_open_struct {
+	struct eu_struct_extra *extras;
+};
+
+extern struct eu_struct_metadata eu_open_struct_metadata;
+
+void eu_open_struct_fini(struct eu_open_struct *os);
+struct eu_variant *eu_open_struct_get(struct eu_open_struct *os,
+				      const char *name);
 
 /* Strings */
 
@@ -97,11 +117,19 @@ struct eu_variant {
 	struct eu_metadata *metadata;
 	union {
 		struct eu_string string;
+		struct eu_open_struct object;
 	} u;
 };
 
 extern struct eu_metadata eu_variant_metadata;
 static struct eu_metadata *const eu_variant_start = &eu_variant_metadata;
+
+static __inline__ enum eu_json_type eu_variant_type(struct eu_variant *variant)
+{
+	return variant->metadata->json_type;
+}
+
+struct eu_variant *eu_variant_get(struct eu_variant *variant, const char *name);
 
 static __inline__ void eu_variant_fini(struct eu_variant *variant)
 {
@@ -133,10 +161,6 @@ struct eu_struct_extra {
 	struct eu_variant value;
 };
 
-struct eu_open_struct {
-	struct eu_struct_extra *extras;
-};
-
 enum eu_parse_result eu_struct_parse(struct eu_metadata *gmetadata,
 				     struct eu_parse *ep,
 				     void *result);
@@ -147,17 +171,14 @@ enum eu_parse_result eu_inline_struct_parse(struct eu_metadata *gmetadata,
 					    void *result);
 void eu_inline_struct_fini(struct eu_metadata *gmetadata, void *value);
 
-void eu_open_struct_fini(struct eu_open_struct *os);
-struct eu_variant *eu_open_struct_get(struct eu_open_struct *os,
-				      const char *name);
-
 #define EU_STRUCT_METADATA_INITIALIZER(struct_name, struct_members)   \
 	{                                                             \
 		{                                                     \
 			EU_METADATA_BASE_INITIALIZER,                 \
 			eu_struct_parse,                              \
 			eu_struct_fini,                               \
-			sizeof(struct_name *)                         \
+			sizeof(struct_name *),                        \
+			EU_JSON_INVALID                               \
 		},                                                    \
 		sizeof(struct_name),                                  \
 		offsetof(struct foo, open),                           \
@@ -171,14 +192,13 @@ struct eu_variant *eu_open_struct_get(struct eu_open_struct *os,
 			EU_METADATA_BASE_INITIALIZER,                 \
 			eu_inline_struct_parse,                       \
 			eu_inline_struct_fini,                        \
-			sizeof(struct_name)                           \
+			sizeof(struct_name),                          \
+			EU_JSON_INVALID                               \
 		},                                                    \
 		-1,                                                   \
 		offsetof(struct foo, open),                           \
 		sizeof(struct_members) / sizeof(struct eu_struct_member), \
 		struct_members                                        \
 	}
-
-extern struct eu_struct_metadata eu_open_struct_metadata;
 
 #endif

@@ -162,6 +162,7 @@ struct eu_metadata eu_string_metadata = {
 	EU_METADATA_BASE_INITIALIZER,
 	string_parse,
 	string_fini,
-	sizeof(struct eu_string)
+	sizeof(struct eu_string),
+	EU_JSON_STRING
 };
 

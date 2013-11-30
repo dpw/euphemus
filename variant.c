@@ -1,30 +1,27 @@
 #include "euphemus.h"
 #include "euphemus_int.h"
 
-enum char_type {
-	CHAR_TYPE_NONE,
-	CHAR_TYPE_STRING,
-	CHAR_TYPE_MAX
+static struct eu_metadata *json_type_metadata[EU_JSON_MAX] = {
+	[EU_JSON_STRING] = &eu_string_metadata,
+	[EU_JSON_OBJECT]
+		= (struct eu_metadata *)&eu_inline_open_struct_metadata,
 };
 
-static struct eu_metadata *char_type_metadata[CHAR_TYPE_MAX] = {
-	[CHAR_TYPE_STRING] = &eu_string_metadata
-};
-
-static unsigned char char_types[256] = {
-	['\"'] = CHAR_TYPE_STRING
+static unsigned char char_json_types[256] = {
+	['\"'] = EU_JSON_STRING,
+	['{'] = EU_JSON_OBJECT,
 };
 
 static enum eu_parse_result variant_parse(struct eu_metadata *metadata,
 					 struct eu_parse *ep,
 					 void *v_result)
 {
-	unsigned char char_type;
+	unsigned char json_type;
 	struct eu_variant *result = v_result;
 
-	char_type = char_types[(unsigned char)*ep->input];
-	metadata = char_type_metadata[char_type];
-	if (char_type == CHAR_TYPE_NONE)
+	json_type = char_json_types[(unsigned char)*ep->input];
+	metadata = json_type_metadata[json_type];
+	if (json_type == EU_JSON_INVALID)
 		goto error;
 
 	result->metadata = metadata;
@@ -45,9 +42,18 @@ static void variant_fini(struct eu_metadata *metadata, void *value)
 	}
 }
 
+struct eu_variant *eu_variant_get(struct eu_variant *variant, const char *name)
+{
+	if (eu_variant_type(variant) == EU_JSON_OBJECT)
+		return eu_open_struct_get(&variant->u.object, name);
+
+	abort();
+}
+
 struct eu_metadata eu_variant_metadata = {
 	EU_METADATA_BASE_INITIALIZER,
 	variant_parse,
 	variant_fini,
-	sizeof(struct eu_variant)
+	sizeof(struct eu_variant),
+	EU_JSON_INVALID
 };
