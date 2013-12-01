@@ -1,18 +1,22 @@
-Add support for open structs
+Add support for numbers, arrays, bools, null
 
-Add support for variants
+Load json
 
-Add support for numbers, arrays, bools
+benchmark against json-c
+
+Load a json schema
+
+Codegen from json schema
+
+To json support
+
+Hashing
 
 Check for repeated members
 
 Error codes
 
-Track line, column
-
-Load a json schema
-
-Codegen from json schema
+Track byte position
 
 string escapes
 
@@ -20,6 +24,10 @@ Optimise scanning whitespace, strings
 
 Optimise: Use contiguous memory for stack frames
 
+Track line, column
+
 UTF-8 support
 
-benchmark against json-c
+closed structs.  ignoring open structs.
+
+Fancy allocation strategies.  Intern member names.
