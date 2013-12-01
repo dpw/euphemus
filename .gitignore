@@ -1,3 +1,9 @@
 *~
+*.o
+.*.dep
+*.gcov
+*.gcda
+*.gcno
+
 test
 test_parse
