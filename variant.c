@@ -4,14 +4,13 @@
 /* We handle leading whitespace with a fake metadata which has a a
    parse funciton that consumes the whitespace then tries
    variant_parse again. */
-
 #define EU_JSON_WS EU_JSON_MAX
 
 static enum eu_parse_result consume_ws(struct eu_metadata *metadata,
 				       struct eu_parse *ep,
 				       void *result);
 
-static void ws_noop_fini(struct eu_metadata *metadata, void *value)
+static void noop_fini(struct eu_metadata *metadata, void *value)
 {
 	(void)metadata;
 	(void)value;
@@ -19,18 +18,41 @@ static void ws_noop_fini(struct eu_metadata *metadata, void *value)
 
 struct eu_metadata ws_metadata = {
 	consume_ws,
-	ws_noop_fini,
+	noop_fini,
 	0,
-	0
+	EU_JSON_INVALID
 };
 
+/* Invalid bytes are also handled by dispatching through a fake
+   metadata. */
+
+static enum eu_parse_result invalid_parse(struct eu_metadata *metadata,
+					  struct eu_parse *ep,
+					  void *result)
+{
+	(void)metadata;
+	(void)ep;
+	(void)result;
+	return EU_PARSE_ERROR;
+}
+
+struct eu_metadata invalid_metadata = {
+	invalid_parse,
+	noop_fini,
+	0,
+	EU_JSON_INVALID
+};
+
+/* Mapping from character types to metadata records. */
 static struct eu_metadata *json_type_metadata[EU_JSON_MAX+1] = {
+	[EU_JSON_INVALID] = &invalid_metadata,
 	[EU_JSON_STRING] = &eu_string_metadata,
 	[EU_JSON_OBJECT]
 		= (struct eu_metadata *)&eu_inline_open_struct_metadata,
 	[EU_JSON_WS] = &ws_metadata
 };
 
+/* Mapping from characters to character types. */
 static unsigned char char_json_types[256] = {
 	['\"'] = EU_JSON_STRING,
 	['{'] = EU_JSON_OBJECT,
@@ -46,19 +68,10 @@ static enum eu_parse_result variant_parse(struct eu_metadata *metadata,
 					 struct eu_parse *ep,
 					 void *v_result)
 {
-	unsigned char json_type;
 	struct eu_variant *result = v_result;
-
-	json_type = char_json_types[(unsigned char)*ep->input];
-	metadata = json_type_metadata[json_type];
-	if (json_type == EU_JSON_INVALID)
-		goto error;
-
-	result->metadata = metadata;
+	unsigned char json_type = char_json_types[(unsigned char)*ep->input];
+	result->metadata = metadata = json_type_metadata[json_type];
 	return metadata->parse(metadata, ep, &result->u);
-
- error:
-	return EU_PARSE_ERROR;
 }
 
 static void variant_fini(struct eu_metadata *metadata, void *value)
