@@ -1,6 +1,8 @@
-Add support for numbers, arrays, bools, null
+Add support for arrays, bools, null
 
 Load json
+
+Fast-path int parsing
 
 benchmark against json-c
 

@@ -15,9 +15,9 @@ struct eu_parse {
 	const char *input;
 	const char *input_end;
 
-	char *member_name_buf;
-	size_t member_name_len;
-	size_t member_name_size;
+	char *buf;
+	size_t buf_len;
+	size_t buf_size;
 
 	int error;
 };
@@ -40,6 +40,7 @@ enum eu_json_type {
 	EU_JSON_INVALID,
 	EU_JSON_STRING,
 	EU_JSON_OBJECT,
+	EU_JSON_NUMBER,
 	EU_JSON_MAX
 };
 
@@ -101,6 +102,11 @@ static __inline__ void eu_string_fini(struct eu_string *string)
 extern struct eu_metadata eu_string_metadata;
 void eu_parse_init_string(struct eu_parse *ep, struct eu_string *str);
 
+/* Others */
+
+extern struct eu_metadata eu_number_metadata;
+void eu_parse_init_number(struct eu_parse *ep, double *num);
+
 /* Variants */
 
 struct eu_variant {
@@ -108,6 +114,7 @@ struct eu_variant {
 	union {
 		struct eu_string string;
 		struct eu_open_struct object;
+		double number;
 	} u;
 };
 

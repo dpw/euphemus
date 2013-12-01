@@ -10,10 +10,12 @@
 #endif
 
 void eu_parse_insert_cont(struct eu_parse *ep, struct eu_parse_cont *c);
-int eu_parse_set_member_name(struct eu_parse *ep, const char *start,
-			     const char *end);
-int eu_parse_append_member_name(struct eu_parse *ep, const char *start,
-				const char *end);
+int eu_parse_set_buffer(struct eu_parse *ep, const char *start,
+			const char *end);
+int eu_parse_append_buffer(struct eu_parse *ep, const char *start,
+			   const char *end);
+int eu_parse_append_buffer_nul(struct eu_parse *ep, const char *start,
+			       const char *end);
 
 extern struct eu_struct_metadata eu_inline_open_struct_metadata;
 

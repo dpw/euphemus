@@ -40,8 +40,8 @@ void eu_parse_init(struct eu_parse *ep, struct eu_metadata *metadata,
 	ep->stack_top = ep->stack_bottom = NULL;
 	ep->metadata = metadata;
 	ep->result = result;
-	ep->member_name_buf = NULL;
-	ep->member_name_size = 0;
+	ep->buf = NULL;
+	ep->buf_size = 0;
 	ep->error = 0;
 
 	memset(result, 0, metadata->size);
@@ -68,7 +68,7 @@ void eu_parse_fini(struct eu_parse *ep)
 	if (ep->result)
 		ep->metadata->fini(ep->metadata, ep->result);
 
-	free(ep->member_name_buf);
+	free(ep->buf);
 }
 
 void eu_parse_insert_cont(struct eu_parse *ep, struct eu_parse_cont *c)
@@ -83,43 +83,53 @@ void eu_parse_insert_cont(struct eu_parse *ep, struct eu_parse_cont *c)
 	}
 }
 
-int eu_parse_set_member_name(struct eu_parse *ep, const char *start,
-			     const char *end)
+int eu_parse_set_buffer(struct eu_parse *ep, const char *start, const char *end)
 {
 	size_t len = end - start;
 
-	if (len > ep->member_name_size) {
-		free(ep->member_name_buf);
-		if (!(ep->member_name_buf = malloc(len)))
+	if (len > ep->buf_size) {
+		free(ep->buf);
+		if (!(ep->buf = malloc(len)))
 			return 0;
 
-		ep->member_name_size = len;
+		ep->buf_size = len;
 	}
 
-	memcpy(ep->member_name_buf, start, len);
-	ep->member_name_len = len;
+	memcpy(ep->buf, start, len);
+	ep->buf_len = len;
 	return 1;
 }
 
-int eu_parse_append_member_name(struct eu_parse *ep, const char *start,
-				const char *end)
+int eu_parse_append_buffer(struct eu_parse *ep, const char *start,
+			   const char *end)
 {
 	size_t len = end - start;
-	size_t total_len = ep->member_name_len + len;
+	size_t total_len = ep->buf_len + len + 1;
 
-	if (total_len > ep->member_name_size) {
+	if (total_len > ep->buf_size) {
 		char *buf = malloc(total_len);
 		if (!buf)
 			return 0;
 
-		ep->member_name_size = total_len;
-		memcpy(buf, ep->member_name_buf, ep->member_name_len);
-		free(ep->member_name_buf);
-		ep->member_name_buf = buf;
+		ep->buf_size = total_len;
+		memcpy(buf, ep->buf, ep->buf_len);
+		free(ep->buf);
+		ep->buf = buf;
 	}
 
-	memcpy(ep->member_name_buf + ep->member_name_len, start, len);
-	ep->member_name_len = total_len;
+	memcpy(ep->buf + ep->buf_len, start, len);
+	ep->buf_len = total_len - 1;
+	return 1;
+}
+
+/* Like eu_parse_append_buffer, but ensure the buffer is NUL terminated. */
+int eu_parse_append_buffer_nul(struct eu_parse *ep, const char *start,
+			       const char *end)
+{
+	if (!eu_parse_append_buffer(ep, start, end))
+		return 0;
+
+	ep->buf[ep->buf_len] = 0;
 	return 1;
 }
 

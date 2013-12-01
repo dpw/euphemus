@@ -4,8 +4,9 @@
 #include <assert.h>
 
 struct foo {
-	struct foo *bar;
-	struct eu_string baz;
+	struct foo *foo;
+	struct eu_string str;
+	double num;
 	struct eu_open_struct open;
 };
 
@@ -13,16 +14,22 @@ static struct eu_struct_metadata struct_foo_metadata;
 
 static struct eu_struct_member foo_members[] = {
 	{
-		offsetof(struct foo, bar),
+		offsetof(struct foo, foo),
 		3,
-		"bar",
+		"foo",
 		&struct_foo_metadata.base
 	},
 	{
-		offsetof(struct foo, baz),
+		offsetof(struct foo, str),
 		3,
-		"baz",
+		"str",
 		&eu_string_metadata
+	},
+	{
+		offsetof(struct foo, num),
+		3,
+		"num",
+		&eu_number_metadata
 	}
 };
 
@@ -36,10 +43,10 @@ void foo_destroy(struct foo *foo);
 
 void foo_fini(struct foo *foo)
 {
-	if (foo->bar)
-		foo_destroy(foo->bar);
+	if (foo->foo)
+		foo_destroy(foo->foo);
 
-	eu_string_fini(&foo->baz);
+	eu_string_fini(&foo->str);
 	eu_open_struct_fini(&foo->open);
 }
 
@@ -127,13 +134,47 @@ static void test_string(void)
 }
 
 
+static void validate_number_a(void *number)
+{
+	assert(*(double *)number == 123456789.0123456789e0);
+}
+
+static void validate_number_b(void *number)
+{
+	assert(*(double *)number == -0.0123456789e10);
+}
+
+static void validate_number_zero(void *number)
+{
+	assert(*(double *)number == 0);
+}
+
+static void parse_init_number(struct eu_parse *ep, void *number)
+{
+	eu_parse_init_number(ep, number);
+}
+
+static void test_number(void)
+{
+	double number;
+
+	test_parse("  123456789.0123456789e0  ", &number,
+		   parse_init_number, validate_number_a);
+	test_parse("  -0.0123456789e10  ", &number,
+		   parse_init_number, validate_number_b);
+	test_parse("  0  ", &number,
+		   parse_init_number, validate_number_zero);
+}
+
 static void validate_foo(struct foo *foo)
 {
-	assert(foo->bar);
-	assert(!foo->bar->bar);
-	assert(!foo->bar->baz.len);
-	assert(foo->baz.len == 1);
-	assert(*foo->baz.string == 'x');
+	assert(foo->foo);
+	assert(!foo->foo->foo);
+	assert(!foo->foo->str.len);
+	assert(foo->foo->num == 0);
+	assert(foo->str.len == 1);
+	assert(*foo->str.string == 'x');
+	assert(foo->num == 42);
 }
 
 static void validate_foo_ptr(void *v_foo_ptr)
@@ -154,7 +195,7 @@ static void test_struct_ptr(void)
 {
 	struct foo *foo;
 
-	test_parse("  {  \"bar\"  :  {  }  , \"baz\"  :  \"x\"  }  ", &foo,
+	test_parse("  {  \"foo\"  :  {  }  , \"str\"  :  \"x\"  ,  \"num\"  :  42  }  ", &foo,
 		   parse_init_foo_ptr, validate_foo_ptr);
 }
 
@@ -175,7 +216,7 @@ static void test_inline_struct(void)
 {
 	struct foo foo;
 
-	test_parse("  {  \"bar\"  :  {  }  , \"baz\"  :  \"x\"  }  ", &foo,
+	test_parse("  {  \"foo\"  :  {  }  , \"str\"  :  \"x\"  ,  \"num\"  :  42  }  ", &foo,
 		   parse_init_inline_foo, validate_inline_foo);
 }
 
@@ -202,22 +243,21 @@ static void test_extras(void)
 static void validate_variant(void *v_variant)
 {
 	struct eu_variant *var = v_variant;
-	struct eu_variant *foo, *bar, *baz;
+	struct eu_variant *str, *obj, *num;
 
 	assert(eu_variant_type(var) == EU_JSON_OBJECT);
-	assert(foo = eu_variant_get(var, "foo"));
-	assert(bar = eu_variant_get(var, "bar"));
+	assert(str = eu_variant_get(var, "str"));
+	assert(obj = eu_variant_get(var, "obj"));
 
-	assert(eu_variant_type(foo) == EU_JSON_STRING);
-	assert(foo->u.string.len = 13);
-	assert(!memcmp(foo->u.string.string, "hello, world!", 13));
+	assert(eu_variant_type(str) == EU_JSON_STRING);
+	assert(str->u.string.len = 13);
+	assert(!memcmp(str->u.string.string, "hello, world!", 13));
 
-	assert(eu_variant_type(bar) == EU_JSON_OBJECT);
-	assert(baz = eu_variant_get(bar, "baz"));
+	assert(eu_variant_type(obj) == EU_JSON_OBJECT);
+	assert(num = eu_variant_get(obj, "num"));
 
-	assert(eu_variant_type(baz) == EU_JSON_STRING);
-	assert(baz->u.string.len = 4);
-	assert(!memcmp(baz->u.string.string, "bye!", 4));
+	assert(eu_variant_type(num) == EU_JSON_NUMBER);
+	assert(num->u.number = 42);
 
 	eu_variant_fini(var);
 }
@@ -231,14 +271,15 @@ static void test_variant(void)
 {
 	struct eu_variant var;
 
-	test_parse("  {  \"foo\":  \"hello, world!\","
-		   "  \"bar\":  {  \"baz\"  :  \"bye!\"  }  }  ", &var,
+	test_parse("  {  \"str\":  \"hello, world!\","
+		   "  \"obj\"  :  {  \"num\"  :  42  }  }  ", &var,
 		   parse_init_variant, validate_variant);
 }
 
 int main(void)
 {
 	test_string();
+	test_number();
 	test_struct_ptr();
 	test_inline_struct();
 	test_extras();

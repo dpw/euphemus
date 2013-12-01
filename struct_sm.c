@@ -100,7 +100,7 @@ RESUME_ONLY(case STRUCT_PARSE_COMMA:)
 
  pause_in_member_name:
 	state = STRUCT_PARSE_IN_MEMBER_NAME;
-	if (!eu_parse_set_member_name(ep, ep->input, p))
+	if (!eu_parse_set_buffer(ep, ep->input, p))
 		goto alloc_error;
 
  pause:
