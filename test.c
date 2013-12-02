@@ -166,6 +166,31 @@ static void test_number(void)
 		   parse_init_number, validate_number_zero);
 }
 
+
+static void validate_true(void *bool)
+{
+	assert(*(eu_bool_t *)bool);
+}
+
+static void validate_false(void *bool)
+{
+	assert(*(eu_bool_t *)bool);
+}
+
+static void parse_init_bool(struct eu_parse *ep, void *bool)
+{
+	eu_parse_init_bool(ep, bool);
+}
+
+static void test_bool(void)
+{
+	eu_bool_t bool;
+
+	test_parse("  true  ", &bool, parse_init_bool, validate_true);
+	test_parse("  false  ", &bool, parse_init_bool, validate_false);
+}
+
+
 static void validate_foo(struct foo *foo)
 {
 	assert(foo->foo);
@@ -243,11 +268,12 @@ static void test_extras(void)
 static void validate_variant(void *v_variant)
 {
 	struct eu_variant *var = v_variant;
-	struct eu_variant *str, *obj, *num;
+	struct eu_variant *str, *obj, *num, *bool;
 
 	assert(eu_variant_type(var) == EU_JSON_OBJECT);
 	assert(str = eu_variant_get(var, "str"));
 	assert(obj = eu_variant_get(var, "obj"));
+	assert(bool = eu_variant_get(var, "bool"));
 
 	assert(eu_variant_type(str) == EU_JSON_STRING);
 	assert(str->u.string.len = 13);
@@ -258,6 +284,9 @@ static void validate_variant(void *v_variant)
 
 	assert(eu_variant_type(num) == EU_JSON_NUMBER);
 	assert(num->u.number = 42);
+
+	assert(eu_variant_type(bool) == EU_JSON_BOOL);
+	assert(bool->u.bool);
 
 	eu_variant_fini(var);
 }
@@ -272,7 +301,8 @@ static void test_variant(void)
 	struct eu_variant var;
 
 	test_parse("  {  \"str\":  \"hello, world!\","
-		   "  \"obj\"  :  {  \"num\"  :  42  }  }  ", &var,
+		   "  \"obj\"  :  {  \"num\"  :  42  },"
+		   "  \"bool\"  :  true  }  ", &var,
 		   parse_init_variant, validate_variant);
 }
 

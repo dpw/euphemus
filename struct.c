@@ -1,5 +1,3 @@
-#include <string.h>
-
 #include "euphemus.h"
 #include "euphemus_int.h"
 

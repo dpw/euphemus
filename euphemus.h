@@ -41,6 +41,7 @@ enum eu_json_type {
 	EU_JSON_STRING,
 	EU_JSON_OBJECT,
 	EU_JSON_NUMBER,
+	EU_JSON_BOOL,
 	EU_JSON_MAX
 };
 
@@ -107,6 +108,10 @@ void eu_parse_init_string(struct eu_parse *ep, struct eu_string *str);
 extern struct eu_metadata eu_number_metadata;
 void eu_parse_init_number(struct eu_parse *ep, double *num);
 
+typedef unsigned char eu_bool_t;
+extern struct eu_metadata eu_bool_metadata;
+void eu_parse_init_bool(struct eu_parse *ep, eu_bool_t *num);
+
 /* Variants */
 
 struct eu_variant {
@@ -115,6 +120,7 @@ struct eu_variant {
 		struct eu_string string;
 		struct eu_open_struct object;
 		double number;
+		eu_bool_t bool;
 	} u;
 };
 

@@ -132,15 +132,9 @@ static void number_parse_cont_destroy(struct eu_parse *ep,
 	free(cont);
 }
 
-static void noop_fini(struct eu_metadata *metadata, void *value)
-{
-	(void)metadata;
-	(void)value;
-}
-
 struct eu_metadata eu_number_metadata = {
 	number_parse,
-	noop_fini,
+	eu_noop_fini,
 	sizeof(double),
 	EU_JSON_NUMBER
 };

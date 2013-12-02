@@ -1,5 +1,4 @@
 #include <stdlib.h>
-#include <string.h>
 #include <assert.h>
 
 #include "euphemus.h"
@@ -234,6 +233,88 @@ static enum eu_parse_result consume_ws_resume(struct eu_parse *ep,
 
 static void consume_ws_destroy(struct eu_parse *ep,
 			       struct eu_parse_cont *cont)
+{
+	(void)ep;
+	free(cont);
+}
+
+void eu_noop_fini(struct eu_metadata *metadata, void *value)
+{
+	(void)metadata;
+	(void)value;
+}
+
+struct expect_parse_cont {
+	struct eu_parse_cont base;
+	const char *expect;
+	size_t expect_len;
+};
+
+static enum eu_parse_result expect_parse_resume(struct eu_parse *ep,
+						struct eu_parse_cont *gcont);
+static void expect_parse_cont_destroy(struct eu_parse *ep,
+				      struct eu_parse_cont *cont);
+
+enum eu_parse_result eu_parse_expect_pause(struct eu_parse *ep,
+					   const char *expect,
+					   size_t expect_len)
+{
+	size_t avail = ep->input_end - ep->input;
+	struct expect_parse_cont *cont;
+
+	/* eu_parse_expect ensures that avail < expect_len */
+	if (memcmp(ep->input, expect, avail))
+		return EU_PARSE_ERROR;
+
+	ep->input += avail;
+
+	cont = malloc(sizeof *cont);
+	if (cont) {
+		cont->base.resume = expect_parse_resume;
+		cont->base.destroy = expect_parse_cont_destroy;
+		cont->expect = expect + avail;
+		cont->expect_len = expect_len - avail;
+		eu_parse_insert_cont(ep, &cont->base);
+		return EU_PARSE_PAUSED;
+	}
+
+	return EU_PARSE_ERROR;
+}
+
+static enum eu_parse_result expect_parse_resume(struct eu_parse *ep,
+						struct eu_parse_cont *gcont)
+{
+	struct expect_parse_cont *cont = (struct expect_parse_cont *)gcont;
+	const char *p = ep->input;
+	size_t avail = ep->input_end - p;
+	size_t expect_len = cont->expect_len;
+
+	if (avail >= expect_len) {
+		const char *expect = cont->expect;
+
+		free(cont);
+		if (!memcmp(expect, p, expect_len)) {
+			ep->input = p + expect_len;
+			return EU_PARSE_OK;
+		}
+		else {
+			return EU_PARSE_ERROR;
+		}
+	}
+
+	if (!memcmp(p, cont->expect, avail)) {
+		ep->input = p + avail;
+		cont->expect += avail;
+		cont->expect_len -= avail;
+		eu_parse_insert_cont(ep, &cont->base);
+		return EU_PARSE_PAUSED;
+	}
+
+	return EU_PARSE_ERROR;
+}
+
+static void expect_parse_cont_destroy(struct eu_parse *ep,
+				      struct eu_parse_cont *cont)
 {
 	(void)ep;
 	free(cont);
