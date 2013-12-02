@@ -310,6 +310,7 @@ int main(void)
 {
 	test_string();
 	test_number();
+	test_bool();
 	test_struct_ptr();
 	test_inline_struct();
 	test_extras();

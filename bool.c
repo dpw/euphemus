@@ -16,7 +16,7 @@ static enum eu_parse_result bool_parse(struct eu_metadata *metadata,
 
 		case 'f':
 			ep->input++;
-			*result = 1;
+			*result = 0;
 			return eu_parse_expect(ep, "alse", 4);
 
 		case ' ':
