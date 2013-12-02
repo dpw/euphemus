@@ -9,6 +9,7 @@ int main(void)
 	struct eu_variant var;
 
 	eu_parse_init_variant(&parse, &var);
+
 	while (!feof(stdin)) {
 		char buf[1000];
 		size_t res = fread(buf, 1, 1000, stdin);
@@ -33,5 +34,6 @@ int main(void)
 
  out:
 	eu_parse_fini(&parse);
+	eu_variant_fini(&var);
 	return status;
 }
