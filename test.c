@@ -197,12 +197,13 @@ static void test_extras(void)
 
 static void check_variant(struct eu_variant *var)
 {
-	struct eu_variant *str, *obj, *num, *bool;
+	struct eu_variant *str, *obj, *num, *bool, *null;
 
 	assert(eu_variant_type(var) == EU_JSON_OBJECT);
 	assert(str = eu_variant_get(var, "str"));
 	assert(obj = eu_variant_get(var, "obj"));
 	assert(bool = eu_variant_get(var, "bool"));
+	assert(null = eu_variant_get(var, "null"));
 
 	assert(eu_variant_type(str) == EU_JSON_STRING);
 	assert(str->u.string.len = 13);
@@ -217,13 +218,15 @@ static void check_variant(struct eu_variant *var)
 	assert(eu_variant_type(bool) == EU_JSON_BOOL);
 	assert(bool->u.bool);
 
+	assert(eu_variant_type(null) == EU_JSON_NULL);
 }
 
 static void test_variant(void)
 {
 	TEST_PARSE("  {  \"str\":  \"hello, world!\","
 		   "  \"obj\"  :  {  \"num\"  :  42  },"
-		   "  \"bool\"  :  true  }  ",
+		   "  \"bool\"  :  true  ,"
+		   "  \"null\"  :  null  }  ",
 		   struct eu_variant,
 		   eu_parse_init_variant,
 		   check_variant(&result),

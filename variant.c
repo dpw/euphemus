@@ -51,6 +51,7 @@ static struct eu_metadata *json_type_metadata[EU_JSON_MAX+1] = {
 		= (struct eu_metadata *)&eu_inline_open_struct_metadata,
 	[EU_JSON_NUMBER] = &eu_number_metadata,
 	[EU_JSON_BOOL] = &eu_bool_metadata,
+	[EU_JSON_NULL] = &eu_null_metadata,
 	[EU_JSON_WS] = &ws_metadata
 };
 
@@ -73,6 +74,8 @@ static unsigned char char_json_types[256] = {
 
 	['t'] = EU_JSON_BOOL,
 	['f'] = EU_JSON_BOOL,
+
+	['n'] = EU_JSON_NULL,
 
 	[' '] = EU_JSON_WS,
 	['\f'] = EU_JSON_WS,

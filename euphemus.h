@@ -42,6 +42,7 @@ enum eu_json_type {
 	EU_JSON_OBJECT,
 	EU_JSON_NUMBER,
 	EU_JSON_BOOL,
+	EU_JSON_NULL,
 	EU_JSON_MAX
 };
 
