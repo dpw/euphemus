@@ -1,10 +1,20 @@
-Add support for arrays, bools, null
-
-Load json
+Speed up string scanning
 
 Fast-path int parsing
 
-benchmark against json-c
+Use unaligned loads in expect
+
+Always assume no whitespace, e.g. in struct_parse, array_parse.
+
+Variant dispatch doesn't need to go through metadata.  It can just
+call to 2-arg parse funcs.
+
+There is redundancy in the variant dispatch and the initial parse func
+dispatch (particularly in number_parse).
+
+Null terminate strings
+
+Rename eu_string string field to chars.
 
 Load a json schema
 

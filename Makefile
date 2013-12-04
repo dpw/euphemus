@@ -24,19 +24,20 @@ PROJECT_CFLAGS=
 SRCS=parse.c struct.c array.c string.c variant.c number.c bool.c null.c
 
 # Test source files
-TEST_SRCS=test.c test_parse.c
+TEST_SRCS=test.c test_parse.c parse_perf.c
 
 # Header files
 HDRS=euphemus.h euphemus_int.h
 
 # Main exectuables that get built
-EXECUTABLES=test_parse
+EXECUTABLES=test_parse parse_perf
 
 # Test executables that get built
 TEST_EXECUTABLES=test
 
 HDROBJS_$(ROOT)euphemus.h=$(SRCS:%.c=%.o)
 HDROBJS_$(ROOT)euphemus_int.h=$(SRCS:%.c=%.o)
+HDROBJS_/usr/include/json/json.h=-ljson
 
 # That completes the definition of the project sources and structure.
 # Now for the magic.
@@ -70,17 +71,12 @@ endif
 clean::
 	rm -f *.o .*.dep *~ *.gcda *.gcno $(ALL_EXECUTABLES) coverage/*.gcov
 
-ifneq ($(ROOT),)
-root_frob=;s|$(ROOT)|\#|g
-root_unfrob=;s|\#|$(ROOT)|g
-endif
-
 %.o $(call dotify,%.c.dep) : %.c
 	@mkdir -p $(@D)
 	$(COMPILE.c) $(PROJECT_CFLAGS) -MD -o $*.o $<
 	@cat $*.d >$(call dotify,$*.c.dep)
 	@sed -e 's/#.*//;s/^[^:]*://;s/ *\\$$//;s/^ *//;/^$$/d;s/$$/ :/' <$*.d >>$(call dotify,$*.c.dep)
-	@sed -e 's/#.*//;s/ [^ ]*\.c//$(root_frob);s| /[^ ]*||g;/^ *\\$$/d$(root_unfrob);s/^\([^ ][^ ]*\):/OBJNEEDS_\1=/;s/\([^ ]*\.h\)/\$$(HDROBJS_\1)/g' <$*.d >>$(call dotify,$*.c.dep)
+	@sed -e 's/#.*//;s/ [^ ]*\.c//g;s/^\([^ ][^ ]*\):/OBJNEEDS_\1=/;s/\([^ ]*\.h\)/\$$(HDROBJS_\1)/g' <$*.d >>$(call dotify,$*.c.dep)
 	@rm $*.d
 
 # objneeds works out which object files are required to link the given
