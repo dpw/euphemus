@@ -143,11 +143,17 @@ void eu_parse_init_bool(struct eu_parse *ep, eu_bool_t *num);
 
 /* Variants */
 
+struct eu_variant_array {
+	struct eu_variant *a;
+	size_t len;
+};
+
 struct eu_variant {
 	struct eu_metadata *metadata;
 	union {
 		struct eu_string string;
 		struct eu_open_struct object;
+		struct eu_variant_array array;
 		double number;
 		eu_bool_t bool;
 	} u;

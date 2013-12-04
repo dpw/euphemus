@@ -239,13 +239,14 @@ static void test_array(void)
 
 static void check_variant(struct eu_variant *var)
 {
-	struct eu_variant *str, *obj, *num, *bool, *null;
+	struct eu_variant *str, *obj, *num, *bool, *null, *array;
 
 	assert(eu_variant_type(var) == EU_JSON_OBJECT);
 	assert(str = eu_variant_get(var, "str"));
 	assert(obj = eu_variant_get(var, "obj"));
 	assert(bool = eu_variant_get(var, "bool"));
 	assert(null = eu_variant_get(var, "null"));
+	assert(array = eu_variant_get(var, "array"));
 
 	assert(eu_variant_type(str) == EU_JSON_STRING);
 	assert(str->u.string.len = 13);
@@ -261,6 +262,11 @@ static void check_variant(struct eu_variant *var)
 	assert(bool->u.bool);
 
 	assert(eu_variant_type(null) == EU_JSON_NULL);
+
+	assert(eu_variant_type(array) == EU_JSON_ARRAY);
+	assert(array->u.array.len == 2);
+	assert(eu_variant_type(&array->u.array.a[0]) == EU_JSON_STRING);
+	assert(eu_variant_type(&array->u.array.a[1]) == EU_JSON_ARRAY);
 }
 
 static void test_variant(void)

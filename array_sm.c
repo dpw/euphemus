@@ -63,6 +63,7 @@ RESUME_ONLY(case ARRAY_PARSE_ELEMENT:)
 			capacity *= 2;
 			if (new_a) {
 				result->a = new_a;
+				el = new_a + len * el_size;
 				memset(new_a + sz, 0, sz);
 			}
 			else {
