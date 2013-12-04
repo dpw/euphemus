@@ -66,6 +66,26 @@ void eu_parse_init_inline_struct_foo(struct eu_parse *ep, struct foo *foo)
 	eu_parse_init(ep, &inline_struct_foo_metadata.base, foo);
 }
 
+
+struct eu_array_metadata eu_string_array_metadata
+	= EU_ARRAY_METADATA_INITIALIZER(&eu_string_metadata);
+
+struct eu_string_array {
+	struct eu_string *a;
+	size_t len;
+};
+
+void eu_parse_init_string_array(struct eu_parse *ep, struct eu_string_array *a)
+{
+	eu_parse_init(ep, &eu_string_array_metadata.base, a);
+}
+
+void eu_string_array_fini(struct eu_string_array *a)
+{
+	eu_array_fini(&eu_string_array_metadata.base, a);
+}
+
+
 #define TEST_PARSE(json_str, result_type, parse_init, check, cleanup) \
 do {                                                                  \
 	struct eu_parse ep;                                           \
@@ -195,6 +215,28 @@ static void test_extras(void)
 		   foo_fini(&result));
 }
 
+
+static void check_array(struct eu_string_array *a)
+{
+	assert(a->len == 2);
+
+	assert(a->a[0].len == 3);
+	assert(!memcmp(a->a[0].string, "foo", 3));
+
+	assert(a->a[1].len == 3);
+	assert(!memcmp(a->a[1].string, "bar", 3));
+}
+
+static void test_array(void)
+{
+	TEST_PARSE("  [  \"foo\"  ,  \"bar\"  ]  ",
+		   struct eu_string_array,
+		   eu_parse_init_string_array,
+		   check_array(&result),
+		   eu_string_array_fini(&result));
+}
+
+
 static void check_variant(struct eu_variant *var)
 {
 	struct eu_variant *str, *obj, *num, *bool, *null;
@@ -226,7 +268,8 @@ static void test_variant(void)
 	TEST_PARSE("  {  \"str\":  \"hello, world!\","
 		   "  \"obj\"  :  {  \"num\"  :  42  },"
 		   "  \"bool\"  :  true  ,"
-		   "  \"null\"  :  null  }  ",
+		   "  \"null\"  :  null  ,"
+		   "  \"array\"  :  [  \"element\"  ,  [  ]  ]  }  ",
 		   struct eu_variant,
 		   eu_parse_init_variant,
 		   check_variant(&result),
@@ -240,6 +283,7 @@ int main(void)
 	test_bool();
 	test_struct_ptr();
 	test_inline_struct();
+	test_array();
 	test_extras();
 	test_variant();
 	return 0;

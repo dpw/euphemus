@@ -21,7 +21,7 @@ VPATH=$(ROOT)
 PROJECT_CFLAGS=
 
 # Principal source files
-SRCS=parse.c struct.c string.c variant.c number.c bool.c null.c
+SRCS=parse.c struct.c array.c string.c variant.c number.c bool.c null.c
 
 # Test source files
 TEST_SRCS=test.c test_parse.c

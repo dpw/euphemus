@@ -47,8 +47,8 @@ struct eu_metadata invalid_metadata = {
 static struct eu_metadata *json_type_metadata[EU_JSON_MAX+1] = {
 	[EU_JSON_INVALID] = &invalid_metadata,
 	[EU_JSON_STRING] = &eu_string_metadata,
-	[EU_JSON_OBJECT]
-		= (struct eu_metadata *)&eu_inline_open_struct_metadata,
+	[EU_JSON_OBJECT] = &eu_inline_open_struct_metadata.base,
+	[EU_JSON_ARRAY] = &eu_variant_array_metadata.base,
 	[EU_JSON_NUMBER] = &eu_number_metadata,
 	[EU_JSON_BOOL] = &eu_bool_metadata,
 	[EU_JSON_NULL] = &eu_null_metadata,
@@ -59,6 +59,7 @@ static struct eu_metadata *json_type_metadata[EU_JSON_MAX+1] = {
 static unsigned char char_json_types[256] = {
 	['\"'] = EU_JSON_STRING,
 	['{'] = EU_JSON_OBJECT,
+	['['] = EU_JSON_ARRAY,
 
 	['0'] = EU_JSON_NUMBER,
 	['1'] = EU_JSON_NUMBER,
@@ -131,6 +132,9 @@ struct eu_metadata eu_variant_metadata = {
 	sizeof(struct eu_variant),
 	EU_JSON_INVALID
 };
+
+struct eu_array_metadata eu_variant_array_metadata
+	= EU_ARRAY_METADATA_INITIALIZER(&eu_variant_metadata);
 
 void eu_parse_init_variant(struct eu_parse *ep, struct eu_variant *var)
 {

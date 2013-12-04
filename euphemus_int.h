@@ -22,6 +22,7 @@ int eu_parse_append_buffer_nul(struct eu_parse *ep, const char *start,
 void eu_noop_fini(struct eu_metadata *metadata, void *value);
 
 extern struct eu_struct_metadata eu_inline_open_struct_metadata;
+extern struct eu_array_metadata eu_variant_array_metadata;
 extern struct eu_metadata eu_null_metadata;
 
 static __inline__ const char *skip_whitespace(const char *p, const char *end)

@@ -40,6 +40,7 @@ enum eu_json_type {
 	EU_JSON_INVALID,
 	EU_JSON_STRING,
 	EU_JSON_OBJECT,
+	EU_JSON_ARRAY,
 	EU_JSON_NUMBER,
 	EU_JSON_BOOL,
 	EU_JSON_NULL,
@@ -103,6 +104,33 @@ static __inline__ void eu_string_fini(struct eu_string *string)
 
 extern struct eu_metadata eu_string_metadata;
 void eu_parse_init_string(struct eu_parse *ep, struct eu_string *str);
+
+/* Arrays */
+
+struct eu_array {
+	void *a;
+	size_t len;
+};
+
+struct eu_array_metadata {
+	struct eu_metadata base;
+	struct eu_metadata *element_metadata;
+};
+
+enum eu_parse_result eu_array_parse(struct eu_metadata *gmetadata,
+				    struct eu_parse *ep, void *result);
+void eu_array_fini(struct eu_metadata *gmetadata, void *value);
+
+#define EU_ARRAY_METADATA_INITIALIZER(el_metadata)                    \
+	{                                                             \
+		{                                                     \
+			eu_array_parse,                               \
+			eu_array_fini,                                \
+			sizeof(struct eu_array),                      \
+			EU_JSON_ARRAY                                 \
+		},                                                    \
+		el_metadata                                           \
+	}
 
 /* Others */
 
