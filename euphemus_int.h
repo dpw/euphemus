@@ -25,18 +25,15 @@ extern struct eu_struct_metadata eu_inline_open_struct_metadata;
 extern struct eu_array_metadata eu_variant_array_metadata;
 extern struct eu_metadata eu_null_metadata;
 
+#define WHITESPACE_CASES ' ': case '\t': case '\n': case '\r'
+
 static __inline__ const char *skip_whitespace(const char *p, const char *end)
 {
 	/* Not doing UTF-8 yet, so no error or pause returns */
 
 	for (; p != end; p++) {
 		switch (*p) {
-		case ' ':
-		case '\f':
-		case '\n':
-		case '\r':
-		case '\t':
-		case '\v':
+		case WHITESPACE_CASES:
 			break;
 
 		default:

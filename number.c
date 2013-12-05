@@ -51,12 +51,7 @@ static enum eu_parse_result number_parse(struct eu_metadata *metadata,
 		case ONE_TO_9:
 			goto int_digits;
 
-		case ' ':
-		case '\f':
-		case '\n':
-		case '\r':
-		case '\t':
-		case '\v': {
+		case WHITESPACE_CASES: {
 			enum eu_parse_result res
 				= eu_consume_whitespace(ep, metadata, result);
 			if (res != EU_PARSE_OK)

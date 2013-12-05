@@ -79,10 +79,9 @@ static unsigned char char_json_types[256] = {
 	['n'] = EU_JSON_NULL,
 
 	[' '] = EU_JSON_WS,
-	['\f'] = EU_JSON_WS,
-	['\n'] = EU_JSON_WS,
 	['\t'] = EU_JSON_WS,
-	['\v'] = EU_JSON_WS,
+	['\n'] = EU_JSON_WS,
+	['\r'] = EU_JSON_WS,
 };
 
 static enum eu_parse_result variant_parse(struct eu_metadata *metadata,

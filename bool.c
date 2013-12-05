@@ -19,12 +19,7 @@ static enum eu_parse_result bool_parse(struct eu_metadata *metadata,
 			*result = 0;
 			return eu_parse_expect(ep, "alse", 4);
 
-		case ' ':
-		case '\f':
-		case '\n':
-		case '\r':
-		case '\t':
-		case '\v': {
+		case WHITESPACE_CASES: {
 			enum eu_parse_result res
 				= eu_consume_whitespace(ep, metadata, result);
 			if (res != EU_PARSE_OK)
