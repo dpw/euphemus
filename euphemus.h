@@ -93,13 +93,14 @@ struct eu_variant *eu_open_struct_get(struct eu_open_struct *os,
 /* Strings */
 
 struct eu_string {
-	char *string;
+	char *chars;
 	size_t len;
 };
 
 static __inline__ void eu_string_fini(struct eu_string *string)
 {
-	free(string->string);
+	free(string->chars);
+	string->chars = NULL;
 }
 
 extern struct eu_metadata eu_string_metadata;

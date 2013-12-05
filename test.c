@@ -140,7 +140,7 @@ static void test_string(void)
 		   struct eu_string,
 		   eu_parse_init_string,
 		   (assert(result.len ==13),
-		    assert(!memcmp(result.string, "hello, world!", 13))),
+		    assert(!memcmp(result.chars, "hello, world!", 13))),
 		   eu_string_fini(&result));
 }
 
@@ -176,7 +176,7 @@ static void check_foo(struct foo *foo)
 	assert(!foo->foo->str.len);
 	assert(foo->foo->num == 0);
 	assert(foo->str.len == 1);
-	assert(*foo->str.string == 'x');
+	assert(*foo->str.chars == 'x');
 	assert(foo->num == 42);
 }
 
@@ -203,7 +203,7 @@ static void check_extras(struct foo *foo)
 	struct eu_variant *var = eu_open_struct_get(&foo->open, "quux");
 	assert(var);
 	assert(var->u.string.len == 1);
-	assert(!memcmp(var->u.string.string, "x", 1));
+	assert(!memcmp(var->u.string.chars, "x", 1));
 }
 
 static void test_extras(void)
@@ -221,10 +221,10 @@ static void check_array(struct eu_string_array *a)
 	assert(a->len == 2);
 
 	assert(a->a[0].len == 3);
-	assert(!memcmp(a->a[0].string, "foo", 3));
+	assert(!memcmp(a->a[0].chars, "foo", 3));
 
 	assert(a->a[1].len == 3);
-	assert(!memcmp(a->a[1].string, "bar", 3));
+	assert(!memcmp(a->a[1].chars, "bar", 3));
 }
 
 static void test_array(void)
@@ -250,7 +250,7 @@ static void check_variant(struct eu_variant *var)
 
 	assert(eu_variant_type(str) == EU_JSON_STRING);
 	assert(str->u.string.len = 13);
-	assert(!memcmp(str->u.string.string, "hello, world!", 13));
+	assert(!memcmp(str->u.string.chars, "hello, world!", 13));
 
 	assert(eu_variant_type(obj) == EU_JSON_OBJECT);
 	assert(num = eu_variant_get(obj, "num"));

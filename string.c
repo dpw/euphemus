@@ -48,10 +48,10 @@ static enum eu_parse_result string_parse(struct eu_metadata *metadata,
 	}
 
 	len = p - ep->input;
-	if (!(result->string = malloc(len)))
+	if (!(result->chars = malloc(len)))
 		goto alloc_error;
 
-	memcpy(result->string, ep->input, len);
+	memcpy(result->chars, ep->input, len);
 	result->len = len;
 	ep->input = p + 1;
 	return EU_PARSE_OK;
@@ -110,7 +110,7 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 	}
 
 	memcpy(buf + cont->len, ep->input, len);
-	cont->result->string = buf;
+	cont->result->chars = buf;
 	cont->result->len = total_len;
 	ep->input = p + 1;
 	free(cont);
@@ -157,10 +157,7 @@ static void string_fini(struct eu_metadata *metadata, void *value)
 	struct eu_string *str = value;
 	(void)metadata;
 
-	if (str->string) {
-		free(str->string);
-		str->string = NULL;
-	}
+	eu_string_fini(str);
 }
 
 struct eu_metadata eu_string_metadata = {
