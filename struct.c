@@ -5,19 +5,38 @@ static struct eu_metadata *add_extra(struct eu_struct_metadata *md, char *s,
 				     char *name, size_t name_len,
 				     void **value)
 {
-	struct eu_open_struct *open = (void *)(s + md->open_offset);
-	struct eu_struct_extra *e = malloc(sizeof *e);
-	if (!e) {
-		free(name);
-		return NULL;
+	struct eu_variant_members *extras = (void *)(s + md->extras_offset);
+	size_t capacity = extras->priv.capacity;
+	struct eu_variant_member *members, *member;
+
+	if (extras->len < capacity) {
+		members = extras->members;
+	}
+	else {
+		if (!capacity) {
+			capacity = 8;
+			members	= malloc(capacity * sizeof *extras->members);
+		}
+		else {
+			capacity *= 2;
+			members = realloc(extras->members,
+					  capacity * sizeof *extras->members);
+		}
+
+		if (!members) {
+			free(name);
+			return NULL;
+		}
+
+		extras->members = members;
+		extras->priv.capacity = capacity;
 	}
 
-	e->name = name;
-	e->name_len = name_len;
-	e->next = open->extras;
-	memset(&e->value, 0, sizeof e->value);
-	open->extras = e;
-	*value = &e->value;
+	member = &members[extras->len++];
+	member->name = name;
+	member->name_len = name_len;
+	memset(&member->value, 0, sizeof member->value);
+	*value = &member->value;
 	return &eu_variant_metadata;
 }
 
@@ -227,8 +246,7 @@ void eu_inline_struct_fini(struct eu_metadata *gmetadata, void *s)
 				       (char *)s + member->offset);
 	}
 
-	eu_open_struct_fini(
-			  (struct eu_open_struct *)(s + metadata->open_offset));
+	eu_variant_members_fini((void *)(s + metadata->extras_offset));
 }
 
 void eu_struct_fini(struct eu_metadata *gmetadata, void *value)
@@ -258,25 +276,25 @@ static void struct_parse_cont_destroy(struct eu_parse *ep,
 	free(cont);
 }
 
-struct eu_struct_metadata eu_open_struct_metadata = {
+struct eu_struct_metadata eu_object_metadata = {
 	{
 		eu_struct_parse,
 		eu_struct_fini,
-		sizeof(struct eu_open_struct *),
+		sizeof(struct eu_object *),
 		EU_JSON_OBJECT
 	},
-	sizeof(struct eu_open_struct),
+	sizeof(struct eu_object),
 	0,
 	0,
 	NULL
 };
 
 
-struct eu_struct_metadata eu_inline_open_struct_metadata = {
+struct eu_struct_metadata eu_inline_object_metadata = {
 	{
 		eu_inline_struct_parse,
 		eu_inline_struct_fini,
-		sizeof(struct eu_open_struct),
+		sizeof(struct eu_object),
 		EU_JSON_OBJECT
 	},
 	-1,
@@ -285,32 +303,33 @@ struct eu_struct_metadata eu_inline_open_struct_metadata = {
 	NULL
 };
 
-void eu_open_struct_fini(struct eu_open_struct *os)
+void eu_variant_members_fini(struct eu_variant_members *members)
 {
-	struct eu_struct_extra *extras = os->extras;
+	size_t i;
 
-	while (extras) {
-		struct eu_struct_extra *next = extras->next;
-		eu_variant_fini(&extras->value);
-		free(extras->name);
-		free(extras);
-		extras = next;
+	for (i = 0; i < members->len; i++) {
+		struct eu_variant_member *m = &members->members[i];
+
+		free(m->name);
+		eu_variant_fini(&m->value);
 	}
 
-	os->extras = NULL;
+	free(members->members);
+	members->members = NULL;
+	members->len = 0;
 }
 
-struct eu_variant *eu_open_struct_get(struct eu_open_struct *os,
-				      const char *name)
+struct eu_variant *eu_variant_members_get(struct eu_variant_members *members,
+					  const char *name)
 {
-	struct eu_struct_extra *extras = os->extras;
+	size_t i;
 
-	while (extras) {
-		if (!strncmp(name, extras->name, extras->name_len)
-		    && name[extras->name_len] == 0)
-			return &extras->value;
+	for (i = 0; i < members->len; i++) {
+		struct eu_variant_member *m = &members->members[i];
 
-		extras = extras->next;
+		if (!strncmp(name, m->name, m->name_len)
+		    && name[m->name_len] == 0)
+			return &m->value;
 	}
 
 	return NULL;

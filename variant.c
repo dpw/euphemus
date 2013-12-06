@@ -47,7 +47,7 @@ struct eu_metadata invalid_metadata = {
 static struct eu_metadata *json_type_metadata[EU_JSON_MAX+1] = {
 	[EU_JSON_INVALID] = &invalid_metadata,
 	[EU_JSON_STRING] = &eu_string_metadata,
-	[EU_JSON_OBJECT] = &eu_inline_open_struct_metadata.base,
+	[EU_JSON_OBJECT] = &eu_inline_object_metadata.base,
 	[EU_JSON_ARRAY] = &eu_variant_array_metadata.base,
 	[EU_JSON_NUMBER] = &eu_number_metadata,
 	[EU_JSON_BOOL] = &eu_bool_metadata,
@@ -120,7 +120,7 @@ static enum eu_parse_result consume_ws(struct eu_metadata *metadata,
 struct eu_variant *eu_variant_get(struct eu_variant *variant, const char *name)
 {
 	if (eu_variant_type(variant) == EU_JSON_OBJECT)
-		return eu_open_struct_get(&variant->u.object, name);
+		return eu_object_get(&variant->u.object, name);
 
 	abort();
 }

@@ -78,17 +78,36 @@ enum eu_parse_result eu_parse_metadata_cont_resume(struct eu_parse *ep,
 void eu_parse_metadata_cont_destroy(struct eu_parse *ep,
 				    struct eu_parse_cont *cont);
 
-/* Open structs */
+/* Variant objects */
 
-struct eu_open_struct {
-	struct eu_struct_extra *extras;
+struct eu_variant_members {
+	struct eu_variant_member *members;
+	size_t len;
+
+	union {
+		size_t capacity;
+	} priv;
 };
 
-extern struct eu_struct_metadata eu_open_struct_metadata;
+void eu_variant_members_fini(struct eu_variant_members *members);
+struct eu_variant *eu_variant_members_get(struct eu_variant_members *members,
+					  const char *name);
 
-void eu_open_struct_fini(struct eu_open_struct *os);
-struct eu_variant *eu_open_struct_get(struct eu_open_struct *os,
-				      const char *name);
+struct eu_object {
+	struct eu_variant_members members;
+};
+
+extern struct eu_struct_metadata eu_object_metadata;
+
+static __inline__ void eu_object_fini(struct eu_object *obj) {
+	eu_variant_members_fini(&obj->members);
+}
+
+static __inline__ struct eu_variant *eu_object_get(struct eu_object *obj,
+						   const char *name)
+{
+	return eu_variant_members_get(&obj->members, name);
+}
 
 /* Strings */
 
@@ -153,7 +172,7 @@ struct eu_variant {
 	struct eu_metadata *metadata;
 	union {
 		struct eu_string string;
-		struct eu_open_struct object;
+		struct eu_object object;
 		struct eu_variant_array array;
 		double number;
 		eu_bool_t bool;
@@ -176,6 +195,12 @@ static __inline__ void eu_variant_fini(struct eu_variant *variant)
 		variant->metadata->fini(variant->metadata, &variant->u);
 }
 
+struct eu_variant_member {
+	char *name;
+	size_t name_len;
+	struct eu_variant value;
+};
+
 /* Structs */
 
 struct eu_struct_member {
@@ -188,16 +213,9 @@ struct eu_struct_member {
 struct eu_struct_metadata {
 	struct eu_metadata base;
 	unsigned int struct_size;
-	unsigned int open_offset;
+	unsigned int extras_offset;
 	int n_members;
 	struct eu_struct_member *members;
-};
-
-struct eu_struct_extra {
-	char *name;
-	size_t name_len;
-	struct eu_struct_extra *next;
-	struct eu_variant value;
 };
 
 enum eu_parse_result eu_struct_parse(struct eu_metadata *gmetadata,
@@ -219,7 +237,7 @@ void eu_inline_struct_fini(struct eu_metadata *gmetadata, void *value);
 			EU_JSON_INVALID                               \
 		},                                                    \
 		sizeof(struct_name),                                  \
-		offsetof(struct foo, open),                           \
+		offsetof(struct_name, extras),                        \
 		sizeof(struct_members) / sizeof(struct eu_struct_member), \
 		struct_members                                        \
 	}
@@ -233,7 +251,7 @@ void eu_inline_struct_fini(struct eu_metadata *gmetadata, void *value);
 			EU_JSON_INVALID                               \
 		},                                                    \
 		-1,                                                   \
-		offsetof(struct foo, open),                           \
+		offsetof(struct_name, extras),                        \
 		sizeof(struct_members) / sizeof(struct eu_struct_member), \
 		struct_members                                        \
 	}

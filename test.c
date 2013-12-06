@@ -7,7 +7,7 @@ struct foo {
 	struct foo *foo;
 	struct eu_string str;
 	double num;
-	struct eu_open_struct open;
+	struct eu_variant_members extras;
 };
 
 static struct eu_struct_metadata struct_foo_metadata;
@@ -47,7 +47,7 @@ void foo_fini(struct foo *foo)
 		foo_destroy(foo->foo);
 
 	eu_string_fini(&foo->str);
-	eu_open_struct_fini(&foo->open);
+	eu_variant_members_fini(&foo->extras);
 }
 
 void foo_destroy(struct foo *foo)
@@ -200,7 +200,7 @@ static void test_inline_struct(void)
 
 static void check_extras(struct foo *foo)
 {
-	struct eu_variant *var = eu_open_struct_get(&foo->open, "quux");
+	struct eu_variant *var = eu_variant_members_get(&foo->extras, "quux");
 	assert(var);
 	assert(var->u.string.len == 1);
 	assert(!memcmp(var->u.string.chars, "x", 1));
