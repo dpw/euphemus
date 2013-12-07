@@ -149,15 +149,23 @@ static void test_number(void)
 	TEST_PARSE("  123456789.0123456789e0  ",
 		   double,
 		   eu_parse_init_number,
-		   assert(result == 123456789.0123456789e0),);
+		   assert(result == (double)123456789.0123456789e0),);
 	TEST_PARSE("  -0.0123456789e10  ",
 		   double,
 		   eu_parse_init_number,
-		   assert(result == -0.0123456789e10),);
+		   assert(result == (double)-0.0123456789e10),);
 	TEST_PARSE("  0  ",
 		   double,
 		   eu_parse_init_number,
 		   assert(result == 0),);
+	TEST_PARSE("  123456789  ",
+		   double,
+		   eu_parse_init_number,
+		   assert(result == (double)123456789),);
+	TEST_PARSE("  -123456789  ",
+		   double,
+		   eu_parse_init_number,
+		   assert(result == (double)-123456789),);
 }
 
 static void test_bool(void)

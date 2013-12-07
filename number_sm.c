@@ -20,6 +20,8 @@
 		break;
 
 	case ONE_TO_9:
+		int_value = *p - '0';
+		negate = 1;
 		goto int_digits;
 
 	default:
@@ -57,6 +59,7 @@ RESUME_ONLY(case NUMBER_PARSE_INT_DIGITS:)
 
 	switch (*p) {
 	case ZERO_TO_9:
+		int_value = int_value * 10 + (*p - '0');
 		goto int_digits;
 
 	case '.':
@@ -67,7 +70,9 @@ RESUME_ONLY(case NUMBER_PARSE_INT_DIGITS:)
 		goto e;
 
 	default:
-		goto convert;
+		/* *result = negate ? -int_value : int_value; */
+		*result = (int_value ^ -negate) + negate;
+		goto done;
 	}
 
  point:
@@ -156,6 +161,8 @@ RESUME_ONLY(case NUMBER_PARSE_E_DIGITS:)
 	cont->base.resume = number_parse_resume;
 	cont->base.destroy = number_parse_cont_destroy;
 	cont->state = state;
+	cont->negate = negate;
+	cont->int_value = int_value;
 	cont->result = result;
 	eu_parse_insert_cont(ep, &cont->base);
 	return EU_PARSE_PAUSED;

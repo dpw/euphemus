@@ -1,3 +1,5 @@
+#include <stdint.h>
+
 #include "euphemus.h"
 #include "euphemus_int.h"
 
@@ -20,7 +22,9 @@ enum number_parse_state {
 struct number_parse_cont {
 	struct eu_parse_cont base;
 	enum number_parse_state state;
+	int negate;
 	double *result;
+	int64_t int_value;
 };
 
 static enum eu_parse_result number_parse_resume(struct eu_parse *ep,
@@ -36,6 +40,8 @@ static enum eu_parse_result number_parse(struct eu_metadata *metadata,
 	const char *end = ep->input_end;
 	double *result = v_result;
 	enum number_parse_state state;
+	int negate;
+	int64_t int_value;
 	struct number_parse_cont *cont;
 
 	(void)metadata;
@@ -49,6 +55,8 @@ static enum eu_parse_result number_parse(struct eu_metadata *metadata,
 			goto leading_zero;
 
 		case ONE_TO_9:
+			int_value = *p - '0';
+			negate = 0;
 			goto int_digits;
 
 		case WHITESPACE_CASES: {
@@ -86,6 +94,8 @@ static enum eu_parse_result number_parse_resume(struct eu_parse *ep,
 {
 	struct number_parse_cont *cont = (struct number_parse_cont *)gcont;
 	enum number_parse_state state = cont->state;
+	int negate = cont->negate;
+	int64_t int_value = cont->int_value;
 	double *result = cont->result;
 	const char *p = ep->input;
 	const char *end = ep->input_end;
