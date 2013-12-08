@@ -3,50 +3,27 @@
 #include <string.h>
 #include <assert.h>
 
-struct foo {
-	struct foo *foo;
-	struct eu_string str;
-	double num;
-	struct eu_variant_members extras;
-};
+#include "test_schema.c"
 
-static struct eu_struct_metadata struct_foo_metadata;
+void bar_fini(struct bar *bar)
+{
+	eu_variant_members_fini(&bar->extras);
+}
 
-static struct eu_struct_member foo_members[] = {
-	{
-		offsetof(struct foo, foo),
-		3,
-		"foo",
-		&struct_foo_metadata.base
-	},
-	{
-		offsetof(struct foo, str),
-		3,
-		"str",
-		&eu_string_metadata
-	},
-	{
-		offsetof(struct foo, num),
-		3,
-		"num",
-		&eu_number_metadata
-	}
-};
+void bar_destroy(struct bar *bar)
+{
+	bar_fini(bar);
+	free(bar);
+}
 
-static struct eu_struct_metadata struct_foo_metadata
-	= EU_STRUCT_METADATA_INITIALIZER(struct foo, foo_members);
-
-static struct eu_struct_metadata inline_struct_foo_metadata
-	= EU_INLINE_STRUCT_METADATA_INITIALIZER(struct foo, foo_members);
-
-void foo_destroy(struct foo *foo);
 
 void foo_fini(struct foo *foo)
 {
-	if (foo->foo)
-		foo_destroy(foo->foo);
-
 	eu_string_fini(&foo->str);
+
+	if (foo->bar)
+		bar_destroy(foo->bar);
+
 	eu_variant_members_fini(&foo->extras);
 }
 
@@ -55,6 +32,7 @@ void foo_destroy(struct foo *foo)
 	foo_fini(foo);
 	free(foo);
 }
+
 
 void eu_parse_init_struct_foo(struct eu_parse *ep, struct foo **foo)
 {
@@ -179,18 +157,16 @@ static void test_bool(void)
 
 static void check_foo(struct foo *foo)
 {
-	assert(foo->foo);
-	assert(!foo->foo->foo);
-	assert(!foo->foo->str.len);
-	assert(foo->foo->num == 0);
 	assert(foo->str.len == 1);
 	assert(*foo->str.chars == 'x');
-	assert(foo->num == 42);
+
+	assert(foo->bar);
+	assert(foo->bar->num == 42);
 }
 
 static void test_struct_ptr(void)
 {
-	TEST_PARSE("  {  \"foo\"  :  {  }  , \"str\"  :  \"x\"  ,  \"num\"  :  42  }  ",
+	TEST_PARSE("  {  \"str\"  :  \"x\"  ,  \"bar\"  :  {  \"num\"  :  42  }  }  ",
 		   struct foo *,
 		   eu_parse_init_struct_foo,
 		   check_foo(result),
@@ -199,7 +175,7 @@ static void test_struct_ptr(void)
 
 static void test_inline_struct(void)
 {
-	TEST_PARSE("  {  \"foo\"  :  {  }  , \"str\"  :  \"x\"  ,  \"num\"  :  42  }  ",
+	TEST_PARSE("  {  \"str\"  :  \"x\"  ,  \"bar\"  :  {  \"num\"  :  42  }  }  ",
 		   struct foo,
 		   eu_parse_init_inline_struct_foo,
 		   check_foo(&result),

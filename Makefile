@@ -18,32 +18,32 @@ ROOT=$(filter-out ./,$(dir $(MAKEFILE)))
 VPATH=$(ROOT)
 
 # It's less likely that you'll want to override this
-PROJECT_CFLAGS=
+PROJECT_CFLAGS=-D_GNU_SOURCE
 
-# Principal source files
-SRCS=parse.c struct.c array.c string.c variant.c number.c bool.c null.c
+# The euphemus library source files
+LIB_SRCS=parse.c struct.c array.c string.c variant.c number.c bool.c null.c
 
-# Test source files
-TEST_SRCS=test.c test_parse.c parse_perf.c
+# Other source files
+SRCS=codegen.c test.c test_parse.c parse_perf.c
 
 # Header files
 HDRS=euphemus.h euphemus_int.h
 
 # Main exectuables that get built
-EXECUTABLES=test_parse parse_perf
+EXECUTABLES=codegen test_parse parse_perf
 
 # Test executables that get built
 TEST_EXECUTABLES=test
 
-HDROBJS_$(ROOT)euphemus.h=$(SRCS:%.c=%.o)
-HDROBJS_$(ROOT)euphemus_int.h=$(SRCS:%.c=%.o)
+HDROBJS_$(ROOT)euphemus.h=$(LIB_SRCS:%.c=%.o)
+HDROBJS_$(ROOT)euphemus_int.h=$(LIB_SRCS:%.c=%.o)
 HDROBJS_/usr/include/json/json.h=-ljson
 
 # That completes the definition of the project sources and structure.
 # Now for the magic.
 
 ALL_EXECUTABLES:=$(EXECUTABLES) $(TEST_EXECUTABLES)
-ALL_SRCS:=$(SRCS) $(TEST_SRCS)
+ALL_SRCS:=$(LIB_SRCS) $(SRCS)
 $(foreach H,$(HDRS),$(eval HDROBJS_$(ROOT)$(H)?=$(notdir $(H:%.h=%.o))))
 
 # Disable builtin rules

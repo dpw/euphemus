@@ -1,0 +1,19 @@
+{
+	"title": "Example Schema",
+	"type": "object",
+	"euphemusStructName": "foo",
+	"properties": {
+		"str": {
+			"type": "string"
+		},
+		"bar": {
+                        "type": "object",
+	                "euphemusStructName": "bar",
+                        "properties": {
+		                "num": {
+			                "type": "number"
+		                }
+                        }
+                }
+        }
+}
