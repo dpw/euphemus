@@ -22,7 +22,7 @@ enum number_parse_state {
 struct number_parse_cont {
 	struct eu_parse_cont base;
 	enum number_parse_state state;
-	int negate;
+	signed char negate;
 	double *result;
 	int64_t int_value;
 };
@@ -40,7 +40,7 @@ static enum eu_parse_result number_parse(struct eu_metadata *metadata,
 	const char *end = ep->input_end;
 	double *result = v_result;
 	enum number_parse_state state;
-	int negate;
+	signed char negate;
 	int64_t int_value;
 	struct number_parse_cont *cont;
 
@@ -94,7 +94,7 @@ static enum eu_parse_result number_parse_resume(struct eu_parse *ep,
 {
 	struct number_parse_cont *cont = (struct number_parse_cont *)gcont;
 	enum number_parse_state state = cont->state;
-	int negate = cont->negate;
+	signed char negate = cont->negate;
 	int64_t int_value = cont->int_value;
 	double *result = cont->result;
 	const char *p = ep->input;
