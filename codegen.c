@@ -29,24 +29,6 @@ static void *xalloc(size_t s)
         die("malloc(%ld) failed", (long)s);
 }
 
-/*
-static void *xrealloc(void *p, size_t s)
-{
-        if (s) {
-                void *res = realloc(p, s);
-                if (res)
-                        return res;
-
-                die("realloc(%ld) failed", (long)s);
-        }
-        else {
-                free(p);
-        }
-
-        return NULL;
-}
-*/
-
 static size_t xsprintf(char **buf, const char *fmt, ...)
 {
 	int res;
@@ -98,10 +80,6 @@ static int eu_variant_equals_cstr(struct eu_variant *var, const char *str)
 		&& !memcmp(str, var->u.string.chars, len);
 }
 
-struct codegen {
-	struct type_info *type_infos_to_destroy;
-};
-
 struct type_info {
 	struct type_info_ops *ops;
 	char *metadata_ptr_expr;
@@ -112,8 +90,16 @@ struct type_info_ops {
 	void (*declare)(struct type_info *ti, FILE *out,
 			const char *name, size_t name_len);
 	void (*define)(struct type_info *ti, FILE *out);
+	void (*call_fini)(struct type_info *ti, FILE *out,
+			  const char *var_expr);
 	void (*destroy)(struct type_info *ti);
 };
+
+static void noop_define(struct type_info *ti, FILE *out)
+{
+	(void)ti;
+	(void)out;
+}
 
 /* Declare a variable or field of the given type. */
 static void declare(struct type_info *ti, FILE *out,
@@ -127,6 +113,20 @@ static void define_type(struct type_info *ti, FILE *out)
 {
 	ti->ops->define(ti, out);
 }
+
+/* Generate a finalizer call for the type */
+void call_fini(struct type_info *ti, FILE *out, const char *var_expr)
+{
+	ti->ops->call_fini(ti, out, var_expr);
+}
+
+
+/* The doegen object holds everything for code generation */
+
+struct codegen {
+	struct type_info *type_infos_to_destroy;
+};
+
 
 static void codegen_init(struct codegen *codegen)
 {
@@ -160,6 +160,7 @@ static void add_type_info_to_destroy(struct codegen *codegen,
 struct simple_type_info {
 	struct type_info base;
 	const char *type_name;
+	const char *fini_func;
 };
 
 static void simple_type_declare(struct type_info *ti, FILE *out,
@@ -170,32 +171,38 @@ static void simple_type_declare(struct type_info *ti, FILE *out,
 	fprintf(out, "\t%s %.*s;\n", sti->type_name, (int)name_len, name);
 }
 
-static void noop_define(struct type_info *ti, FILE *out)
+static void simple_type_call_fini(struct type_info *ti, FILE *out,
+				  const char *var_expr)
 {
-	(void)ti;
-	(void)out;
+	struct simple_type_info *sti = (void *)ti;
+
+	fprintf(out, "\t%s(&%s);\n", sti->fini_func, var_expr);
 }
 
 struct type_info_ops simple_type_info_ops = {
 	simple_type_declare,
 	noop_define,
+	simple_type_call_fini,
 	NULL
 };
 
-#define DEFINE_SIMPLE_TYPE_INFO(name, type_name, metadata_ptr_expr)    \
-struct  simple_type_info name = {                                      \
-	{                                                              \
-		&simple_type_info_ops,                                 \
-		metadata_ptr_expr,                                     \
-		NULL                                                   \
-	},                                                             \
-	type_name                                                      \
+#define DEFINE_SIMPLE_TYPE_INFO(name, type_name, metadata_ptr_expr, fini_func) \
+struct  simple_type_info name = {                                     \
+	{                                                             \
+		&simple_type_info_ops,                                \
+		metadata_ptr_expr,                                    \
+		NULL                                                  \
+	},                                                            \
+	type_name,                                                    \
+	fini_func                                                     \
 }
 
 DEFINE_SIMPLE_TYPE_INFO(string_type_info, "struct eu_string",
-			"&eu_string_metadata");
+			"&eu_string_metadata",
+			"eu_string_fini");
 DEFINE_SIMPLE_TYPE_INFO(number_type_info, "double",
-			"&eu_number_metadata");
+			"&eu_number_metadata",
+			"(void)");
 
 /* Structs */
 
@@ -275,11 +282,13 @@ static void struct_define(struct type_info *ti, FILE *out)
 	struct struct_type_info *sti = (void *)ti;
 	size_t i;
 
+	/* The defintions of any types used in this struct. */
 	for (i = 0; i < sti->members_len; i++) {
 		struct member_info *mi = &sti->members[i];
 		define_type(mi->type_info, out);
 	}
 
+	/* The definition of the struct itself. */
 	fprintf(out, "struct %.*s {\n",
 		(int)sti->struct_name_len, sti->struct_name);
 
@@ -292,6 +301,7 @@ static void struct_define(struct type_info *ti, FILE *out)
 		"\tstruct eu_variant_members extras;\n"
 		"};\n\n");
 
+	/* Member metadata */
 	fprintf(out,
 		"static struct eu_struct_member struct_%.*s_members[%d] = {\n",
 		(int)sti->struct_name_len, sti->struct_name,
@@ -317,6 +327,7 @@ static void struct_define(struct type_info *ti, FILE *out)
 
 	fprintf(out, "};\n\n");
 
+	/* Definitiion of the eu_struct_metadata instance */
 	fprintf(out,
 		"struct eu_struct_metadata %s\n"
 		"\t= EU_STRUCT_METADATA_INITIALIZER(struct %.*s, "
@@ -325,11 +336,42 @@ static void struct_define(struct type_info *ti, FILE *out)
 		(int)sti->struct_name_len, sti->struct_name,
 		(int)sti->struct_name_len, sti->struct_name);
 
+	/* Definitiion of the eu_struct_metadata instance for inline
+	   structs.  Inline support is incomplete currently. */
 	fprintf(out,
 		"struct eu_struct_metadata %s\n"
 		"\t= EU_INLINE_STRUCT_METADATA_INITIALIZER(struct %.*s, "
 			"struct_%.*s_members);\n\n",
 		sti->inline_metadata_name,
+		(int)sti->struct_name_len, sti->struct_name,
+		(int)sti->struct_name_len, sti->struct_name);
+
+	fprintf(out,
+		"void %.*s_fini(struct %.*s *p)\n"
+		"{\n",
+		(int)sti->struct_name_len, sti->struct_name,
+		(int)sti->struct_name_len, sti->struct_name);
+
+	for (i = 0; i < sti->members_len; i++) {
+		struct member_info *mi = &sti->members[i];
+		char *var;
+
+		xsprintf(&var, "p->%.*s", (int)mi->name_len, mi->name);
+		call_fini(mi->type_info, out, var);
+		free(var);
+	}
+
+	fprintf(out, "\teu_variant_members_fini(&p->extras);\n");
+
+	fprintf(out, "}\n\n");
+
+	fprintf(out,
+		"void %.*s_destroy(struct %.*s *p)\n"
+		"{\n"
+		"\t%.*s_fini(p);\n"
+		"\tfree(p);\n"
+		"}\n\n",
+		(int)sti->struct_name_len, sti->struct_name,
 		(int)sti->struct_name_len, sti->struct_name,
 		(int)sti->struct_name_len, sti->struct_name);
 }
@@ -345,9 +387,21 @@ static void struct_destroy(struct type_info *ti)
 	free(sti);
 }
 
+static void struct_generate_fini(struct type_info *ti, FILE *out,
+				 const char *var_expr)
+{
+	struct struct_type_info *sti = (void *)ti;
+
+	fprintf(out, "\tif (%s) %.*s_destroy(%s);\n",
+		var_expr,
+		(int)sti->struct_name_len, sti->struct_name,
+		var_expr);
+}
+
 static struct type_info_ops struct_type_info_ops = {
 	struct_declare,
 	struct_define,
+	struct_generate_fini,
 	struct_destroy
 };
 

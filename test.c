@@ -5,35 +5,6 @@
 
 #include "test_schema.c"
 
-void bar_fini(struct bar *bar)
-{
-	eu_variant_members_fini(&bar->extras);
-}
-
-void bar_destroy(struct bar *bar)
-{
-	bar_fini(bar);
-	free(bar);
-}
-
-
-void foo_fini(struct foo *foo)
-{
-	eu_string_fini(&foo->str);
-
-	if (foo->bar)
-		bar_destroy(foo->bar);
-
-	eu_variant_members_fini(&foo->extras);
-}
-
-void foo_destroy(struct foo *foo)
-{
-	foo_fini(foo);
-	free(foo);
-}
-
-
 void eu_parse_init_struct_foo(struct eu_parse *ep, struct foo **foo)
 {
 	eu_parse_init(ep, &struct_foo_metadata.base, foo);

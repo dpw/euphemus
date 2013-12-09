@@ -20,6 +20,18 @@ struct eu_struct_metadata struct_bar_metadata
 struct eu_struct_metadata inline_struct_bar_metadata
 	= EU_INLINE_STRUCT_METADATA_INITIALIZER(struct bar, struct_bar_members);
 
+void bar_fini(struct bar *p)
+{
+	(void)(&p->num);
+	eu_variant_members_fini(&p->extras);
+}
+
+void bar_destroy(struct bar *p)
+{
+	bar_fini(p);
+	free(p);
+}
+
 struct foo {
 	struct eu_string str;
 	struct bar *bar;
@@ -46,4 +58,17 @@ struct eu_struct_metadata struct_foo_metadata
 
 struct eu_struct_metadata inline_struct_foo_metadata
 	= EU_INLINE_STRUCT_METADATA_INITIALIZER(struct foo, struct_foo_members);
+
+void foo_fini(struct foo *p)
+{
+	eu_string_fini(&p->str);
+	if (p->bar) bar_destroy(p->bar);
+	eu_variant_members_fini(&p->extras);
+}
+
+void foo_destroy(struct foo *p)
+{
+	foo_fini(p);
+	free(p);
+}
 
