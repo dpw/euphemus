@@ -3,7 +3,7 @@
 #include <string.h>
 #include <assert.h>
 
-#include "test_schema.c"
+#include "test_schema.h"
 
 void eu_parse_init_struct_foo(struct eu_parse *ep, struct foo **foo)
 {

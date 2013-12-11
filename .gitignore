@@ -6,6 +6,7 @@
 *.gcno
 
 test_schema.c
+test_schema.h
 
 test
 test_parse

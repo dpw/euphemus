@@ -26,7 +26,7 @@ PROJECT_CFLAGS=-D_GNU_SOURCE
 LIB_SRCS=parse.c struct.c array.c string.c variant.c number.c bool.c null.c
 
 # Other source files
-SRCS=codegen.c test.c test_parse.c parse_perf.c
+SRCS=codegen.c test.c test_parse.c parse_perf.c test_schema.c
 
 # Header files
 HDRS=euphemus.h euphemus_int.h
@@ -41,13 +41,15 @@ HDROBJS_$(ROOT)euphemus.h=$(LIB_SRCS:%.c=%.o)
 HDROBJS_$(ROOT)euphemus_int.h=$(LIB_SRCS:%.c=%.o)
 HDROBJS_/usr/include/json/json.h=-ljson
 
-test.o: test_schema.c
+test.o: test_schema.h
 
-test_schema.c: test_schema.json codegen
-	./codegen $< >$@ || rm -f $@
+test_schema.c test_schema.h: test_schema.json codegen
+	./codegen $<
+
+HDROBJS_$(ROOT)test_schema.h=test_schema.o
 
 clean::
-	rm -f test_schema.c
+	rm -f test_schema.c test_schema.h
 
 # That completes the definition of the project sources and structure.
 # Now for the magic.
