@@ -4,6 +4,8 @@ ifneq ($(shell ( echo "$(MAKE_VERSION)" ; echo "$(REQUIRED_MAKE_VERSION)" ) | so
 $(error GNU make version $(REQUIRED_MAKE_VERSION) required)
 endif
 
+.DEFAULT_GOAL:=all
+
 MAKEFILE:=$(firstword $(MAKEFILE_LIST))
 
 # You can override this from the command line
@@ -38,6 +40,14 @@ TEST_EXECUTABLES=test
 HDROBJS_$(ROOT)euphemus.h=$(LIB_SRCS:%.c=%.o)
 HDROBJS_$(ROOT)euphemus_int.h=$(LIB_SRCS:%.c=%.o)
 HDROBJS_/usr/include/json/json.h=-ljson
+
+test.o: test_schema.c
+
+test_schema.c: test_schema.json codegen
+	./codegen $< >$@ || rm -f $@
+
+clean::
+	rm -f test_schema.c
 
 # That completes the definition of the project sources and structure.
 # Now for the magic.
@@ -82,11 +92,24 @@ clean::
 # objneeds works out which object files are required to link the given
 # object file.
 objneeds=$(eval SEEN:=)$(call objneeds_aux,$(1))$(foreach O,$(SEEN),$(eval SAW_$(O):=))$(SEEN)
-objneeds_aux=$(if $(SAW_$(1)),,$(eval SAW_$(1):=1)$(eval SEEN+=$(1))$(foreach O,$(OBJNEEDS_$(1)),$(call objneeds_aux,$(O))))
+
+# objneeds_aux finds the transitive closure of the OBJNEEDS relation,
+# starting with $(1), and putting the result in $(SEEN)
+objneeds_aux=$(if $(SAW_$(1)),,$(eval SAW_$(1):=1)$(eval SEEN+=$(1))$(if $(filter-out -l%,$(1)),$(foreach O,$(call lookup_undefined,OBJNEEDS_$(1)),$(call objneeds_aux,$(O))),))
+
+# Lookup the object files required to link $(1), returning 'undefined' if it was not defined.
+lookup_undefined=$(if $(filter-out undefined,$(flavor $(1))),$($(1)),undefined)
 
 define build_executable
-$(1): $(call objneeds,$(or $(MAINOBJ_$(1)),$(2)$(1).o))
+build_executable_objneeds:=$(call objneeds,$(or $(MAINOBJ_$(1)),$(2)$(1).o))
+ifeq "$$(filter undefined,$$(build_executable_objneeds))" ""
+$(1): $$(build_executable_objneeds)
 	$$(CC) $$(CFLAGS) $(PROJECT_CFLAGS) $$^ -o $$@
+else
+$(1):
+	@false
+endif
+build_executable_objneeds:=
 endef
 
 $(foreach E,$(EXECUTABLES),$(eval $(call build_executable,$(E),)))

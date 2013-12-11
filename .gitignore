@@ -5,6 +5,8 @@
 *.gcda
 *.gcno
 
+test_schema.c
+
 test
 test_parse
 parse_perf
