@@ -108,13 +108,6 @@ struct type_info_ops {
 	void (*destroy)(struct type_info *ti);
 };
 
-static void noop_define(struct type_info *ti, FILE *c_out, FILE *h_out)
-{
-	(void)ti;
-	(void)c_out;
-	(void)h_out;
-}
-
 /* Declare a variable or field of the given type. */
 static void declare(struct type_info *ti, FILE *out,
 		    const char *name, size_t name_len)
@@ -169,12 +162,11 @@ static void add_type_info_to_destroy(struct codegen *codegen,
 }
 
 
-/* String, numbers, etc. */
+/* Simple value types (numbers, etc.) */
 
 struct simple_type_info {
 	struct type_info base;
 	const char *type_name;
-	const char *fini_func;
 };
 
 static void simple_type_declare(struct type_info *ti, FILE *out,
@@ -185,38 +177,81 @@ static void simple_type_declare(struct type_info *ti, FILE *out,
 	fprintf(out, "\t%s %.*s;\n", sti->type_name, (int)name_len, name);
 }
 
-static void simple_type_call_fini(struct type_info *ti, FILE *out,
-				  const char *var_expr)
+static void noop_define(struct type_info *ti, FILE *c_out, FILE *h_out)
 {
-	struct simple_type_info *sti = (void *)ti;
+	(void)ti;
+	(void)c_out;
+	(void)h_out;
+}
 
-	fprintf(out, "\t%s(&%s);\n", sti->fini_func, var_expr);
+static void noop_call_fini(struct type_info *ti, FILE *out,
+			   const char *var_expr)
+{
+	(void)ti;
+	(void)out;
+	(void)var_expr;
 }
 
 struct type_info_ops simple_type_info_ops = {
 	simple_type_declare,
 	noop_define,
-	simple_type_call_fini,
+	noop_call_fini,
 	NULL
 };
 
-#define DEFINE_SIMPLE_TYPE_INFO(name, type_name, metadata_ptr_expr, fini_func) \
+#define DEFINE_SIMPLE_TYPE_INFO(name, type_name, metadata_ptr_expr)   \
 struct  simple_type_info name = {                                     \
 	{                                                             \
 		&simple_type_info_ops,                                \
 		metadata_ptr_expr,                                    \
 		NULL                                                  \
 	},                                                            \
-	type_name,                                                    \
+	type_name                                                     \
+}
+
+DEFINE_SIMPLE_TYPE_INFO(number_type_info, "double",
+			 "&eu_number_metadata");
+
+
+/* Builtin types (strings, etc.) */
+
+struct builtin_type_info {
+	struct simple_type_info base;
+	const char *fini_func;
+};
+
+static void builtin_type_call_fini(struct type_info *ti, FILE *out,
+				  const char *var_expr)
+{
+	struct builtin_type_info *bti = (void *)ti;
+
+	fprintf(out, "\t%s(&%s);\n", bti->fini_func, var_expr);
+}
+
+struct type_info_ops builtin_type_info_ops = {
+	simple_type_declare,
+	noop_define,
+	builtin_type_call_fini,
+	NULL
+};
+
+#define DEFINE_BUILTIN_TYPE_INFO(name, type_name, metadata_ptr_expr, fini_func) \
+struct  builtin_type_info name = {                                    \
+	{                                                             \
+		{                                                     \
+			&builtin_type_info_ops,                       \
+			metadata_ptr_expr,                            \
+			NULL                                          \
+		},                                                    \
+		type_name,                                            \
+	},                                                            \
 	fini_func                                                     \
 }
 
-DEFINE_SIMPLE_TYPE_INFO(string_type_info, "struct eu_string",
-			"&eu_string_metadata",
-			"eu_string_fini");
-DEFINE_SIMPLE_TYPE_INFO(number_type_info, "double",
-			"&eu_number_metadata",
-			"(void)");
+DEFINE_BUILTIN_TYPE_INFO(string_type_info, "struct eu_string",
+			 "&eu_string_metadata",
+			 "eu_string_fini");
+
 
 /* Structs */
 
@@ -449,7 +484,7 @@ static struct type_info *resolve(struct codegen *codegen,
 	assert(type && eu_variant_type(type) == EU_JSON_STRING);
 
 	if (eu_variant_equals_cstr(type, "string"))
-		return &string_type_info.base;
+		return &string_type_info.base.base;
 	else if (eu_variant_equals_cstr(type, "number"))
 		return &number_type_info.base;
 	else if (eu_variant_equals_cstr(type, "object"))
