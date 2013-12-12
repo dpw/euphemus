@@ -6,6 +6,7 @@
 		"str": {
 			"type": "string"
 		},
+                "any": {},
 		"bar": {
                         "type": "object",
 	                "euphemusStructName": "bar",

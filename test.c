@@ -130,6 +130,7 @@ static void check_foo(struct foo *foo)
 {
 	assert(foo->str.len == 1);
 	assert(*foo->str.chars == 'x');
+	assert(eu_variant_type(&foo->any) == EU_JSON_NULL);
 
 	assert(foo->bar);
 	assert(foo->bar->num == 42);
@@ -138,7 +139,7 @@ static void check_foo(struct foo *foo)
 
 static void test_struct_ptr(void)
 {
-	TEST_PARSE("  {  \"str\"  :  \"x\"  ,  \"bar\"  :  {  \"num\"  :  42,  \"bool\"  :  true  }  }  ",
+	TEST_PARSE("  {  \"str\"  :  \"x\"  ,  \"any\"  :  null  ,  \"bar\"  :  {  \"num\"  :  42,  \"bool\"  :  true  }  }  ",
 		   struct foo *,
 		   eu_parse_init_struct_foo,
 		   check_foo(result),
@@ -147,7 +148,7 @@ static void test_struct_ptr(void)
 
 static void test_inline_struct(void)
 {
-	TEST_PARSE("  {  \"str\"  :  \"x\"  ,  \"bar\"  :  {  \"num\"  :  42,  \"bool\"  :  true  }  }  ",
+	TEST_PARSE("  {  \"str\"  :  \"x\"  ,  \"any\"  :  null  ,  \"bar\"  :  {  \"num\"  :  42,  \"bool\"  :  true  }  }  ",
 		   struct foo,
 		   eu_parse_init_inline_struct_foo,
 		   check_foo(&result),

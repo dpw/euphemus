@@ -254,6 +254,10 @@ DEFINE_BUILTIN_TYPE_INFO(string_type_info, "struct eu_string",
 			 "&eu_string_metadata",
 			 "eu_string_fini");
 
+DEFINE_BUILTIN_TYPE_INFO(variant_type_info, "struct eu_variant",
+			 "&eu_variant_metadata",
+			 "eu_variant_fini");
+
 
 /* Structs */
 
@@ -481,6 +485,9 @@ static struct type_info *resolve(struct codegen *codegen,
 	struct eu_variant *type;
 
 	assert(eu_variant_type(schema) == EU_JSON_OBJECT);
+
+	if (!schema->u.object.members.len)
+		return &variant_type_info.base;
 
 	type = eu_variant_get(schema, "type");
 	assert(type && eu_variant_type(type) == EU_JSON_STRING);
