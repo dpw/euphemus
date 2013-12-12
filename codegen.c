@@ -211,6 +211,8 @@ struct  simple_type_info name = {                                     \
 
 DEFINE_SIMPLE_TYPE_INFO(number_type_info, "double",
 			 "&eu_number_metadata");
+DEFINE_SIMPLE_TYPE_INFO(boolean_type_info, "eu_bool_t",
+			 "&eu_bool_metadata");
 
 
 /* Builtin types (strings, etc.) */
@@ -487,6 +489,8 @@ static struct type_info *resolve(struct codegen *codegen,
 		return &string_type_info.base.base;
 	else if (eu_variant_equals_cstr(type, "number"))
 		return &number_type_info.base;
+	else if (eu_variant_equals_cstr(type, "boolean"))
+		return &boolean_type_info.base;
 	else if (eu_variant_equals_cstr(type, "object"))
 		return make_struct(schema, codegen);
 	else

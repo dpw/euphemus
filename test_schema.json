@@ -10,9 +10,8 @@
                         "type": "object",
 	                "euphemusStructName": "bar",
                         "properties": {
-		                "num": {
-			                "type": "number"
-		                }
+		                "num": { "type": "number" },
+                                "bool": { "type": "boolean" }
                         }
                 }
         }
