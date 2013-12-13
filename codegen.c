@@ -447,6 +447,34 @@ static void struct_define(struct type_info *ti, FILE *c_out, FILE *h_out)
 		(int)sti->struct_name_len, sti->struct_name,
 		(int)sti->struct_name_len, sti->struct_name,
 		(int)sti->struct_name_len, sti->struct_name);
+
+	fprintf(h_out,
+		"void eu_parse_init_struct_%.*s(struct eu_parse *ep, struct %.*s **p);\n",
+		(int)sti->struct_name_len, sti->struct_name,
+		(int)sti->struct_name_len, sti->struct_name);
+
+	fprintf(c_out,
+		"void eu_parse_init_struct_%.*s(struct eu_parse *ep, struct %.*s **p)\n"
+		"{\n"
+		"\teu_parse_init(ep, %s, p);\n"
+		"}\n\n",
+		(int)sti->struct_name_len, sti->struct_name,
+		(int)sti->struct_name_len, sti->struct_name,
+		sti->base.metadata_ptr_expr);
+
+	fprintf(h_out,
+		"void eu_parse_init_inline_struct_%.*s(struct eu_parse *ep, struct %.*s *p);\n\n",
+		(int)sti->struct_name_len, sti->struct_name,
+		(int)sti->struct_name_len, sti->struct_name);
+
+	fprintf(c_out,
+		"void eu_parse_init_inline_struct_%.*s(struct eu_parse *ep, struct %.*s *p)\n"
+		"{\n"
+		"\teu_parse_init(ep, &%s.base, p);\n"
+		"}\n\n",
+		(int)sti->struct_name_len, sti->struct_name,
+		(int)sti->struct_name_len, sti->struct_name,
+		sti->inline_metadata_name);
 }
 
 static void struct_destroy(struct type_info *ti)
@@ -487,7 +515,7 @@ static struct type_info *resolve(struct codegen *codegen,
 	assert(eu_variant_type(schema) == EU_JSON_OBJECT);
 
 	if (!schema->u.object.members.len)
-		return &variant_type_info.base;
+		return &variant_type_info.base.base;
 
 	type = eu_variant_get(schema, "type");
 	assert(type && eu_variant_type(type) == EU_JSON_STRING);

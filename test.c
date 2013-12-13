@@ -5,17 +5,6 @@
 
 #include "test_schema.h"
 
-void eu_parse_init_struct_foo(struct eu_parse *ep, struct foo **foo)
-{
-	eu_parse_init(ep, &struct_foo_metadata.base, foo);
-}
-
-void eu_parse_init_inline_struct_foo(struct eu_parse *ep, struct foo *foo)
-{
-	eu_parse_init(ep, &inline_struct_foo_metadata.base, foo);
-}
-
-
 struct eu_array_metadata eu_string_array_metadata
 	= EU_ARRAY_METADATA_INITIALIZER(&eu_string_metadata);
 
