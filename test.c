@@ -3,7 +3,7 @@
 #include <string.h>
 #include <assert.h>
 
-#include "test_schema.h"
+#include "test_parse.h"
 
 struct eu_array_metadata eu_string_array_metadata
 	= EU_ARRAY_METADATA_INITIALIZER(&eu_string_metadata);
@@ -24,53 +24,6 @@ void eu_string_array_fini(struct eu_string_array *a)
 }
 
 
-#define TEST_PARSE(json_str, result_type, parse_init, check, cleanup) \
-do {                                                                  \
-	struct eu_parse ep;                                           \
-	const char *json = json_str;                                  \
-	result_type result;                                           \
-	size_t len = strlen(json);                                    \
-	size_t i;                                                     \
-                                                                      \
-	/* Test parsing in one go */                                  \
-	parse_init(&ep, &result);                                     \
-	assert(eu_parse(&ep, json, len));                             \
-	assert(eu_parse_finish(&ep));                                 \
-	eu_parse_fini(&ep);                                           \
-	check;                                                        \
-	cleanup;                                                      \
-                                                                      \
-	/* Test parsing broken at each position within the json */    \
-	for (i = 0; i < len; i++) {                                   \
-		parse_init(&ep, &result);                             \
-		assert(eu_parse(&ep, json, i));                       \
-		assert(eu_parse(&ep, json + i, len - i));             \
-		assert(eu_parse_finish(&ep));                         \
-		eu_parse_fini(&ep);                                   \
-		check;                                                \
-		cleanup;                                              \
-	}                                                             \
-                                                                      \
-	/* Test parsing with the json broken into individual bytes */ \
-	parse_init(&ep, &result);                                     \
-	for (i = 0; i < len; i++)                                     \
-		assert(eu_parse(&ep, json + i, 1));                   \
-                                                                      \
-	assert(eu_parse_finish(&ep));                                 \
-	eu_parse_fini(&ep);                                           \
-	check;                                                        \
-	cleanup;                                                      \
-                                                                      \
-	/* Test that resources are released after an unfinished parse. */ \
-	parse_init(&ep, &result);                                     \
-	eu_parse_fini(&ep);                                           \
-                                                                      \
-	for (i = 0; i < len; i++) {                                   \
-		parse_init(&ep, &result);                             \
-		assert(eu_parse(&ep, json, i));                       \
-		eu_parse_fini(&ep);                                   \
-	}                                                             \
-} while (0)
 
 static void test_string(void)
 {
@@ -112,53 +65,6 @@ static void test_bool(void)
 		   assert(result),);
 	TEST_PARSE("  false  ", eu_bool_t, eu_parse_init_bool,
 		   assert(!result),);
-}
-
-
-static void check_foo(struct foo *foo)
-{
-	assert(foo->str.len == 1);
-	assert(*foo->str.chars == 'x');
-	assert(eu_variant_type(&foo->any) == EU_JSON_NULL);
-
-	assert(foo->bar);
-	assert(foo->bar->num == 42);
-	assert(foo->bar->bool);
-}
-
-static void test_struct_ptr(void)
-{
-	TEST_PARSE("  {  \"str\"  :  \"x\"  ,  \"any\"  :  null  ,  \"bar\"  :  {  \"num\"  :  42,  \"bool\"  :  true  }  }  ",
-		   struct foo *,
-		   eu_parse_init_struct_foo,
-		   check_foo(result),
-		   foo_destroy(result));
-}
-
-static void test_inline_struct(void)
-{
-	TEST_PARSE("  {  \"str\"  :  \"x\"  ,  \"any\"  :  null  ,  \"bar\"  :  {  \"num\"  :  42,  \"bool\"  :  true  }  }  ",
-		   struct foo,
-		   eu_parse_init_inline_struct_foo,
-		   check_foo(&result),
-		   foo_fini(&result));
-}
-
-static void check_extras(struct foo *foo)
-{
-	struct eu_variant *var = eu_variant_members_get(&foo->extras, "quux");
-	assert(var);
-	assert(var->u.string.len == 1);
-	assert(!memcmp(var->u.string.chars, "x", 1));
-}
-
-static void test_extras(void)
-{
-	TEST_PARSE("  {  \"quux\"  :  \"x\"  }  ",
-		   struct foo,
-		   eu_parse_init_inline_struct_foo,
-		   check_extras(&result),
-		   foo_fini(&result));
 }
 
 
@@ -233,10 +139,7 @@ int main(void)
 	test_string();
 	test_number();
 	test_bool();
-	test_struct_ptr();
-	test_inline_struct();
 	test_array();
-	test_extras();
 	test_variant();
 	return 0;
 }

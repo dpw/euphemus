@@ -9,6 +9,6 @@ test_schema.c
 test_schema.h
 
 test
-test_parse
+test_codegen
 parse_perf
 codegen

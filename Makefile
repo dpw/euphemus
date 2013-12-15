@@ -26,22 +26,23 @@ PROJECT_CFLAGS=-D_GNU_SOURCE
 LIB_SRCS=parse.c struct.c array.c string.c variant.c number.c bool.c null.c
 
 # Other source files
-SRCS=codegen.c test.c test_parse.c parse_perf.c test_schema.c
+SRCS=codegen.c test.c test_codegen.c parse_perf.c test_schema.c
 
 # Header files
-HDRS=euphemus.h euphemus_int.h
+HDRS=euphemus.h euphemus_int.h test_parse.h
 
 # Main exectuables that get built
-EXECUTABLES=codegen test_parse parse_perf
+EXECUTABLES=codegen parse_perf
 
 # Test executables that get built
-TEST_EXECUTABLES=test
+TEST_EXECUTABLES=test test_codegen
 
 HDROBJS_$(ROOT)euphemus.h=$(LIB_SRCS:%.c=%.o)
 HDROBJS_$(ROOT)euphemus_int.h=$(LIB_SRCS:%.c=%.o)
 HDROBJS_/usr/include/json/json.h=-ljson
+HDROBJS_$(ROOT)test_parse.h=
 
-test.o: test_schema.h
+test_codegen.o: test_schema.h
 
 test_schema.c test_schema.h: test_schema.json codegen
 	./codegen $<
