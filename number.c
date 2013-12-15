@@ -144,11 +144,12 @@ struct eu_metadata eu_number_metadata = {
 	EU_JSON_NUMBER
 };
 
-enum eu_parse_result eu_variant_number(struct eu_parse *ep,
+enum eu_parse_result eu_variant_number(void *number_metadata,
+				       struct eu_parse *ep,
 				       struct eu_variant *result)
 {
-	result->metadata = &eu_number_metadata;
-	return number_parse(&eu_number_metadata, ep, &result->u.number);
+	result->metadata = number_metadata;
+	return number_parse(number_metadata, ep, &result->u.number);
 }
 
 void eu_parse_init_number(struct eu_parse *ep, double *num)

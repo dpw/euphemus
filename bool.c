@@ -41,14 +41,27 @@ struct eu_metadata eu_bool_metadata = {
 	EU_JSON_BOOL
 };
 
-enum eu_parse_result eu_variant_bool(struct eu_parse *ep,
-				     struct eu_variant *result)
-{
-	result->metadata = &eu_bool_metadata;
-	return bool_parse(&eu_bool_metadata, ep, &result->u.bool);
-}
-
 void eu_parse_init_bool(struct eu_parse *ep, eu_bool_t *bool)
 {
 	eu_parse_init(ep, &eu_bool_metadata, bool);
+}
+
+struct eu_bool_misc {
+	eu_bool_t value;
+	unsigned char expect_len;
+	const char *expect;
+};
+
+struct eu_bool_misc eu_bool_true = { 1, 3, "rue" };
+struct eu_bool_misc eu_bool_false = { 0, 4, "alse" };
+
+enum eu_parse_result eu_variant_bool(void *v_misc, struct eu_parse *ep,
+				     struct eu_variant *result)
+{
+	struct eu_bool_misc *misc = v_misc;
+
+	result->metadata = &eu_bool_metadata;
+	ep->input++;
+	result->u.bool = misc->value;
+	return eu_parse_expect(ep, misc->expect, misc->expect_len);
 }

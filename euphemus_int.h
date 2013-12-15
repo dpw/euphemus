@@ -21,18 +21,28 @@ int eu_parse_append_buffer_nul(struct eu_parse *ep, const char *start,
 
 void eu_noop_fini(struct eu_metadata *metadata, void *value);
 
-enum eu_parse_result eu_variant_string(struct eu_parse *ep,
+extern struct eu_struct_metadata eu_inline_object_metadata;
+extern struct eu_array_metadata eu_variant_array_metadata;
+extern struct eu_metadata eu_null_metadata;
+extern struct eu_bool_misc eu_bool_true;
+extern struct eu_bool_misc eu_bool_false;
+
+enum eu_parse_result eu_variant_string(void *string_metadata,
+				       struct eu_parse *ep,
 				       struct eu_variant *result);
-enum eu_parse_result eu_variant_object(struct eu_parse *ep,
+enum eu_parse_result eu_variant_object(void *object_metadata,
+				       struct eu_parse *ep,
 				       struct eu_variant *result);
-enum eu_parse_result eu_variant_array(struct eu_parse *ep,
+enum eu_parse_result eu_variant_array(void *array_metadata,
+				      struct eu_parse *ep,
 				      struct eu_variant *result);
-enum eu_parse_result eu_variant_number(struct eu_parse *ep,
+enum eu_parse_result eu_variant_number(void *number_metadata,
+				       struct eu_parse *ep,
 				       struct eu_variant *result);
-enum eu_parse_result eu_variant_bool(struct eu_parse *ep,
+enum eu_parse_result eu_variant_bool(void *misc, struct eu_parse *ep,
 				     struct eu_variant *result);
-enum eu_parse_result eu_variant_null(struct eu_parse *ep,
-				     struct eu_variant *result);
+enum eu_parse_result eu_variant_n(void *null_metadata, struct eu_parse *ep,
+				  struct eu_variant *result);
 
 #define WHITESPACE_CASES ' ': case '\t': case '\n': case '\r'
 

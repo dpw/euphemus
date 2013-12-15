@@ -33,9 +33,10 @@ struct eu_metadata eu_null_metadata = {
 	EU_JSON_NULL
 };
 
-enum eu_parse_result eu_variant_null(struct eu_parse *ep,
-				     struct eu_variant *result)
+enum eu_parse_result eu_variant_n(void *null_metadata, struct eu_parse *ep,
+				  struct eu_variant *result)
 {
-	result->metadata = &eu_null_metadata;
-	return null_parse(&eu_null_metadata, ep, NULL);
+	result->metadata = null_metadata;
+	ep->input++;
+	return eu_parse_expect(ep, "ull", 3);
 }

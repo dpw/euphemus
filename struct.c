@@ -302,11 +302,12 @@ struct eu_struct_metadata eu_inline_object_metadata = {
 	NULL
 };
 
-enum eu_parse_result eu_variant_object(struct eu_parse *ep,
+enum eu_parse_result eu_variant_object(void *object_metadata,
+				       struct eu_parse *ep,
 				       struct eu_variant *result)
 {
-	result->metadata = &eu_inline_object_metadata.base;
-	return eu_inline_struct_parse(&eu_inline_object_metadata.base, ep,
+	result->metadata = object_metadata;
+	return eu_inline_struct_parse(object_metadata, ep,
 				      &result->u.object);
 }
 
