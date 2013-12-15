@@ -44,8 +44,10 @@ HDROBJS_$(ROOT)test_parse.h=
 
 test_codegen.o: test_schema.h
 
+# Even with .DELETE_ON_ERROR, make will only delete one of the
+# targets, hence the 'rm' here.
 test_schema.c test_schema.h: test_schema.json codegen
-	./codegen $<
+	./codegen $< || (rm -f test_schema.c test_schema.h ; false)
 
 HDROBJS_$(ROOT)test_schema.h=test_schema.o
 
