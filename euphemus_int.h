@@ -21,9 +21,18 @@ int eu_parse_append_buffer_nul(struct eu_parse *ep, const char *start,
 
 void eu_noop_fini(struct eu_metadata *metadata, void *value);
 
-extern struct eu_struct_metadata eu_inline_object_metadata;
-extern struct eu_array_metadata eu_variant_array_metadata;
-extern struct eu_metadata eu_null_metadata;
+enum eu_parse_result eu_variant_string(struct eu_parse *ep,
+				       struct eu_variant *result);
+enum eu_parse_result eu_variant_object(struct eu_parse *ep,
+				       struct eu_variant *result);
+enum eu_parse_result eu_variant_array(struct eu_parse *ep,
+				      struct eu_variant *result);
+enum eu_parse_result eu_variant_number(struct eu_parse *ep,
+				       struct eu_variant *result);
+enum eu_parse_result eu_variant_bool(struct eu_parse *ep,
+				     struct eu_variant *result);
+enum eu_parse_result eu_variant_null(struct eu_parse *ep,
+				     struct eu_variant *result);
 
 #define WHITESPACE_CASES ' ': case '\t': case '\n': case '\r'
 

@@ -105,3 +105,14 @@ void eu_array_fini(struct eu_metadata *gmetadata, void *value)
 		= (struct eu_array_metadata *)gmetadata;
 	array_fini(metadata->element_metadata, value);
 }
+
+struct eu_array_metadata eu_variant_array_metadata
+	= EU_ARRAY_METADATA_INITIALIZER(&eu_variant_metadata);
+
+enum eu_parse_result eu_variant_array(struct eu_parse *ep,
+				      struct eu_variant *result)
+{
+	result->metadata = &eu_variant_array_metadata.base;
+	return eu_array_parse(&eu_variant_array_metadata.base, ep,
+			      &result->u.array);
+}

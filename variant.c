@@ -1,58 +1,35 @@
 #include "euphemus.h"
 #include "euphemus_int.h"
 
-/* We handle leading whitespace with a fake metadata which has a a
-   parse funciton that consumes the whitespace then tries
-   variant_parse again. */
-#define EU_JSON_WS EU_JSON_MAX
-
-static enum eu_parse_result consume_ws(struct eu_metadata *metadata,
-				       struct eu_parse *ep,
-				       void *result);
-
-static void noop_fini(struct eu_metadata *metadata, void *value)
+static enum eu_parse_result invalid(struct eu_parse *ep,
+				    struct eu_variant *result)
 {
-	(void)metadata;
-	(void)value;
-}
-
-struct eu_metadata ws_metadata = {
-	consume_ws,
-	noop_fini,
-	0,
-	EU_JSON_INVALID
-};
-
-/* Invalid bytes are also handled by dispatching through a fake
-   metadata. */
-
-static enum eu_parse_result invalid_parse(struct eu_metadata *metadata,
-					  struct eu_parse *ep,
-					  void *result)
-{
-	(void)metadata;
 	(void)ep;
 	(void)result;
 	return EU_PARSE_ERROR;
 }
 
-struct eu_metadata invalid_metadata = {
-	invalid_parse,
-	noop_fini,
-	0,
-	EU_JSON_INVALID
-};
+static enum eu_parse_result whitespace(struct eu_parse *ep,
+				       struct eu_variant *result);
+
+typedef enum eu_parse_result (*dispatch_func)(struct eu_parse *ep,
+					      struct eu_variant *result);
+
+/* We handle leading whitespace with a fake metadata which has a a
+   parse funciton that consumes the whitespace then tries
+   variant_parse again. */
+#define EU_JSON_WS EU_JSON_MAX
 
 /* Mapping from character types to metadata records. */
-static struct eu_metadata *json_type_metadata[EU_JSON_MAX+1] = {
-	[EU_JSON_INVALID] = &invalid_metadata,
-	[EU_JSON_STRING] = &eu_string_metadata,
-	[EU_JSON_OBJECT] = &eu_inline_object_metadata.base,
-	[EU_JSON_ARRAY] = &eu_variant_array_metadata.base,
-	[EU_JSON_NUMBER] = &eu_number_metadata,
-	[EU_JSON_BOOL] = &eu_bool_metadata,
-	[EU_JSON_NULL] = &eu_null_metadata,
-	[EU_JSON_WS] = &ws_metadata
+static dispatch_func json_type_funcs[EU_JSON_MAX+1] = {
+	[EU_JSON_INVALID] = invalid,
+	[EU_JSON_STRING] = eu_variant_string,
+	[EU_JSON_OBJECT] = eu_variant_object,
+	[EU_JSON_ARRAY] = eu_variant_array,
+	[EU_JSON_NUMBER] = eu_variant_number,
+	[EU_JSON_BOOL] = eu_variant_bool,
+	[EU_JSON_NULL] = eu_variant_null,
+	[EU_JSON_WS] = whitespace
 };
 
 /* Mapping from characters to character types. */
@@ -86,12 +63,12 @@ static unsigned char char_json_types[256] = {
 
 static enum eu_parse_result variant_parse(struct eu_metadata *metadata,
 					 struct eu_parse *ep,
-					 void *v_result)
+					 void *result)
 {
-	struct eu_variant *result = v_result;
-	unsigned char json_type = char_json_types[(unsigned char)*ep->input];
-	result->metadata = metadata = json_type_metadata[json_type];
-	return metadata->parse(metadata, ep, &result->u);
+	unsigned char type = char_json_types[(unsigned char)*ep->input];
+
+	(void)metadata;
+	return json_type_funcs[type](ep, result);
 }
 
 static void variant_fini(struct eu_metadata *metadata, void *value)
@@ -105,14 +82,13 @@ static void variant_fini(struct eu_metadata *metadata, void *value)
 	}
 }
 
-static enum eu_parse_result consume_ws(struct eu_metadata *metadata,
-				       struct eu_parse *ep,
-				       void *result)
+static enum eu_parse_result whitespace(struct eu_parse *ep,
+				       struct eu_variant *result)
 {
-	enum eu_parse_result res = eu_consume_whitespace(ep, metadata, result);
+	enum eu_parse_result res
+		= eu_consume_whitespace(ep, &eu_variant_metadata, result);
 	if (res == EU_PARSE_OK)
-		return variant_parse(metadata, ep,
-			       (char *)result - offsetof(struct eu_variant, u));
+		return variant_parse(&eu_variant_metadata, ep, result);
 	else
 		return res;
 }
@@ -131,9 +107,6 @@ struct eu_metadata eu_variant_metadata = {
 	sizeof(struct eu_variant),
 	EU_JSON_INVALID
 };
-
-struct eu_array_metadata eu_variant_array_metadata
-	= EU_ARRAY_METADATA_INITIALIZER(&eu_variant_metadata);
 
 void eu_parse_init_variant(struct eu_parse *ep, struct eu_variant *var)
 {

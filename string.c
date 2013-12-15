@@ -141,6 +141,13 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 	return EU_PARSE_ERROR;
 }
 
+enum eu_parse_result eu_variant_string(struct eu_parse *ep,
+				       struct eu_variant *result)
+{
+	result->metadata = &eu_string_metadata;
+	return string_parse(&eu_string_metadata, ep, &result->u.string);
+}
+
 static void string_parse_cont_destroy(struct eu_parse *ep,
 				      struct eu_parse_cont *gcont)
 {

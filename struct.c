@@ -125,10 +125,9 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 static void struct_parse_cont_destroy(struct eu_parse *ep,
 				      struct eu_parse_cont *cont);
 
-/* This parses, allocating a fresh struct. */
-enum eu_parse_result struct_parse(struct eu_metadata *gmetadata,
-				  struct eu_parse *ep, void *result,
-				  void **result_ptr)
+static enum eu_parse_result struct_parse(struct eu_metadata *gmetadata,
+					 struct eu_parse *ep, void *result,
+					 void **result_ptr)
 {
 	struct struct_parse_cont *cont;
 	struct eu_struct_metadata *metadata
@@ -302,6 +301,14 @@ struct eu_struct_metadata eu_inline_object_metadata = {
 	0,
 	NULL
 };
+
+enum eu_parse_result eu_variant_object(struct eu_parse *ep,
+				       struct eu_variant *result)
+{
+	result->metadata = &eu_inline_object_metadata.base;
+	return eu_inline_struct_parse(&eu_inline_object_metadata.base, ep,
+				      &result->u.object);
+}
 
 void eu_variant_members_fini(struct eu_variant_members *members)
 {
