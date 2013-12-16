@@ -124,6 +124,53 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 						struct eu_parse_cont *gcont);
 static void struct_parse_cont_destroy(struct eu_parse *ep,
 				      struct eu_parse_cont *cont);
+static enum eu_parse_result struct_parse(struct eu_metadata *gmetadata,
+					 struct eu_parse *ep, void *result,
+					 void **result_ptr);
+
+enum eu_parse_result eu_variant_object(void *object_metadata,
+				       struct eu_parse *ep,
+				       struct eu_variant *result)
+{
+	result->metadata = object_metadata;
+	return struct_parse(object_metadata, ep, &result->u.object, NULL);
+}
+
+enum eu_parse_result eu_struct_parse(struct eu_metadata *gmetadata,
+				     struct eu_parse *ep, void *result)
+{
+	struct eu_struct_metadata *metadata
+		= (struct eu_struct_metadata *)gmetadata;
+	void *s;
+	enum eu_parse_result res
+		= eu_consume_whitespace_until(gmetadata, ep, result, '{');
+
+	if (unlikely(res != EU_PARSE_OK))
+		return res;
+
+	s = malloc(metadata->struct_size);
+	if (s) {
+		*(void **)result = s;
+		memset(s, 0, metadata->struct_size);
+		return struct_parse(gmetadata, ep, s, (void **)result);
+	}
+	else {
+		*(void **)result = NULL;
+		return EU_PARSE_ERROR;
+	}
+}
+
+enum eu_parse_result eu_inline_struct_parse(struct eu_metadata *gmetadata,
+					    struct eu_parse *ep, void *result)
+{
+	enum eu_parse_result res
+		= eu_consume_whitespace_until(gmetadata, ep, result, '{');
+
+	if (unlikely(res != EU_PARSE_OK))
+		return res;
+
+	return struct_parse(gmetadata, ep, result, NULL);
+}
 
 static enum eu_parse_result struct_parse(struct eu_metadata *gmetadata,
 					 struct eu_parse *ep, void *result,
@@ -186,51 +233,6 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 		goto error;
 	}
 #undef RESUME_ONLY
-}
-
-enum eu_parse_result eu_struct_parse(struct eu_metadata *gmetadata,
-				     struct eu_parse *ep, void *result)
-{
-	struct eu_struct_metadata *metadata
-		= (struct eu_struct_metadata *)gmetadata;
-	void *s;
-
-	if (unlikely(*ep->input != '{')) {
-		enum eu_parse_result res = eu_consume_whitespace(gmetadata, ep,
-								 result);
-		if (unlikely(res != EU_PARSE_OK))
-			return res;
-
-		if (unlikely(*ep->input != '{'))
-			return EU_PARSE_ERROR;
-	}
-
-	s = malloc(metadata->struct_size);
-	if (s) {
-		*(void **)result = s;
-		memset(s, 0, metadata->struct_size);
-		return struct_parse(gmetadata, ep, s, (void **)result);
-	}
-	else {
-		*(void **)result = NULL;
-		return EU_PARSE_ERROR;
-	}
-}
-
-enum eu_parse_result eu_inline_struct_parse(struct eu_metadata *gmetadata,
-					    struct eu_parse *ep, void *result)
-{
-	if (unlikely(*ep->input != '{')) {
-		enum eu_parse_result res = eu_consume_whitespace(gmetadata, ep,
-								 result);
-		if (unlikely(res != EU_PARSE_OK))
-			return res;
-
-		if (unlikely(*ep->input != '{'))
-			return EU_PARSE_ERROR;
-	}
-
-	return struct_parse(gmetadata, ep, result, NULL);
 }
 
 void eu_inline_struct_fini(struct eu_metadata *gmetadata, void *s)
@@ -301,15 +303,6 @@ struct eu_struct_metadata eu_inline_object_metadata = {
 	0,
 	NULL
 };
-
-enum eu_parse_result eu_variant_object(void *object_metadata,
-				       struct eu_parse *ep,
-				       struct eu_variant *result)
-{
-	result->metadata = object_metadata;
-	return eu_inline_struct_parse(object_metadata, ep,
-				      &result->u.object);
-}
 
 void eu_variant_members_fini(struct eu_variant_members *members)
 {

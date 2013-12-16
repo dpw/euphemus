@@ -19,9 +19,34 @@ static enum eu_parse_result array_parse_resume(struct eu_parse *ep,
 static void array_parse_cont_destroy(struct eu_parse *ep,
 				     struct eu_parse_cont *cont);
 
+enum eu_parse_result array_parse(struct eu_metadata *gmetadata,
+				 struct eu_parse *ep,
+				 void *v_result);
+
+enum eu_parse_result eu_variant_array(void *array_metadata,
+				      struct eu_parse *ep,
+				      struct eu_variant *result)
+{
+	result->metadata = array_metadata;
+	return array_parse(array_metadata, ep, &result->u.array);
+}
+
 enum eu_parse_result eu_array_parse(struct eu_metadata *gmetadata,
 				    struct eu_parse *ep,
-				    void *v_result)
+				    void *result)
+{
+	enum eu_parse_result res
+		= eu_consume_whitespace_until(gmetadata, ep, result, '[');
+
+	if (res == EU_PARSE_OK)
+		return array_parse(gmetadata, ep, result);
+	else
+		return res;
+}
+
+enum eu_parse_result array_parse(struct eu_metadata *gmetadata,
+				 struct eu_parse *ep,
+				 void *v_result)
 {
 	struct array_parse_cont *cont;
 	struct eu_array_metadata *metadata
@@ -33,16 +58,6 @@ enum eu_parse_result eu_array_parse(struct eu_metadata *gmetadata,
 	size_t len = 0;
 	char *el;
 	size_t capacity;
-
-	if (unlikely(*ep->input != '[')) {
-		enum eu_parse_result res = eu_consume_whitespace(gmetadata, ep,
-								 result);
-		if (unlikely(res != EU_PARSE_OK))
-			return res;
-
-		if (unlikely(*ep->input != '['))
-			return EU_PARSE_ERROR;
-	}
 
 	ep->input++;
 
@@ -108,12 +123,3 @@ void eu_array_fini(struct eu_metadata *gmetadata, void *value)
 
 struct eu_array_metadata eu_variant_array_metadata
 	= EU_ARRAY_METADATA_INITIALIZER(&eu_variant_metadata);
-
-enum eu_parse_result eu_variant_array(void *array_metadata,
-				      struct eu_parse *ep,
-				      struct eu_variant *result)
-{
-	result->metadata = array_metadata;
-	return eu_array_parse(array_metadata, ep,
-			      &result->u.array);
-}

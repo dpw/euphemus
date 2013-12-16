@@ -212,6 +212,19 @@ enum eu_parse_result eu_insert_whitespace_cont(struct eu_metadata *metadata,
 	return EU_PARSE_PAUSED;
 }
 
+enum eu_parse_result eu_consume_ws_until_slow(struct eu_metadata *metadata,
+					      struct eu_parse *ep,
+					      void *result,
+					      char c)
+{
+	enum eu_parse_result res
+		= eu_consume_whitespace(metadata, ep, result);
+	if (res == EU_PARSE_OK && unlikely(*ep->input != c))
+		res = EU_PARSE_ERROR;
+
+	return res;
+}
+
 static enum eu_parse_result consume_ws_resume(struct eu_parse *ep,
 					      struct eu_parse_cont *gcont)
 {

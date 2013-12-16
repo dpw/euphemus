@@ -81,6 +81,27 @@ static __inline__ enum eu_parse_result eu_consume_whitespace(
 		return eu_insert_whitespace_cont(metadata, ep, result);
 }
 
+enum eu_parse_result eu_consume_ws_until_slow(struct eu_metadata *metadata,
+					      struct eu_parse *ep,
+					      void *result,
+					      char c);
+
+static __inline__ enum eu_parse_result eu_consume_whitespace_until(
+						struct eu_metadata *metadata,
+						struct eu_parse *ep,
+						void *result,
+						char c)
+{
+	if (unlikely(*ep->input != c)) {
+		enum eu_parse_result res
+			= eu_consume_ws_until_slow(metadata, ep, result, c);
+		if (unlikely(res != EU_PARSE_OK))
+			return res;
+	}
+
+	return EU_PARSE_OK;
+}
+
 enum eu_parse_result eu_parse_expect_pause(struct eu_parse *ep,
 					   const char *expect,
 					   size_t expect_len);
