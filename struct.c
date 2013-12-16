@@ -196,7 +196,7 @@ enum eu_parse_result eu_struct_parse(struct eu_metadata *gmetadata,
 	void *s;
 
 	if (unlikely(*ep->input != '{')) {
-		enum eu_parse_result res = eu_consume_whitespace(ep, gmetadata,
+		enum eu_parse_result res = eu_consume_whitespace(gmetadata, ep,
 								 result);
 		if (unlikely(res != EU_PARSE_OK))
 			return res;
@@ -221,7 +221,7 @@ enum eu_parse_result eu_inline_struct_parse(struct eu_metadata *gmetadata,
 					    struct eu_parse *ep, void *result)
 {
 	if (unlikely(*ep->input != '{')) {
-		enum eu_parse_result res = eu_consume_whitespace(ep, gmetadata,
+		enum eu_parse_result res = eu_consume_whitespace(gmetadata, ep,
 								 result);
 		if (unlikely(res != EU_PARSE_OK))
 			return res;

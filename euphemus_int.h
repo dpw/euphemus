@@ -64,13 +64,13 @@ static __inline__ const char *skip_whitespace(const char *p, const char *end)
 	return p;
 }
 
-enum eu_parse_result eu_insert_whitespace_cont(struct eu_parse *ep,
-					       struct eu_metadata *metadata,
+enum eu_parse_result eu_insert_whitespace_cont(struct eu_metadata *metadata,
+					       struct eu_parse *ep,
 					       void *result);
 
 static __inline__ enum eu_parse_result eu_consume_whitespace(
-						struct eu_parse *ep,
 						struct eu_metadata *metadata,
+						struct eu_parse *ep,
 						void *result)
 {
 	const char *end = ep->input_end;
@@ -78,7 +78,7 @@ static __inline__ enum eu_parse_result eu_consume_whitespace(
 	if (ep->input != end)
 		return EU_PARSE_OK;
 	else
-		return eu_insert_whitespace_cont(ep, metadata, result);
+		return eu_insert_whitespace_cont(metadata, ep, result);
 }
 
 enum eu_parse_result eu_parse_expect_pause(struct eu_parse *ep,

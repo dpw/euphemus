@@ -196,8 +196,8 @@ static enum eu_parse_result consume_ws_resume(struct eu_parse *ep,
 static void consume_ws_destroy(struct eu_parse *ep,
 			       struct eu_parse_cont *cont);
 
-enum eu_parse_result eu_insert_whitespace_cont(struct eu_parse *ep,
-					       struct eu_metadata *metadata,
+enum eu_parse_result eu_insert_whitespace_cont(struct eu_metadata *metadata,
+					       struct eu_parse *ep,
 					       void *result)
 {
 	struct consume_ws_cont *cont = malloc(sizeof *cont);

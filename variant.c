@@ -103,7 +103,7 @@ static enum eu_parse_result whitespace(void *variant_metadata,
 				       struct eu_variant *result)
 {
 	enum eu_parse_result res
-		= eu_consume_whitespace(ep, variant_metadata, result);
+		= eu_consume_whitespace(variant_metadata, ep, result);
 	if (res == EU_PARSE_OK)
 		return variant_parse(variant_metadata, ep, result);
 	else

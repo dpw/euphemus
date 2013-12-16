@@ -35,7 +35,7 @@ enum eu_parse_result eu_array_parse(struct eu_metadata *gmetadata,
 	size_t capacity;
 
 	if (unlikely(*ep->input != '[')) {
-		enum eu_parse_result res = eu_consume_whitespace(ep, gmetadata,
+		enum eu_parse_result res = eu_consume_whitespace(gmetadata, ep,
 								 result);
 		if (unlikely(res != EU_PARSE_OK))
 			return res;

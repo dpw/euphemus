@@ -27,7 +27,7 @@ static enum eu_parse_result string_parse(struct eu_metadata *metadata,
 	(void)metadata;
 
 	if (unlikely(*p != '\"')) {
-		enum eu_parse_result res = eu_consume_whitespace(ep, metadata,
+		enum eu_parse_result res = eu_consume_whitespace(metadata, ep,
 								 result);
 		if (unlikely(res != EU_PARSE_OK))
 			return res;
