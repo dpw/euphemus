@@ -2,6 +2,7 @@
 #define EUPHEMUS_EUPHEMUS_INT_H
 
 #include <string.h>
+#include <stdint.h>
 
 #ifdef __GNUC__
 #define likely(x) __builtin_expect(!!(x), 1)
@@ -102,28 +103,85 @@ static __inline__ enum eu_parse_result eu_consume_whitespace_until(
 	return EU_PARSE_OK;
 }
 
-enum eu_parse_result eu_parse_expect_pause(struct eu_parse *ep,
-					   const char *expect,
-					   size_t expect_len);
+enum eu_parse_result eu_parse_expect_slow(struct eu_parse *ep,
+					  const char *expect,
+					  unsigned int expect_len);
+
+#if !(defined(__i386__) || defined(__x86_64__))
+
+struct expect {
+	unsigned int len;
+	const char *str;
+};
+
+#define EXPECT_INIT(l, lit, str) {                                    \
+	(l),                                                          \
+	str                                                           \
+}
+
+#define EXPECT_ASSIGN(e, l, lit, s) do {                              \
+	(e).len = (l);                                                \
+	(e).str = s;                                                  \
+} while (0);
 
 static __inline__ enum eu_parse_result eu_parse_expect(struct eu_parse *ep,
-						       const char *expect,
-						       size_t expect_len)
+						       struct expect e)
 {
-	size_t avail = ep->input_end - ep->input;
-
-	if (avail >= expect_len) {
-		if (!memcmp(ep->input, expect, expect_len)) {
-			ep->input += expect_len;
+	if (ep->input_end - ep->input >= e.len) {
+		if (likely(!memcmp(ep->input, e.str, e.len))) {
+			ep->input += e.len;
 			return EU_PARSE_OK;
 		}
-		else {
-			return EU_PARSE_ERROR;
-		}
+
+		return EU_PARSE_ERROR;
 	}
 	else {
-		return eu_parse_expect_pause(ep, expect, expect_len);
+		return eu_parse_expect_slow(ep, e.str, e.len);
 	}
 }
+
+#else
+
+/* This variant avoids a memcmp in the fast path, but relies on
+   support for unaliagned loads and assumes little-endian. */
+
+struct expect {
+	uint32_t mask;
+	uint32_t val;
+	unsigned int len;
+	const char *str;
+};
+
+#define EXPECT_INIT(l, lit, str) {                                    \
+	(l) < 4 ? ((uint32_t)1 << ((l)*8)) - 1 : 0xffffffff,          \
+	__builtin_bswap32(lit) >> (4 - (l)) * 8,                      \
+	(l),                                                          \
+	str                                                           \
+}
+
+#define EXPECT_ASSIGN(e, l, lit, s) do {                              \
+	(e).mask = ((uint32_t)1 << ((l)*8)) - 1;                      \
+	(e).val = __builtin_bswap32(lit) >> (4 - (l)) * 8;            \
+	(e).len = (l);                                                \
+	(e).str = s;                                                  \
+} while (0);
+
+static __inline__ enum eu_parse_result eu_parse_expect(struct eu_parse *ep,
+						       struct expect e)
+{
+	if (ep->input_end - ep->input >= 4) {
+		if (likely((*(uint32_t *)ep->input & e.mask) == e.val)) {
+			ep->input += e.len;
+			return EU_PARSE_OK;
+		}
+
+		return EU_PARSE_ERROR;
+	}
+	else {
+		return eu_parse_expect_slow(ep, e.str, e.len);
+	}
+}
+
+#endif
 
 #endif

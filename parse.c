@@ -260,7 +260,7 @@ void eu_noop_fini(struct eu_metadata *metadata, void *value)
 struct expect_parse_cont {
 	struct eu_parse_cont base;
 	const char *expect;
-	size_t expect_len;
+	unsigned int expect_len;
 };
 
 static enum eu_parse_result expect_parse_resume(struct eu_parse *ep,
@@ -268,14 +268,22 @@ static enum eu_parse_result expect_parse_resume(struct eu_parse *ep,
 static void expect_parse_cont_destroy(struct eu_parse *ep,
 				      struct eu_parse_cont *cont);
 
-enum eu_parse_result eu_parse_expect_pause(struct eu_parse *ep,
-					   const char *expect,
-					   size_t expect_len)
+enum eu_parse_result eu_parse_expect_slow(struct eu_parse *ep,
+					  const char *expect,
+					  unsigned int expect_len)
 {
 	size_t avail = ep->input_end - ep->input;
 	struct expect_parse_cont *cont;
 
-	/* eu_parse_expect ensures that avail < expect_len */
+	if (expect_len <= avail) {
+		if (!memcmp(ep->input, expect, expect_len)) {
+			ep->input += expect_len;
+			return EU_PARSE_OK;
+		}
+
+		return EU_PARSE_ERROR;
+	}
+
 	if (memcmp(ep->input, expect, avail))
 		return EU_PARSE_ERROR;
 
@@ -298,32 +306,11 @@ static enum eu_parse_result expect_parse_resume(struct eu_parse *ep,
 						struct eu_parse_cont *gcont)
 {
 	struct expect_parse_cont *cont = (struct expect_parse_cont *)gcont;
-	const char *p = ep->input;
-	size_t avail = ep->input_end - p;
-	size_t expect_len = cont->expect_len;
+	const char *expect = cont->expect;
+	unsigned int expect_len = cont->expect_len;
 
-	if (avail >= expect_len) {
-		const char *expect = cont->expect;
-
-		free(cont);
-		if (!memcmp(expect, p, expect_len)) {
-			ep->input = p + expect_len;
-			return EU_PARSE_OK;
-		}
-		else {
-			return EU_PARSE_ERROR;
-		}
-	}
-
-	if (!memcmp(p, cont->expect, avail)) {
-		ep->input = p + avail;
-		cont->expect += avail;
-		cont->expect_len -= avail;
-		eu_parse_insert_cont(ep, &cont->base);
-		return EU_PARSE_PAUSED;
-	}
-
-	return EU_PARSE_ERROR;
+	free(cont);
+	return eu_parse_expect_slow(ep, expect, expect_len);
 }
 
 static void expect_parse_cont_destroy(struct eu_parse *ep,

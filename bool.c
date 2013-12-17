@@ -6,18 +6,20 @@ static enum eu_parse_result bool_parse(struct eu_metadata *metadata,
 				       void *v_result)
 {
 	eu_bool_t *result = v_result;
+	struct expect expect = EXPECT_INIT(4, 'alse', "alse");
+
+	*result = 0;
 
 	for (;;) {
 		switch (*ep->input) {
 		case 't':
-			ep->input++;
 			*result = 1;
-			return eu_parse_expect(ep, "rue", 3);
+			EXPECT_ASSIGN(expect, 3, 'rue', "rue");
+			/* fall through */
 
 		case 'f':
 			ep->input++;
-			*result = 0;
-			return eu_parse_expect(ep, "alse", 4);
+			return eu_parse_expect(ep, expect);
 
 		case WHITESPACE_CASES: {
 			enum eu_parse_result res
@@ -48,12 +50,11 @@ void eu_parse_init_bool(struct eu_parse *ep, eu_bool_t *bool)
 
 struct eu_bool_misc {
 	eu_bool_t value;
-	unsigned char expect_len;
-	const char *expect;
+	struct expect expect;
 };
 
-struct eu_bool_misc eu_bool_true = { 1, 3, "rue" };
-struct eu_bool_misc eu_bool_false = { 0, 4, "alse" };
+struct eu_bool_misc eu_bool_true = { 1, EXPECT_INIT(3, 'rue', "rue") };
+struct eu_bool_misc eu_bool_false = { 0, EXPECT_INIT(4, 'alse', "alse") };
 
 enum eu_parse_result eu_variant_bool(void *v_misc, struct eu_parse *ep,
 				     struct eu_variant *result)
@@ -63,5 +64,5 @@ enum eu_parse_result eu_variant_bool(void *v_misc, struct eu_parse *ep,
 	result->metadata = &eu_bool_metadata;
 	ep->input++;
 	result->u.bool = misc->value;
-	return eu_parse_expect(ep, misc->expect, misc->expect_len);
+	return eu_parse_expect(ep, misc->expect);
 }

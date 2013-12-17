@@ -20,7 +20,7 @@ ROOT=$(filter-out ./,$(dir $(MAKEFILE)))
 VPATH=$(ROOT)
 
 # It's less likely that you'll want to override this
-PROJECT_CFLAGS=-D_GNU_SOURCE
+PROJECT_CFLAGS=-D_GNU_SOURCE -Wno-multichar
 
 # The euphemus library source files
 LIB_SRCS=parse.c struct.c array.c string.c variant.c number.c bool.c null.c
