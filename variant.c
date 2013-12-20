@@ -110,7 +110,8 @@ static enum eu_parse_result whitespace(void *variant_metadata,
 		return res;
 }
 
-struct eu_variant *eu_variant_get(struct eu_variant *variant, const char *name)
+struct eu_variant *eu_variant_get(struct eu_variant *variant,
+				  struct eu_fixed_string name)
 {
 	if (eu_variant_type(variant) == EU_JSON_OBJECT)
 		return eu_object_get(&variant->u.object, name);

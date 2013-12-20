@@ -94,18 +94,18 @@ static void check_variant(struct eu_variant *var)
 	struct eu_variant *str, *obj, *num, *bool, *null, *array;
 
 	assert(eu_variant_type(var) == EU_JSON_OBJECT);
-	assert(str = eu_variant_get(var, "str"));
-	assert(obj = eu_variant_get(var, "obj"));
-	assert(bool = eu_variant_get(var, "bool"));
-	assert(null = eu_variant_get(var, "null"));
-	assert(array = eu_variant_get(var, "array"));
+	assert(str = eu_variant_get_cstr(var, "str"));
+	assert(obj = eu_variant_get_cstr(var, "obj"));
+	assert(bool = eu_variant_get_cstr(var, "bool"));
+	assert(null = eu_variant_get_cstr(var, "null"));
+	assert(array = eu_variant_get_cstr(var, "array"));
 
 	assert(eu_variant_type(str) == EU_JSON_STRING);
 	assert(str->u.string.len = 13);
 	assert(!memcmp(str->u.string.chars, "hello, world!", 13));
 
 	assert(eu_variant_type(obj) == EU_JSON_OBJECT);
-	assert(num = eu_variant_get(obj, "num"));
+	assert(num = eu_variant_get_cstr(obj, "num"));
 
 	assert(eu_variant_type(num) == EU_JSON_NUMBER);
 	assert(num->u.number = 42);

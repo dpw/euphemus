@@ -321,15 +321,15 @@ void eu_variant_members_fini(struct eu_variant_members *members)
 }
 
 struct eu_variant *eu_variant_members_get(struct eu_variant_members *members,
-					  const char *name)
+					  struct eu_fixed_string name)
 {
 	size_t i;
 
 	for (i = 0; i < members->len; i++) {
 		struct eu_variant_member *m = &members->members[i];
 
-		if (!strncmp(name, m->name, m->name_len)
-		    && name[m->name_len] == 0)
+		if (m->name_len == name.len
+		    && !memcmp(m->name, name.chars, name.len))
 			return &m->value;
 	}
 

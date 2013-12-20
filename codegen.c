@@ -286,8 +286,10 @@ static struct type_info *make_struct(struct eu_variant *schema,
 				     struct codegen *codegen)
 {
 	struct struct_type_info *sti = xalloc(sizeof *sti);
-	struct eu_variant *name = eu_variant_get(schema, "euphemusStructName");
-	struct eu_variant *props = eu_variant_get(schema, "properties");
+	struct eu_variant *name = eu_variant_get_cstr(schema,
+						      "euphemusStructName");
+	struct eu_variant *props = eu_variant_get_cstr(schema,
+						       "properties");
 	struct eu_variant_members *props_members;
 	size_t i;
 
@@ -517,7 +519,7 @@ static struct type_info *resolve(struct codegen *codegen,
 	if (!schema->u.object.members.len)
 		return &variant_type_info.base.base;
 
-	type = eu_variant_get(schema, "type");
+	type = eu_variant_get_cstr(schema, "type");
 	assert(type && eu_variant_type(type) == EU_JSON_STRING);
 
 	if (eu_variant_equals_cstr(type, "string"))
