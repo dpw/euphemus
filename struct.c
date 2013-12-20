@@ -321,7 +321,7 @@ void eu_variant_members_fini(struct eu_variant_members *members)
 }
 
 struct eu_variant *eu_variant_members_get(struct eu_variant_members *members,
-					  struct eu_fixed_string name)
+					  struct eu_string_value name)
 {
 	size_t i;
 

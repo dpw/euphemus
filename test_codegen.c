@@ -38,7 +38,7 @@ static void test_inline_struct(void)
 static void check_extras(struct foo *foo)
 {
 	struct eu_variant *var = eu_variant_members_get(&foo->extras,
-						  eu_fixed_string_cstr("quux"));
+							eu_cstr("quux"));
 	assert(var);
 	assert(var->u.string.len == 1);
 	assert(!memcmp(var->u.string.chars, "x", 1));

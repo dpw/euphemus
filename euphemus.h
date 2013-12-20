@@ -79,14 +79,14 @@ enum eu_parse_result eu_parse_metadata_cont_resume(struct eu_parse *ep,
 void eu_parse_metadata_cont_destroy(struct eu_parse *ep,
 				    struct eu_parse_cont *cont);
 
-struct eu_fixed_string {
+struct eu_string_value {
 	const char *chars;
 	size_t len;
 };
 
-static __inline__ struct eu_fixed_string eu_fixed_string_cstr(const char *s)
+static __inline__ struct eu_string_value eu_cstr(const char *s)
 {
-	struct eu_fixed_string f = {
+	struct eu_string_value f = {
 		s,
 		strlen(s)
 	};
@@ -107,7 +107,7 @@ struct eu_variant_members {
 
 void eu_variant_members_fini(struct eu_variant_members *members);
 struct eu_variant *eu_variant_members_get(struct eu_variant_members *members,
-					  struct eu_fixed_string name);
+					  struct eu_string_value name);
 
 struct eu_object {
 	struct eu_variant_members members;
@@ -120,7 +120,7 @@ static __inline__ void eu_object_fini(struct eu_object *obj) {
 }
 
 static __inline__ struct eu_variant *eu_object_get(struct eu_object *obj,
-						   struct eu_fixed_string name)
+						   struct eu_string_value name)
 {
 	return eu_variant_members_get(&obj->members, name);
 }
@@ -204,13 +204,13 @@ static __inline__ enum eu_json_type eu_variant_type(struct eu_variant *variant)
 }
 
 struct eu_variant *eu_variant_get(struct eu_variant *variant,
-				  struct eu_fixed_string name);
+				  struct eu_string_value name);
 
 static __inline__ struct eu_variant *eu_variant_get_cstr(
 						    struct eu_variant *variant,
 						    const char *name)
 {
-	return eu_variant_get(variant, eu_fixed_string_cstr(name));
+	return eu_variant_get(variant, eu_cstr(name));
 }
 
 static __inline__ void eu_variant_fini(struct eu_variant *variant)
