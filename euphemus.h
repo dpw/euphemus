@@ -115,7 +115,7 @@ void eu_parse_metadata_cont_destroy(struct eu_parse *ep,
 
 /* Path resolution */
 
-int eu_resolve(struct eu_value *val, struct eu_string_value *path, size_t len);
+int eu_resolve_path(struct eu_value *val, struct eu_string_value path);
 int eu_resolve_error(struct eu_value *val, struct eu_string_value name);
 
 /* Variant objects */

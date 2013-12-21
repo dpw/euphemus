@@ -139,10 +139,6 @@ static void test_resolve(void)
 	struct eu_variant var;
 	struct eu_parse ep;
 	const char *json = "{\"a\":{\"b\":null,\"c\":true}}";
-	struct eu_string_value path[] = {
-		{ "a", 1 },
-		{ "c", 1 }
-	};
 	struct eu_value val;
 
 	eu_parse_init_variant(&ep, &var);
@@ -151,7 +147,7 @@ static void test_resolve(void)
 	eu_parse_fini(&ep);
 
 	val = eu_variant_value(&var);
-	assert(eu_resolve(&val, path, 2));
+	assert(eu_resolve_path(&val, eu_cstr("/a/c")));
 	assert(eu_value_type(val) == EU_JSON_BOOL);
 	assert(*(eu_bool_t *)val.value);
 
