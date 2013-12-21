@@ -45,7 +45,7 @@ static struct eu_metadata *lookup_member(struct eu_struct_metadata *md,
 					 const char *name_end, void **value)
 {
 	size_t name_len = name_end - name;
-	int i;
+	size_t i;
 	char *name_copy;
 
 	for (i = 0; i < md->n_members; i++) {
@@ -75,7 +75,7 @@ static struct eu_metadata *lookup_member_2(struct eu_struct_metadata *md,
 {
 	size_t more_len = more_end - more;
 	size_t name_len = buf_len + more_len;
-	int i;
+	size_t i;
 	char *name_copy;
 
 	for (i = 0; i < md->n_members; i++) {
@@ -239,7 +239,7 @@ void eu_inline_struct_fini(struct eu_metadata *gmetadata, void *s)
 {
 	struct eu_struct_metadata *metadata
 		= (struct eu_struct_metadata *)gmetadata;
-	int i;
+	size_t i;
 
 	for (i = 0; i < metadata->n_members; i++) {
 		struct eu_struct_member *member = &metadata->members[i];
@@ -281,6 +281,7 @@ struct eu_struct_metadata eu_object_metadata = {
 	{
 		eu_struct_parse,
 		eu_struct_fini,
+		eu_struct_resolve,
 		sizeof(struct eu_object *),
 		EU_JSON_OBJECT
 	},
@@ -295,6 +296,7 @@ struct eu_struct_metadata eu_inline_object_metadata = {
 	{
 		eu_inline_struct_parse,
 		eu_inline_struct_fini,
+		eu_inline_struct_resolve,
 		sizeof(struct eu_object),
 		EU_JSON_OBJECT
 	},
@@ -335,3 +337,44 @@ struct eu_variant *eu_variant_members_get(struct eu_variant_members *members,
 
 	return NULL;
 }
+
+enum eu_resolve_result eu_inline_struct_resolve(struct eu_value *val,
+						struct eu_string_value name)
+{
+	struct eu_struct_metadata *md
+		= (struct eu_struct_metadata *)val->metadata;
+	size_t i;
+	char *s = val->value;
+	struct eu_variant_members *extras;
+
+	for (i = 0; i < md->n_members; i++) {
+		struct eu_struct_member *m = &md->members[i];
+		if (m->name_len == name.len
+		    && !memcmp(m->name, name.chars, name.len)) {
+			val->value = s + m->offset;
+			val->metadata = m->metadata;
+			return EU_RESOLVE_OK;
+		}
+	}
+
+	extras = (void *)(s + md->extras_offset);
+	for (i = 0; i < extras->len; i++) {
+		struct eu_variant_member *m = &extras->members[i];
+
+		if (m->name_len == name.len
+		    && !memcmp(m->name, name.chars, name.len)) {
+			*val = eu_variant_value(&m->value);
+			return EU_RESOLVE_OK;
+		}
+	}
+
+	return EU_RESOLVE_ERROR;
+}
+
+enum eu_resolve_result eu_struct_resolve(struct eu_value *val,
+					 struct eu_string_value name)
+{
+	val->value = *(void **)val->value;
+	return eu_inline_struct_resolve(val, name);
+}
+

@@ -31,6 +31,7 @@ static enum eu_parse_result null_parse(struct eu_metadata *metadata,
 struct eu_metadata eu_null_metadata = {
 	null_parse,
 	eu_noop_fini,
+	eu_resolve_error,
 	0,
 	EU_JSON_NULL
 };

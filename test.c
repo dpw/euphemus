@@ -25,7 +25,7 @@ void eu_string_array_fini(struct eu_string_array *a)
 
 
 
-static void test_string(void)
+static void test_parse_string(void)
 {
 	TEST_PARSE("  \"hello, world!\"  ",
 		   struct eu_string,
@@ -35,7 +35,7 @@ static void test_string(void)
 		   eu_string_fini(&result));
 }
 
-static void test_number(void)
+static void test_parse_number(void)
 {
 	TEST_PARSE("  123456789.0123456789e0  ",
 		   double,
@@ -59,7 +59,7 @@ static void test_number(void)
 		   assert(result == (double)-123456789),);
 }
 
-static void test_bool(void)
+static void test_parse_bool(void)
 {
 	TEST_PARSE("  true  ", eu_bool_t, eu_parse_init_bool,
 		   assert(result),);
@@ -79,7 +79,7 @@ static void check_array(struct eu_string_array *a)
 	assert(!memcmp(a->a[1].chars, "bar", 3));
 }
 
-static void test_array(void)
+static void test_parse_array(void)
 {
 	TEST_PARSE("  [  \"foo\"  ,  \"bar\"  ]  ",
 		   struct eu_string_array,
@@ -121,7 +121,7 @@ static void check_variant(struct eu_variant *var)
 	assert(eu_variant_type(&array->u.array.a[1]) == EU_JSON_ARRAY);
 }
 
-static void test_variant(void)
+static void test_parse_variant(void)
 {
 	TEST_PARSE("  {  \"str\":  \"hello, world!\","
 		   "  \"obj\"  :  {  \"num\"  :  42  },"
@@ -134,12 +134,39 @@ static void test_variant(void)
 		   eu_variant_fini(&result));
 }
 
+static void test_resolve(void)
+{
+	struct eu_variant var;
+	struct eu_parse ep;
+	const char *json = "{\"a\":{\"b\":null,\"c\":true}}";
+	struct eu_string_value path[] = {
+		{ "a", 1 },
+		{ "c", 1 }
+	};
+	struct eu_value val;
+
+	eu_parse_init_variant(&ep, &var);
+	assert(eu_parse(&ep, json, strlen(json)));
+	assert(eu_parse_finish(&ep));
+	eu_parse_fini(&ep);
+
+	val = eu_variant_value(&var);
+	assert(eu_resolve(&val, path, 2) == EU_RESOLVE_OK);
+	assert(eu_value_type(val) == EU_JSON_BOOL);
+	assert(*(eu_bool_t *)val.value);
+
+	eu_variant_fini(&var);
+}
+
 int main(void)
 {
-	test_string();
-	test_number();
-	test_bool();
-	test_array();
-	test_variant();
+	test_parse_string();
+	test_parse_number();
+	test_parse_bool();
+	test_parse_array();
+	test_parse_variant();
+
+	test_resolve();
+
 	return 0;
 }

@@ -23,7 +23,7 @@ VPATH=$(ROOT)
 PROJECT_CFLAGS=-D_GNU_SOURCE -Wno-multichar
 
 # The euphemus library source files
-LIB_SRCS=parse.c struct.c array.c string.c variant.c number.c bool.c null.c
+LIB_SRCS=parse.c resolve.c struct.c array.c string.c variant.c number.c bool.c null.c
 
 # Other source files
 SRCS=codegen.c test.c test_codegen.c parse_perf.c test_schema.c

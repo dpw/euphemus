@@ -5,38 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct eu_parse {
-	struct eu_parse_cont *outer_stack;
-	struct eu_parse_cont *stack_top;
-	struct eu_parse_cont *stack_bottom;
-
-	struct eu_metadata *metadata;
-	void *result;
-
-	const char *input;
-	const char *input_end;
-
-	char *buf;
-	size_t buf_len;
-	size_t buf_size;
-
-	int error;
-};
-
-enum eu_parse_result {
-	EU_PARSE_OK,
-	EU_PARSE_PAUSED,
-	EU_PARSE_ERROR
-};
-
-/* A continuation stack frame. */
-struct eu_parse_cont {
-	struct eu_parse_cont *next;
-	enum eu_parse_result (*resume)(struct eu_parse *p,
-				       struct eu_parse_cont *cont);
-	void (*destroy)(struct eu_parse *ep, struct eu_parse_cont *cont);
-};
-
 enum eu_json_type {
 	EU_JSON_INVALID,
 	EU_JSON_STRING,
@@ -46,6 +14,41 @@ enum eu_json_type {
 	EU_JSON_BOOL,
 	EU_JSON_NULL,
 	EU_JSON_MAX
+};
+
+enum eu_parse_result {
+	EU_PARSE_OK,
+	EU_PARSE_PAUSED,
+	EU_PARSE_ERROR
+};
+
+enum eu_resolve_result {
+	EU_RESOLVE_OK,
+	EU_RESOLVE_ERROR
+};
+
+struct eu_parse;
+
+struct eu_string_value {
+	const char *chars;
+	size_t len;
+};
+
+static __inline__ struct eu_string_value eu_cstr(const char *s)
+{
+	struct eu_string_value f = {
+		s,
+		strlen(s)
+	};
+
+	return f;
+}
+
+/* An eu_value pairs a pointer to some data representing a parsed JSON
+   value with the metafata pointer allowing acces to it. */
+struct eu_value {
+	void *value;
+	struct eu_metadata *metadata;
 };
 
 /* A description of a type of data (including things like how to
@@ -64,8 +67,45 @@ struct eu_metadata {
 	/* Release any resources associated with the value.*/
 	void (*fini)(struct eu_metadata *metadata, void *value);
 
+	/* Resolve a JSON pointer. */
+	enum eu_resolve_result (*resolve)(struct eu_value *val,
+					  struct eu_string_value name);
+
 	unsigned int size;
 	unsigned char json_type;
+};
+
+static __inline__ enum eu_json_type eu_value_type(struct eu_value val)
+{
+	return val.metadata->json_type;
+}
+
+/* Parsing */
+
+struct eu_parse {
+	struct eu_parse_cont *outer_stack;
+	struct eu_parse_cont *stack_top;
+	struct eu_parse_cont *stack_bottom;
+
+	struct eu_metadata *metadata;
+	void *result;
+
+	const char *input;
+	const char *input_end;
+
+	char *buf;
+	size_t buf_len;
+	size_t buf_size;
+
+	int error;
+};
+
+/* A continuation stack frame. */
+struct eu_parse_cont {
+	struct eu_parse_cont *next;
+	enum eu_parse_result (*resume)(struct eu_parse *p,
+				       struct eu_parse_cont *cont);
+	void (*destroy)(struct eu_parse *ep, struct eu_parse_cont *cont);
 };
 
 void eu_parse_init(struct eu_parse *ep, struct eu_metadata *metadata,
@@ -79,20 +119,12 @@ enum eu_parse_result eu_parse_metadata_cont_resume(struct eu_parse *ep,
 void eu_parse_metadata_cont_destroy(struct eu_parse *ep,
 				    struct eu_parse_cont *cont);
 
-struct eu_string_value {
-	const char *chars;
-	size_t len;
-};
+/* Path resolution */
 
-static __inline__ struct eu_string_value eu_cstr(const char *s)
-{
-	struct eu_string_value f = {
-		s,
-		strlen(s)
-	};
-
-	return f;
-}
+enum eu_resolve_result eu_resolve(struct eu_value *val,
+				  struct eu_string_value *path, size_t len);
+enum eu_resolve_result eu_resolve_error(struct eu_value *val,
+					struct eu_string_value name);
 
 /* Variant objects */
 
@@ -162,6 +194,7 @@ void eu_array_fini(struct eu_metadata *gmetadata, void *value);
 		{                                                     \
 			eu_array_parse,                               \
 			eu_array_fini,                                \
+			eu_resolve_error,                             \
 			sizeof(struct eu_array),                      \
 			EU_JSON_ARRAY                                 \
 		},                                                    \
@@ -203,6 +236,15 @@ static __inline__ enum eu_json_type eu_variant_type(struct eu_variant *variant)
 	return variant->metadata->json_type;
 }
 
+static __inline__ struct eu_value eu_variant_value(struct eu_variant *variant)
+{
+	struct eu_value v = {
+		&variant->u,
+		variant->metadata
+	};
+	return v;
+}
+
 struct eu_variant *eu_variant_get(struct eu_variant *variant,
 				  struct eu_string_value name);
 
@@ -238,7 +280,7 @@ struct eu_struct_metadata {
 	struct eu_metadata base;
 	unsigned int struct_size;
 	unsigned int extras_offset;
-	int n_members;
+	size_t n_members;
 	struct eu_struct_member *members;
 };
 
@@ -246,17 +288,22 @@ enum eu_parse_result eu_struct_parse(struct eu_metadata *gmetadata,
 				     struct eu_parse *ep,
 				     void *result);
 void eu_struct_fini(struct eu_metadata *gmetadata, void *value);
-
+enum eu_resolve_result eu_struct_resolve(struct eu_value *val,
+					 struct eu_string_value name);
 enum eu_parse_result eu_inline_struct_parse(struct eu_metadata *gmetadata,
 					    struct eu_parse *ep,
 					    void *result);
 void eu_inline_struct_fini(struct eu_metadata *gmetadata, void *value);
+enum eu_resolve_result eu_inline_struct_resolve(struct eu_value *val,
+						struct eu_string_value name);
+
 
 #define EU_STRUCT_METADATA_INITIALIZER(struct_name, struct_members)   \
 	{                                                             \
 		{                                                     \
 			eu_struct_parse,                              \
 			eu_struct_fini,                               \
+			eu_struct_resolve,                            \
 			sizeof(struct_name *),                        \
 			EU_JSON_INVALID                               \
 		},                                                    \
@@ -271,6 +318,7 @@ void eu_inline_struct_fini(struct eu_metadata *gmetadata, void *value);
 		{                                                     \
 			eu_inline_struct_parse,                       \
 			eu_inline_struct_fini,                        \
+			eu_inline_struct_resolve,                     \
 			sizeof(struct_name),                          \
 			EU_JSON_INVALID                               \
 		},                                                    \

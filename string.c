@@ -177,6 +177,7 @@ static void string_fini(struct eu_metadata *metadata, void *value)
 struct eu_metadata eu_string_metadata = {
 	string_parse,
 	string_fini,
+	eu_resolve_error,
 	sizeof(struct eu_string),
 	EU_JSON_STRING
 };
