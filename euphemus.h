@@ -22,11 +22,6 @@ enum eu_parse_result {
 	EU_PARSE_ERROR
 };
 
-enum eu_resolve_result {
-	EU_RESOLVE_OK,
-	EU_RESOLVE_ERROR
-};
-
 struct eu_parse;
 
 struct eu_string_value {
@@ -68,8 +63,7 @@ struct eu_metadata {
 	void (*fini)(struct eu_metadata *metadata, void *value);
 
 	/* Resolve a JSON pointer. */
-	enum eu_resolve_result (*resolve)(struct eu_value *val,
-					  struct eu_string_value name);
+	int (*resolve)(struct eu_value *val, struct eu_string_value name);
 
 	unsigned int size;
 	unsigned char json_type;
@@ -121,10 +115,8 @@ void eu_parse_metadata_cont_destroy(struct eu_parse *ep,
 
 /* Path resolution */
 
-enum eu_resolve_result eu_resolve(struct eu_value *val,
-				  struct eu_string_value *path, size_t len);
-enum eu_resolve_result eu_resolve_error(struct eu_value *val,
-					struct eu_string_value name);
+int eu_resolve(struct eu_value *val, struct eu_string_value *path, size_t len);
+int eu_resolve_error(struct eu_value *val, struct eu_string_value name);
 
 /* Variant objects */
 
@@ -288,14 +280,12 @@ enum eu_parse_result eu_struct_parse(struct eu_metadata *gmetadata,
 				     struct eu_parse *ep,
 				     void *result);
 void eu_struct_fini(struct eu_metadata *gmetadata, void *value);
-enum eu_resolve_result eu_struct_resolve(struct eu_value *val,
-					 struct eu_string_value name);
+int eu_struct_resolve(struct eu_value *val, struct eu_string_value name);
 enum eu_parse_result eu_inline_struct_parse(struct eu_metadata *gmetadata,
 					    struct eu_parse *ep,
 					    void *result);
 void eu_inline_struct_fini(struct eu_metadata *gmetadata, void *value);
-enum eu_resolve_result eu_inline_struct_resolve(struct eu_value *val,
-						struct eu_string_value name);
+int eu_inline_struct_resolve(struct eu_value *val, struct eu_string_value name);
 
 
 #define EU_STRUCT_METADATA_INITIALIZER(struct_name, struct_members)   \

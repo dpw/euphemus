@@ -151,7 +151,7 @@ static void test_resolve(void)
 	eu_parse_fini(&ep);
 
 	val = eu_variant_value(&var);
-	assert(eu_resolve(&val, path, 2) == EU_RESOLVE_OK);
+	assert(eu_resolve(&val, path, 2));
 	assert(eu_value_type(val) == EU_JSON_BOOL);
 	assert(*(eu_bool_t *)val.value);
 

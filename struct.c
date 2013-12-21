@@ -338,8 +338,7 @@ struct eu_variant *eu_variant_members_get(struct eu_variant_members *members,
 	return NULL;
 }
 
-enum eu_resolve_result eu_inline_struct_resolve(struct eu_value *val,
-						struct eu_string_value name)
+int eu_inline_struct_resolve(struct eu_value *val, struct eu_string_value name)
 {
 	struct eu_struct_metadata *md
 		= (struct eu_struct_metadata *)val->metadata;
@@ -353,7 +352,7 @@ enum eu_resolve_result eu_inline_struct_resolve(struct eu_value *val,
 		    && !memcmp(m->name, name.chars, name.len)) {
 			val->value = s + m->offset;
 			val->metadata = m->metadata;
-			return EU_RESOLVE_OK;
+			return 1;
 		}
 	}
 
@@ -364,15 +363,14 @@ enum eu_resolve_result eu_inline_struct_resolve(struct eu_value *val,
 		if (m->name_len == name.len
 		    && !memcmp(m->name, name.chars, name.len)) {
 			*val = eu_variant_value(&m->value);
-			return EU_RESOLVE_OK;
+			return 1;
 		}
 	}
 
-	return EU_RESOLVE_ERROR;
+	return 0;
 }
 
-enum eu_resolve_result eu_struct_resolve(struct eu_value *val,
-					 struct eu_string_value name)
+int eu_struct_resolve(struct eu_value *val, struct eu_string_value name)
 {
 	val->value = *(void **)val->value;
 	return eu_inline_struct_resolve(val, name);
