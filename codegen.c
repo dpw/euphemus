@@ -627,6 +627,20 @@ static struct type_info *alloc_type(struct codegen *codegen,
 		    type->u.string.chars);
 }
 
+static int is_empty_schema(struct eu_variant *schema)
+{
+	struct eu_variant_member *m;
+
+	if (!schema->u.object.members.len)
+		return 1;
+
+	if (schema->u.object.members.len > 1)
+		return 0;
+
+	m = schema->u.object.members.members;
+	return m->name_len == 11 && !memcmp(m->name, "definitions", 11);
+}
+
 static struct type_info *resolve_type(struct codegen *codegen,
 				      struct eu_variant *schema)
 {
@@ -635,9 +649,10 @@ static struct type_info *resolve_type(struct codegen *codegen,
 
 	assert(eu_variant_type(schema) == EU_JSON_OBJECT);
 
-	if (!schema->u.object.members.len)
-		/* An empty schema */
+	if (is_empty_schema(schema))
 		return &variant_type_info.base.base;
+
+	if (schema->u.object.members.len == 1)
 
 	ref = eu_variant_get_cstr(schema, "$ref");
 	if (ref) {
