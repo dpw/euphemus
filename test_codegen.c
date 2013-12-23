@@ -62,11 +62,32 @@ static void test_extras(void)
 		   foo_fini(&result));
 }
 
+static void test_resolve(void)
+{
+	struct foo foo;
+	struct eu_parse ep;
+	const char *json = "{\"bar\":{\"bar\":{\"bar\":{\"bool\":true}}}}";
+	struct eu_value val;
+
+	eu_parse_init_inline_struct_foo(&ep, &foo);
+	assert(eu_parse(&ep, json, strlen(json)));
+	assert(eu_parse_finish(&ep));
+	eu_parse_fini(&ep);
+
+	val = eu_value(&foo, &inline_struct_foo_metadata.base);
+	assert(eu_resolve_path(&val, eu_cstr("/bar/bar/bar/bool")));
+	assert(eu_value_type(val) == EU_JSON_BOOL);
+	assert(*(eu_bool_t *)val.value);
+
+	foo_fini(&foo);
+}
+
 int main(void)
 {
 	test_struct_ptr();
 	test_inline_struct();
 	test_nested();
 	test_extras();
+	test_resolve();
 	return 0;
 }

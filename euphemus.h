@@ -54,6 +54,13 @@ struct eu_value {
 	struct eu_metadata *metadata;
 };
 
+static __inline__ struct eu_value eu_value(void *value,
+					   struct eu_metadata *metadata)
+{
+	struct eu_value v = { value, metadata };
+	return v;
+}
+
 /* A description of a type of data (including things like how to
    allocate, release etc.) */
 struct eu_metadata {
@@ -238,11 +245,7 @@ static __inline__ enum eu_json_type eu_variant_type(struct eu_variant *variant)
 
 static __inline__ struct eu_value eu_variant_value(struct eu_variant *variant)
 {
-	struct eu_value v = {
-		&variant->u,
-		variant->metadata
-	};
-	return v;
+	return eu_value(&variant->u, variant->metadata);
 }
 
 struct eu_variant *eu_variant_get(struct eu_variant *variant,
