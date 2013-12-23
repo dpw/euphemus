@@ -29,6 +29,14 @@ struct eu_string_value {
 	size_t len;
 };
 
+
+static __inline__ struct eu_string_value eu_string_value(const char *chars,
+							 size_t len)
+{
+	struct eu_string_value s = { chars, len };
+	return s;
+}
+
 static __inline__ struct eu_string_value eu_cstr(const char *s)
 {
 	struct eu_string_value f = {

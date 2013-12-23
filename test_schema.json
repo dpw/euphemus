@@ -7,13 +7,19 @@
 			"type": "string"
 		},
                 "any": {},
-		"bar": {
+		"bar": { "$ref": "#/definitions/bar" }
+        },
+
+        "definitions": {
+                "bar": {
                         "type": "object",
 	                "euphemusStructName": "bar",
                         "properties": {
 		                "num": { "type": "number" },
-                                "bool": { "type": "boolean" }
+                                "bool": { "type": "boolean" },
+                                "bar": { "$ref": "#/definitions/baz" }
                         }
-                }
+                },
+                "baz": { "$ref": "#/definitions/bar" }
         }
 }
