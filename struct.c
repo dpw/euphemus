@@ -33,8 +33,7 @@ static struct eu_metadata *add_extra(struct eu_struct_metadata *md, char *s,
 	}
 
 	member = &members[extras->len++];
-	member->name = name;
-	member->name_len = name_len;
+	member->name = eu_string_ref(name, name_len);
 	memset(&member->value, 0, sizeof member->value);
 	*value = &member->value;
 	return &eu_variant_metadata;
@@ -313,7 +312,7 @@ void eu_variant_members_fini(struct eu_variant_members *members)
 	for (i = 0; i < members->len; i++) {
 		struct eu_variant_member *m = &members->members[i];
 
-		free(m->name);
+		free((void *)m->name.chars);
 		eu_variant_fini(&m->value);
 	}
 
@@ -329,9 +328,7 @@ struct eu_variant *eu_variant_members_get(struct eu_variant_members *members,
 
 	for (i = 0; i < members->len; i++) {
 		struct eu_variant_member *m = &members->members[i];
-
-		if (m->name_len == name.len
-		    && !memcmp(m->name, name.chars, name.len))
+		if (eu_string_ref_equal(m->name, name))
 			return &m->value;
 	}
 
@@ -359,9 +356,7 @@ int eu_inline_struct_resolve(struct eu_value *val, struct eu_string_ref name)
 	extras = (void *)(s + md->extras_offset);
 	for (i = 0; i < extras->len; i++) {
 		struct eu_variant_member *m = &extras->members[i];
-
-		if (m->name_len == name.len
-		    && !memcmp(m->name, name.chars, name.len)) {
+		if (eu_string_ref_equal(m->name, name)) {
 			*val = eu_variant_value(&m->value);
 			return 1;
 		}

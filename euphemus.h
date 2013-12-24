@@ -47,6 +47,12 @@ static __inline__ struct eu_string_ref eu_cstr(const char *s)
 	return f;
 }
 
+static __inline__ int eu_string_ref_equal(struct eu_string_ref a,
+					  struct eu_string_ref b)
+{
+	return a.len == b.len && !memcmp(a.chars, b.chars, a.len);
+}
+
 /* An eu_value pairs a pointer to some data representing a parsed JSON
    value with the metafata pointer allowing acces to it. */
 struct eu_value {
@@ -171,6 +177,12 @@ struct eu_string {
 	size_t len;
 };
 
+static __inline__ struct eu_string_ref eu_string_to_ref(
+						      struct eu_string *string)
+{
+	return eu_string_ref(string->chars, string->len);
+}
+
 static __inline__ void eu_string_fini(struct eu_string *string)
 {
 	free(string->chars);
@@ -265,8 +277,7 @@ static __inline__ void eu_variant_fini(struct eu_variant *variant)
 }
 
 struct eu_variant_member {
-	char *name;
-	size_t name_len;
+	struct eu_string_ref name;
 	struct eu_variant value;
 };
 

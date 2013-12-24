@@ -48,14 +48,14 @@ static void check_extras(struct foo *foo)
 {
 	struct eu_variant *var = eu_variant_members_get(&foo->extras,
 							eu_cstr("quux"));
-	assert(var);
-	assert(var->u.string.len == 1);
-	assert(!memcmp(var->u.string.chars, "x", 1));
+	assert(eu_variant_type(var) == EU_JSON_STRING);
+	assert(eu_string_ref_equal(eu_string_to_ref(&var->u.string),
+				   eu_cstr("foo")));
 }
 
 static void test_extras(void)
 {
-	TEST_PARSE("{\"quux\":\"x\"}",
+	TEST_PARSE("{\"quux\":\"foo\"}",
 		   struct foo,
 		   eu_parse_init_inline_struct_foo,
 		   check_extras(&result),

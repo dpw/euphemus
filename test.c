@@ -30,8 +30,8 @@ static void test_parse_string(void)
 	TEST_PARSE("  \"hello, world!\"  ",
 		   struct eu_string,
 		   eu_parse_init_string,
-		   (assert(result.len ==13),
-		    assert(!memcmp(result.chars, "hello, world!", 13))),
+		   assert(eu_string_ref_equal(eu_string_to_ref(&result),
+					      eu_cstr("hello, world!"))),
 		   eu_string_fini(&result));
 }
 
@@ -71,12 +71,10 @@ static void test_parse_bool(void)
 static void check_array(struct eu_string_array *a)
 {
 	assert(a->len == 2);
-
-	assert(a->a[0].len == 3);
-	assert(!memcmp(a->a[0].chars, "foo", 3));
-
-	assert(a->a[1].len == 3);
-	assert(!memcmp(a->a[1].chars, "bar", 3));
+	assert(eu_string_ref_equal(eu_string_to_ref(&a->a[0]),
+				   eu_cstr("foo")));
+	assert(eu_string_ref_equal(eu_string_to_ref(&a->a[1]),
+				   eu_cstr("bar")));
 }
 
 static void test_parse_array(void)
@@ -101,8 +99,8 @@ static void check_variant(struct eu_variant *var)
 	assert(array = eu_variant_get_cstr(var, "array"));
 
 	assert(eu_variant_type(str) == EU_JSON_STRING);
-	assert(str->u.string.len = 13);
-	assert(!memcmp(str->u.string.chars, "hello, world!", 13));
+	assert(eu_string_ref_equal(eu_string_to_ref(&str->u.string),
+				   eu_cstr("hello, world!")));
 
 	assert(eu_variant_type(obj) == EU_JSON_OBJECT);
 	assert(num = eu_variant_get_cstr(obj, "num"));

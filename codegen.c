@@ -127,7 +127,7 @@ struct type_info_ops {
 	void (*fill)(struct type_info *ti, struct codegen *codegen,
 		     struct eu_variant *schema);
 	void (*declare)(struct type_info *ti, FILE *out,
-			const char *name, size_t name_len);
+			struct eu_string_ref name);
 	void (*define)(struct type_info *ti, FILE *c_out, FILE *h_out);
 	void (*call_fini)(struct type_info *ti, FILE *out,
 			  const char *var_expr);
@@ -142,10 +142,9 @@ static void fill_type(struct type_info *ti, struct codegen *codegen,
 }
 
 /* Declare a variable or field of the given type. */
-static void declare(struct type_info *ti, FILE *out,
-		    const char *name, size_t name_len)
+static void declare(struct type_info *ti, FILE *out, struct eu_string_ref name)
 {
-	ti->ops->declare(ti, out, name, name_len);
+	ti->ops->declare(ti, out, name);
 }
 
 /* Define the type */
@@ -200,11 +199,12 @@ struct simple_type_info {
 };
 
 static void simple_type_declare(struct type_info *ti, FILE *out,
-				const char *name, size_t name_len)
+				struct eu_string_ref name)
 {
 	struct simple_type_info *sti = (void *)ti;
 
-	fprintf(out, "\t%s %.*s;\n", sti->type_name, (int)name_len, name);
+	fprintf(out, "\t%s %.*s;\n", sti->type_name,
+		(int)name.len, name.chars);
 }
 
 static void noop_fill(struct type_info *ti, struct codegen *codegen,
@@ -302,16 +302,14 @@ DEFINE_BUILTIN_TYPE_INFO(variant_type_info, "struct eu_variant",
 /* Structs */
 
 struct member_info {
-	const char *name;
-	size_t name_len;
+	struct eu_string_ref name;
 	struct type_info *type;
 };
 
 struct struct_type_info {
 	struct type_info base;
 
-	const char *struct_name;
-	size_t struct_name_len;
+	struct eu_string_ref struct_name;
 
 	struct member_info *members;
 	size_t members_len;
@@ -334,18 +332,17 @@ static struct type_info *alloc_struct(struct eu_variant *schema,
 	assert(name && eu_variant_type(name) == EU_JSON_STRING);
 
 	sti->base.ops = &struct_type_info_ops;
-	sti->struct_name = name->u.string.chars;
-	sti->struct_name_len = name->u.string.len;
+	sti->struct_name = eu_string_to_ref(&name->u.string);
 	sti->members = NULL;
 	sti->members_len = 0;
 	sti->defined_yet = 0;
 
 	sti->metadata_name
 		= xsprintf("struct_%.*s_metadata",
-			   (int)sti->struct_name_len, sti->struct_name);
+			   (int)sti->struct_name.len, sti->struct_name.chars);
 	sti->inline_metadata_name
 		= xsprintf("inline_struct_%.*s_metadata",
-			   (int)sti->struct_name_len, sti->struct_name);
+			   (int)sti->struct_name.len, sti->struct_name.chars);
 	sti->base.metadata_ptr_expr
 		= xsprintf("&%s.base", sti->metadata_name);
 
@@ -374,20 +371,19 @@ static void struct_fill(struct type_info *ti, struct codegen *codegen,
 		struct member_info *mi = &sti->members[i];
 
 		mi->name = sm->name;
-		mi->name_len = sm->name_len;
 		mi->type = resolve_type(codegen, &sm->value);
 	}
 }
 
 
 static void struct_declare(struct type_info *ti, FILE *out,
-			   const char *name, size_t name_len)
+			   struct eu_string_ref name)
 {
 	struct struct_type_info *sti = (void *)ti;
 
 	fprintf(out, "\tstruct %.*s *%.*s;\n",
-		(int)sti->struct_name_len, sti->struct_name,
-		(int)name_len, name);
+		(int)sti->struct_name.len, sti->struct_name.chars,
+		(int)name.len, name.chars);
 }
 
 static void struct_define(struct type_info *ti, FILE *c_out, FILE *h_out)
@@ -408,11 +404,11 @@ static void struct_define(struct type_info *ti, FILE *c_out, FILE *h_out)
 
 	/* The definition of the struct itself. */
 	fprintf(h_out, "struct %.*s {\n",
-		(int)sti->struct_name_len, sti->struct_name);
+		(int)sti->struct_name.len, sti->struct_name.chars);
 
 	for (i = 0; i < sti->members_len; i++) {
 		struct member_info *mi = &sti->members[i];
-		declare(mi->type, h_out, mi->name, mi->name_len);
+		declare(mi->type, h_out, mi->name);
 	}
 
 	fprintf(h_out,
@@ -422,7 +418,7 @@ static void struct_define(struct type_info *ti, FILE *c_out, FILE *h_out)
 	/* Member metadata */
 	fprintf(c_out,
 		"static struct eu_struct_member %.*s_members[%d] = {\n",
-		(int)sti->struct_name_len, sti->struct_name,
+		(int)sti->struct_name.len, sti->struct_name.chars,
 		(int)sti->members_len);
 
 	for (i = 0; i < sti->members_len; i++) {
@@ -436,10 +432,10 @@ static void struct_define(struct type_info *ti, FILE *c_out, FILE *h_out)
 			"\t\t\"%.*s\",\n"
 			"\t\t%s\n"
 			"\t},\n",
-			(int)sti->struct_name_len, sti->struct_name,
-			(int)mi->name_len, mi->name,
-			(int)mi->name_len,
-			(int)mi->name_len, mi->name,
+			(int)sti->struct_name.len, sti->struct_name.chars,
+			(int)mi->name.len, mi->name.chars,
+			(int)mi->name.len,
+			(int)mi->name.len, mi->name.chars,
 			mi->type->metadata_ptr_expr);
 	}
 
@@ -454,8 +450,8 @@ static void struct_define(struct type_info *ti, FILE *c_out, FILE *h_out)
 		"\t= EU_STRUCT_METADATA_INITIALIZER(struct %.*s, "
 			"%.*s_members);\n\n",
 		sti->metadata_name,
-		(int)sti->struct_name_len, sti->struct_name,
-		(int)sti->struct_name_len, sti->struct_name);
+		(int)sti->struct_name.len, sti->struct_name.chars,
+		(int)sti->struct_name.len, sti->struct_name.chars);
 
 	/* Definitiion of the eu_struct_metadata instance for inline
 	   structs.  Inline support is incomplete currently. */
@@ -467,25 +463,25 @@ static void struct_define(struct type_info *ti, FILE *c_out, FILE *h_out)
 		"\t= EU_INLINE_STRUCT_METADATA_INITIALIZER(struct %.*s, "
 			"%.*s_members);\n\n",
 		sti->inline_metadata_name,
-		(int)sti->struct_name_len, sti->struct_name,
-		(int)sti->struct_name_len, sti->struct_name);
+		(int)sti->struct_name.len, sti->struct_name.chars,
+		(int)sti->struct_name.len, sti->struct_name.chars);
 
 	fprintf(h_out,
 		"void %.*s_fini(struct %.*s *p);\n",
-		(int)sti->struct_name_len, sti->struct_name,
-		(int)sti->struct_name_len, sti->struct_name);
+		(int)sti->struct_name.len, sti->struct_name.chars,
+		(int)sti->struct_name.len, sti->struct_name.chars);
 
 	fprintf(c_out,
 		"void %.*s_fini(struct %.*s *p)\n"
 		"{\n",
-		(int)sti->struct_name_len, sti->struct_name,
-		(int)sti->struct_name_len, sti->struct_name);
+		(int)sti->struct_name.len, sti->struct_name.chars,
+		(int)sti->struct_name.len, sti->struct_name.chars);
 
 	for (i = 0; i < sti->members_len; i++) {
 		struct member_info *mi = &sti->members[i];
 		char *var;
 
-		var = xsprintf("p->%.*s", (int)mi->name_len, mi->name);
+		var = xsprintf("p->%.*s", (int)mi->name.len, mi->name.chars);
 		call_fini(mi->type, c_out, var);
 		free(var);
 	}
@@ -495,8 +491,8 @@ static void struct_define(struct type_info *ti, FILE *c_out, FILE *h_out)
 
 	fprintf(h_out,
 		"void %.*s_destroy(struct %.*s *p);\n\n",
-		(int)sti->struct_name_len, sti->struct_name,
-		(int)sti->struct_name_len, sti->struct_name);
+		(int)sti->struct_name.len, sti->struct_name.chars,
+		(int)sti->struct_name.len, sti->struct_name.chars);
 
 	fprintf(c_out,
 		"void %.*s_destroy(struct %.*s *p)\n"
@@ -504,36 +500,36 @@ static void struct_define(struct type_info *ti, FILE *c_out, FILE *h_out)
 		"\t%.*s_fini(p);\n"
 		"\tfree(p);\n"
 		"}\n\n",
-		(int)sti->struct_name_len, sti->struct_name,
-		(int)sti->struct_name_len, sti->struct_name,
-		(int)sti->struct_name_len, sti->struct_name);
+		(int)sti->struct_name.len, sti->struct_name.chars,
+		(int)sti->struct_name.len, sti->struct_name.chars,
+		(int)sti->struct_name.len, sti->struct_name.chars);
 
 	fprintf(h_out,
 		"void eu_parse_init_struct_%.*s(struct eu_parse *ep, struct %.*s **p);\n",
-		(int)sti->struct_name_len, sti->struct_name,
-		(int)sti->struct_name_len, sti->struct_name);
+		(int)sti->struct_name.len, sti->struct_name.chars,
+		(int)sti->struct_name.len, sti->struct_name.chars);
 
 	fprintf(c_out,
 		"void eu_parse_init_struct_%.*s(struct eu_parse *ep, struct %.*s **p)\n"
 		"{\n"
 		"\teu_parse_init(ep, %s, p);\n"
 		"}\n\n",
-		(int)sti->struct_name_len, sti->struct_name,
-		(int)sti->struct_name_len, sti->struct_name,
+		(int)sti->struct_name.len, sti->struct_name.chars,
+		(int)sti->struct_name.len, sti->struct_name.chars,
 		sti->base.metadata_ptr_expr);
 
 	fprintf(h_out,
 		"void eu_parse_init_inline_struct_%.*s(struct eu_parse *ep, struct %.*s *p);\n\n",
-		(int)sti->struct_name_len, sti->struct_name,
-		(int)sti->struct_name_len, sti->struct_name);
+		(int)sti->struct_name.len, sti->struct_name.chars,
+		(int)sti->struct_name.len, sti->struct_name.chars);
 
 	fprintf(c_out,
 		"void eu_parse_init_inline_struct_%.*s(struct eu_parse *ep, struct %.*s *p)\n"
 		"{\n"
 		"\teu_parse_init(ep, &%s.base, p);\n"
 		"}\n\n",
-		(int)sti->struct_name_len, sti->struct_name,
-		(int)sti->struct_name_len, sti->struct_name,
+		(int)sti->struct_name.len, sti->struct_name.chars,
+		(int)sti->struct_name.len, sti->struct_name.chars,
 		sti->inline_metadata_name);
 }
 
@@ -555,7 +551,7 @@ static void struct_generate_fini(struct type_info *ti, FILE *out,
 
 	fprintf(out, "\tif (%s) %.*s_destroy(%s);\n",
 		var_expr,
-		(int)sti->struct_name_len, sti->struct_name,
+		(int)sti->struct_name.len, sti->struct_name.chars,
 		var_expr);
 }
 
@@ -638,7 +634,7 @@ static int is_empty_schema(struct eu_variant *schema)
 		return 0;
 
 	m = schema->u.object.members.members;
-	return m->name_len == 11 && !memcmp(m->name, "definitions", 11);
+	return eu_string_ref_equal(m->name, eu_cstr("definitions"));
 }
 
 static struct type_info *resolve_type(struct codegen *codegen,
@@ -740,7 +736,7 @@ static void codegen_definitions(struct codegen *codegen,
 		struct eu_variant_member *sdef = &sdefs->members[i];
 		struct definition *cdef = &codegen->defs[i];
 
-		cdef->name = eu_string_ref(sdef->name, sdef->name_len);
+		cdef->name = sdef->name;
 	}
 
 	/* Identify definitions which directly contain a reference,
