@@ -24,22 +24,22 @@ enum eu_parse_result {
 
 struct eu_parse;
 
-struct eu_string_value {
+struct eu_string_ref {
 	const char *chars;
 	size_t len;
 };
 
 
-static __inline__ struct eu_string_value eu_string_value(const char *chars,
-							 size_t len)
+static __inline__ struct eu_string_ref eu_string_ref(const char *chars,
+						     size_t len)
 {
-	struct eu_string_value s = { chars, len };
+	struct eu_string_ref s = { chars, len };
 	return s;
 }
 
-static __inline__ struct eu_string_value eu_cstr(const char *s)
+static __inline__ struct eu_string_ref eu_cstr(const char *s)
 {
-	struct eu_string_value f = {
+	struct eu_string_ref f = {
 		s,
 		strlen(s)
 	};
@@ -78,7 +78,7 @@ struct eu_metadata {
 	void (*fini)(struct eu_metadata *metadata, void *value);
 
 	/* Resolve a JSON pointer. */
-	int (*resolve)(struct eu_value *val, struct eu_string_value name);
+	int (*resolve)(struct eu_value *val, struct eu_string_ref name);
 
 	unsigned int size;
 	unsigned char json_type;
@@ -130,8 +130,8 @@ void eu_parse_metadata_cont_destroy(struct eu_parse *ep,
 
 /* Path resolution */
 
-int eu_resolve_path(struct eu_value *val, struct eu_string_value path);
-int eu_resolve_error(struct eu_value *val, struct eu_string_value name);
+int eu_resolve_path(struct eu_value *val, struct eu_string_ref path);
+int eu_resolve_error(struct eu_value *val, struct eu_string_ref name);
 
 /* Variant objects */
 
@@ -146,7 +146,7 @@ struct eu_variant_members {
 
 void eu_variant_members_fini(struct eu_variant_members *members);
 struct eu_variant *eu_variant_members_get(struct eu_variant_members *members,
-					  struct eu_string_value name);
+					  struct eu_string_ref name);
 
 struct eu_object {
 	struct eu_variant_members members;
@@ -159,7 +159,7 @@ static __inline__ void eu_object_fini(struct eu_object *obj) {
 }
 
 static __inline__ struct eu_variant *eu_object_get(struct eu_object *obj,
-						   struct eu_string_value name)
+						   struct eu_string_ref name)
 {
 	return eu_variant_members_get(&obj->members, name);
 }
@@ -249,7 +249,7 @@ static __inline__ struct eu_value eu_variant_value(struct eu_variant *variant)
 }
 
 struct eu_variant *eu_variant_get(struct eu_variant *variant,
-				  struct eu_string_value name);
+				  struct eu_string_ref name);
 
 static __inline__ struct eu_variant *eu_variant_get_cstr(
 						    struct eu_variant *variant,
@@ -291,12 +291,12 @@ enum eu_parse_result eu_struct_parse(struct eu_metadata *gmetadata,
 				     struct eu_parse *ep,
 				     void *result);
 void eu_struct_fini(struct eu_metadata *gmetadata, void *value);
-int eu_struct_resolve(struct eu_value *val, struct eu_string_value name);
+int eu_struct_resolve(struct eu_value *val, struct eu_string_ref name);
 enum eu_parse_result eu_inline_struct_parse(struct eu_metadata *gmetadata,
 					    struct eu_parse *ep,
 					    void *result);
 void eu_inline_struct_fini(struct eu_metadata *gmetadata, void *value);
-int eu_inline_struct_resolve(struct eu_value *val, struct eu_string_value name);
+int eu_inline_struct_resolve(struct eu_value *val, struct eu_string_ref name);
 
 
 #define EU_STRUCT_METADATA_INITIALIZER(struct_name, struct_members)   \

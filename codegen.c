@@ -96,7 +96,7 @@ static int eu_variant_equals_cstr(struct eu_variant *var, const char *str)
 /* The codegen object holds everything for code generation */
 
 struct definition {
-	struct eu_string_value name;
+	struct eu_string_ref name;
 	enum {
 		DEF_SCHEMA,
 		DEF_REF,
@@ -574,11 +574,11 @@ static struct definition *find_def(struct codegen *codegen,
 				   struct eu_variant *ref)
 {
 	size_t i;
-	struct eu_string_value name;
+	struct eu_string_ref name;
 
 	assert(eu_variant_type(ref) == EU_JSON_STRING);
 
-	name = eu_string_value(ref->u.string.chars, ref->u.string.len);
+	name = eu_string_ref(ref->u.string.chars, ref->u.string.len);
 	if (name.len < REF_PREFIX_LEN
 	    || memcmp(name.chars, REF_PREFIX, REF_PREFIX_LEN))
 		die("only refs beginning with '" REF_PREFIX "' are supported");
@@ -742,7 +742,7 @@ static void codegen_definitions(struct codegen *codegen,
 		struct eu_variant_member *sdef = &sdefs->members[i];
 		struct definition *cdef = &codegen->defs[i];
 
-		cdef->name = eu_string_value(sdef->name, sdef->name_len);
+		cdef->name = eu_string_ref(sdef->name, sdef->name_len);
 	}
 
 	/* Identify definitions which directly contain a reference,

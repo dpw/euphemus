@@ -323,7 +323,7 @@ void eu_variant_members_fini(struct eu_variant_members *members)
 }
 
 struct eu_variant *eu_variant_members_get(struct eu_variant_members *members,
-					  struct eu_string_value name)
+					  struct eu_string_ref name)
 {
 	size_t i;
 
@@ -338,7 +338,7 @@ struct eu_variant *eu_variant_members_get(struct eu_variant_members *members,
 	return NULL;
 }
 
-int eu_inline_struct_resolve(struct eu_value *val, struct eu_string_value name)
+int eu_inline_struct_resolve(struct eu_value *val, struct eu_string_ref name)
 {
 	struct eu_struct_metadata *md
 		= (struct eu_struct_metadata *)val->metadata;
@@ -370,7 +370,7 @@ int eu_inline_struct_resolve(struct eu_value *val, struct eu_string_value name)
 	return 0;
 }
 
-int eu_struct_resolve(struct eu_value *val, struct eu_string_value name)
+int eu_struct_resolve(struct eu_value *val, struct eu_string_ref name)
 {
 	val->value = *(void **)val->value;
 	return eu_inline_struct_resolve(val, name);
