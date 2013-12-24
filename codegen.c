@@ -652,8 +652,6 @@ static struct type_info *resolve_type(struct codegen *codegen,
 	if (is_empty_schema(schema))
 		return &variant_type_info.base.base;
 
-	if (schema->u.object.members.len == 1)
-
 	ref = eu_variant_get_cstr(schema, "$ref");
 	if (ref) {
 		assert(schema->u.object.members.len == 1);
