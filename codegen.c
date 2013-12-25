@@ -697,15 +697,20 @@ static void remove_extension(char *c)
 		*last_dot = 0;
 }
 
-static void codegen_prolog(const char *out_path, FILE *c_out, FILE *h_out)
+static void codegen_prolog(const char *path, const char *out_path,
+			   FILE *c_out, FILE *h_out)
 {
-	fprintf(h_out, "#include \"euphemus.h\"\n\n");
+	fprintf(h_out,
+		"/* Generated from \"%s\".  You probably shouldn't edit this file. */\n\n"
+		"#include \"euphemus.h\"\n\n",
+		path);
 
 	fprintf(c_out,
+		"/* Generated from \"%s\".  You probably shouldn't edit this file. */\n\n"
 		"#include <stddef.h>\n\n"
 		"#include \"%s\"\n"
 		"#include \"euphemus.h\"\n\n",
-		out_path);
+		path, out_path);
 }
 
 static struct type_info *alloc_definition(struct codegen *codegen,
@@ -825,7 +830,7 @@ static void codegen(const char *path, struct eu_variant *schema)
 	if (!codegen.h_out)
 		die("error opening \"%s\": %s", out_path, strerror(errno));
 
-	codegen_prolog(out_path, codegen.c_out, codegen.h_out);
+	codegen_prolog(path, out_path, codegen.c_out, codegen.h_out);
 
 	codegen_init(&codegen);
 
