@@ -121,5 +121,29 @@ void eu_array_fini(struct eu_metadata *gmetadata, void *value)
 	array_fini(metadata->element_metadata, value);
 }
 
+int eu_array_resolve(struct eu_value *val, struct eu_string_ref name)
+{
+	struct eu_array_metadata *md
+		= (struct eu_array_metadata *)val->metadata;
+	struct eu_array *array = val->value;
+	size_t index, i;
+
+	if (name.len == 0 || name.chars[0] < '0' || name.chars[0] > '9')
+		return 0;
+
+	index = name.chars[0] - '0';
+
+	for (i = 1; i < name.len; i++) {
+		if (name.chars[i] < '0' || name.chars[i] > '9')
+			return 0;
+
+		index = index * 10 + (name.chars[i] - '0');
+	}
+
+	*val = eu_value((char *)array->a + index * md->element_metadata->size,
+			md->element_metadata);
+	return 1;
+}
+
 struct eu_array_metadata eu_variant_array_metadata
 	= EU_ARRAY_METADATA_INITIALIZER(&eu_variant_metadata);

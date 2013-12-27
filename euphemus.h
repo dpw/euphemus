@@ -60,13 +60,6 @@ struct eu_value {
 	struct eu_metadata *metadata;
 };
 
-static __inline__ struct eu_value eu_value(void *value,
-					   struct eu_metadata *metadata)
-{
-	struct eu_value v = { value, metadata };
-	return v;
-}
-
 /* A description of a type of data (including things like how to
    allocate, release etc.) */
 struct eu_metadata {
@@ -207,13 +200,14 @@ struct eu_array_metadata {
 enum eu_parse_result eu_array_parse(struct eu_metadata *gmetadata,
 				    struct eu_parse *ep, void *result);
 void eu_array_fini(struct eu_metadata *gmetadata, void *value);
+int eu_array_resolve(struct eu_value *val, struct eu_string_ref name);
 
 #define EU_ARRAY_METADATA_INITIALIZER(el_metadata)                    \
 	{                                                             \
 		{                                                     \
 			eu_array_parse,                               \
 			eu_array_fini,                                \
-			eu_resolve_error,                             \
+			eu_array_resolve,                             \
 			sizeof(struct eu_array),                      \
 			EU_JSON_ARRAY                                 \
 		},                                                    \
@@ -257,7 +251,19 @@ static __inline__ enum eu_json_type eu_variant_type(struct eu_variant *variant)
 
 static __inline__ struct eu_value eu_variant_value(struct eu_variant *variant)
 {
-	return eu_value(&variant->u, variant->metadata);
+	struct eu_value v = { &variant->u, variant->metadata };
+	return v;
+}
+
+static __inline__ struct eu_value eu_value(void *value,
+					   struct eu_metadata *metadata)
+{
+	struct eu_value v = { value, metadata };
+
+	if (metadata == &eu_variant_metadata)
+		v = eu_variant_value(value);
+
+	return v;
 }
 
 struct eu_variant *eu_variant_get(struct eu_variant *variant,
