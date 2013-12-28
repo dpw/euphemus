@@ -127,6 +127,7 @@ int eu_array_resolve(struct eu_value *val, struct eu_string_ref name)
 		= (struct eu_array_metadata *)val->metadata;
 	struct eu_array *array = val->value;
 	size_t index, i;
+	unsigned char digit;
 
 	if (name.len == 0 || name.chars[0] < '0' || name.chars[0] > '9')
 		return 0;
@@ -137,7 +138,16 @@ int eu_array_resolve(struct eu_value *val, struct eu_string_ref name)
 		if (name.chars[i] < '0' || name.chars[i] > '9')
 			return 0;
 
-		index = index * 10 + (name.chars[i] - '0');
+		if (index > ((size_t)-1)/10)
+			return 0;
+
+		index *= 10;
+
+		digit = name.chars[i] - '0';
+		if (index > ((size_t)-1)-digit)
+			return 0;
+
+		index += digit;
 	}
 
 	*val = eu_value((char *)array->a + index * md->element_metadata->size,
