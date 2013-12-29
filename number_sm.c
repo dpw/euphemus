@@ -60,10 +60,13 @@ RESUME_ONLY(case NUMBER_PARSE_INT_DIGITS:)
 	switch (*p) {
 	case ZERO_TO_9:
 		int_value = int_value * 10 + (*p - '0');
-		goto int_digits;
+		if (int_value <= (INT64_MAX-9)/10)
+			goto int_digits;
+		else
+			goto overflow_digits;
 
 	case '.':
-		break;
+		goto point;
 
 	case 'e':
 	case 'E':
@@ -73,6 +76,28 @@ RESUME_ONLY(case NUMBER_PARSE_INT_DIGITS:)
 		/* *result = negate ? -int_value : int_value; */
 		*result = (int_value ^ -negate) + negate;
 		goto done;
+	}
+
+ overflow_digits:
+	p++;
+	state = NUMBER_PARSE_OVERFLOW_DIGITS;
+RESUME_ONLY(case NUMBER_PARSE_OVERFLOW_DIGITS:)
+	if (p == end)
+		goto pause;
+
+	switch (*p) {
+	case ZERO_TO_9:
+		goto overflow_digits;
+
+	case '.':
+		goto point;
+
+	case 'e':
+	case 'E':
+		goto e;
+
+	default:
+		goto convert;
 	}
 
  point:

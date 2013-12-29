@@ -57,6 +57,10 @@ static void test_parse_number(void)
 		   double,
 		   eu_parse_init_number,
 		   assert(result == (double)-123456789),);
+	TEST_PARSE("  1000000000000000000000000  ",
+		   double,
+		   eu_parse_init_number,
+		   assert(result == (double)1000000000000000000000000.0),);
 }
 
 static void test_parse_bool(void)
