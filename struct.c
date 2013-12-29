@@ -5,9 +5,9 @@ static struct eu_metadata *add_extra(struct eu_struct_metadata *md, char *s,
 				     char *name, size_t name_len,
 				     void **value)
 {
-	struct eu_variant_members *extras = (void *)(s + md->extras_offset);
+	struct eu_generic_members *extras = (void *)(s + md->extras_offset);
 	size_t capacity = extras->priv.capacity;
-	struct eu_variant_member *members, *member;
+	char *members, *member;
 
 	if (extras->len < capacity) {
 		members = extras->members;
@@ -15,12 +15,12 @@ static struct eu_metadata *add_extra(struct eu_struct_metadata *md, char *s,
 	else {
 		if (!capacity) {
 			capacity = 8;
-			members	= malloc(capacity * sizeof *extras->members);
+			members	= malloc(capacity * md->extra_member_size);
 		}
 		else {
 			capacity *= 2;
 			members = realloc(extras->members,
-					  capacity * sizeof *extras->members);
+					  capacity * md->extra_member_size);
 		}
 
 		if (!members) {
@@ -32,11 +32,15 @@ static struct eu_metadata *add_extra(struct eu_struct_metadata *md, char *s,
 		extras->priv.capacity = capacity;
 	}
 
-	member = &members[extras->len++];
-	member->name = eu_string_ref(name, name_len);
-	memset(&member->value, 0, sizeof member->value);
-	*value = &member->value;
-	return &eu_variant_metadata;
+	member = members + extras->len++ * md->extra_member_size;
+
+	/* The name is always the first field in the member struct */
+	*(struct eu_string_ref *)member = eu_string_ref(name, name_len);
+
+	memset(member + md->extra_member_value_offset, 0,
+	       md->extra_member_size - md->extra_member_value_offset);
+	*value = member + md->extra_member_value_offset;
+	return md->extra_value_metadata;
 }
 
 static struct eu_metadata *lookup_member(struct eu_struct_metadata *md,
@@ -286,8 +290,11 @@ struct eu_struct_metadata eu_object_metadata = {
 	},
 	sizeof(struct eu_object),
 	0,
+	sizeof(struct eu_variant_member),
+	offsetof(struct eu_variant_member, value),
 	0,
-	NULL
+	NULL,
+	&eu_variant_metadata
 };
 
 
@@ -301,8 +308,11 @@ struct eu_struct_metadata eu_inline_object_metadata = {
 	},
 	-1,
 	0,
+	sizeof(struct eu_variant_member),
+	offsetof(struct eu_variant_member, value),
 	0,
-	NULL
+	NULL,
+	&eu_variant_metadata
 };
 
 void eu_variant_members_fini(struct eu_variant_members *members)
