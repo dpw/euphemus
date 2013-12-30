@@ -497,7 +497,8 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 	fprintf(codegen->c_out,
 		"struct eu_struct_metadata %s\n"
 		"\t= EU_STRUCT_METADATA_INITIALIZER(struct %.*s, "
-			"%.*s_members, struct eu_variant_member);\n\n",
+			"%.*s_members, struct eu_variant_member, "
+			"&eu_variant_metadata);\n\n",
 		sti->metadata_name,
 		(int)sti->struct_name.len, sti->struct_name.chars,
 		(int)sti->struct_name.len, sti->struct_name.chars);
@@ -510,7 +511,8 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 	fprintf(codegen->c_out,
 		"struct eu_struct_metadata %s\n"
 		"\t= EU_INLINE_STRUCT_METADATA_INITIALIZER(struct %.*s, "
-			"%.*s_members, struct eu_variant_member);\n\n",
+			"%.*s_members, struct eu_variant_member, "
+			"&eu_variant_metadata);\n\n",
 		sti->inline_metadata_name,
 		(int)sti->struct_name.len, sti->struct_name.chars,
 		(int)sti->struct_name.len, sti->struct_name.chars);

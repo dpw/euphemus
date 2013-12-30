@@ -319,7 +319,7 @@ void eu_inline_struct_fini(struct eu_metadata *gmetadata, void *value);
 int eu_inline_struct_resolve(struct eu_value *val, struct eu_string_ref name);
 
 
-#define EU_STRUCT_METADATA_INITIALIZER(struct_name, struct_members, extra_member_struct)  \
+#define EU_STRUCT_METADATA_INITIALIZER(struct_name, struct_members, extra_member_struct, extra_member_metadata) \
 	{                                                             \
 		{                                                     \
 			eu_struct_parse,                              \
@@ -334,10 +334,10 @@ int eu_inline_struct_resolve(struct eu_value *val, struct eu_string_ref name);
 		offsetof(extra_member_struct, value),                 \
 		sizeof(struct_members) / sizeof(struct eu_struct_member), \
 		struct_members,                                       \
-		&eu_variant_metadata                                  \
+		extra_member_metadata                                 \
 	}
 
-#define EU_INLINE_STRUCT_METADATA_INITIALIZER(struct_name, struct_members, extra_member_struct) \
+#define EU_INLINE_STRUCT_METADATA_INITIALIZER(struct_name, struct_members, extra_member_struct, extra_member_metadata) \
 	{                                                             \
 		{                                                     \
 			eu_inline_struct_parse,                       \
@@ -352,7 +352,7 @@ int eu_inline_struct_resolve(struct eu_value *val, struct eu_string_ref name);
 		offsetof(extra_member_struct, value),                 \
 		sizeof(struct_members) / sizeof(struct eu_struct_member), \
 		struct_members,                                       \
-		&eu_variant_metadata                                  \
+		extra_member_metadata                                 \
 	}
 
 #endif
