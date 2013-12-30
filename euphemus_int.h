@@ -12,15 +12,6 @@
 #define unlikely(x) (x)
 #endif
 
-struct eu_generic_members {
-	char *members;
-	size_t len;
-
-	struct {
-		size_t capacity;
-	} priv;
-};
-
 void eu_parse_insert_cont(struct eu_parse *ep, struct eu_parse_cont *c);
 int eu_parse_set_buffer(struct eu_parse *ep, const char *start,
 			const char *end);

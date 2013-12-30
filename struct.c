@@ -1,6 +1,15 @@
 #include "euphemus.h"
 #include "euphemus_int.h"
 
+struct eu_generic_members {
+	void *members;
+	size_t len;
+
+	struct {
+		size_t capacity;
+	} priv;
+};
+
 static struct eu_metadata *add_extra(struct eu_struct_metadata *md, char *s,
 				     char *name, size_t name_len,
 				     void **value)
@@ -41,6 +50,25 @@ static struct eu_metadata *add_extra(struct eu_struct_metadata *md, char *s,
 	       md->extra_member_size - md->extra_member_value_offset);
 	*value = member + md->extra_member_value_offset;
 	return md->extra_value_metadata;
+}
+
+void eu_struct_extras_fini(struct eu_struct_metadata *md,
+			   void *v_extras)
+{
+	struct eu_generic_members *extras = v_extras;
+	struct eu_metadata *evmd = md->extra_value_metadata;
+	char *m = extras->members;
+	size_t i;
+
+	for (i = 0; i < extras->len; i++) {
+		free((void *)((struct eu_string_ref *)m)->chars);
+		evmd->fini(evmd, m + md->extra_member_value_offset);
+		m += md->extra_member_size;
+	}
+
+	free(extras->members);
+	extras->members = NULL;
+	extras->len = 0;
 }
 
 static struct eu_metadata *lookup_member(struct eu_struct_metadata *md,
@@ -250,7 +278,7 @@ void eu_inline_struct_fini(struct eu_metadata *gmetadata, void *s)
 				       (char *)s + member->offset);
 	}
 
-	eu_variant_members_fini((void *)(s + metadata->extras_offset));
+	eu_struct_extras_fini(metadata, (char *)s + metadata->extras_offset);
 }
 
 void eu_struct_fini(struct eu_metadata *gmetadata, void *value)
@@ -280,24 +308,6 @@ static void struct_parse_cont_destroy(struct eu_parse *ep,
 	free(cont);
 }
 
-struct eu_struct_metadata eu_object_metadata = {
-	{
-		eu_struct_parse,
-		eu_struct_fini,
-		eu_struct_resolve,
-		sizeof(struct eu_object *),
-		EU_JSON_OBJECT
-	},
-	sizeof(struct eu_object),
-	0,
-	sizeof(struct eu_variant_member),
-	offsetof(struct eu_variant_member, value),
-	0,
-	NULL,
-	&eu_variant_metadata
-};
-
-
 struct eu_struct_metadata eu_inline_object_metadata = {
 	{
 		eu_inline_struct_parse,
@@ -314,22 +324,6 @@ struct eu_struct_metadata eu_inline_object_metadata = {
 	NULL,
 	&eu_variant_metadata
 };
-
-void eu_variant_members_fini(struct eu_variant_members *members)
-{
-	size_t i;
-
-	for (i = 0; i < members->len; i++) {
-		struct eu_variant_member *m = &members->members[i];
-
-		free((void *)m->name.chars);
-		eu_variant_fini(&m->value);
-	}
-
-	free(members->members);
-	members->members = NULL;
-	members->len = 0;
-}
 
 struct eu_variant *eu_variant_members_get(struct eu_variant_members *members,
 					  struct eu_string_ref name)

@@ -537,8 +537,11 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 		free(var);
 	}
 
-	fprintf(codegen->c_out, "\teu_variant_members_fini(&p->extras);\n");
-	fprintf(codegen->c_out, "}\n\n");
+	fprintf(codegen->c_out,
+		"\tif (p->extras.len)\n"
+		"\t\teu_struct_extras_fini(&%s, &p->extras);\n"
+		"}\n\n",
+		sti->metadata_name);
 
 	fprintf(codegen->h_out,
 		"void %.*s_destroy(struct %.*s *p);\n\n",
