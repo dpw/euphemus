@@ -23,13 +23,25 @@ static struct eu_metadata *add_extra(struct eu_struct_metadata *md, char *s,
 	}
 	else {
 		if (!capacity) {
+			size_t sz;
+
 			capacity = 8;
-			members	= malloc(capacity * md->extra_member_size);
+			sz = capacity * md->extra_member_size;
+			members	= malloc(sz);
+			if (!members)
+				goto err;
+
+			memset(members, 0, sz);
 		}
 		else {
+			size_t sz = capacity * md->extra_member_size;
+
 			capacity *= 2;
-			members = realloc(extras->members,
-					  capacity * md->extra_member_size);
+			members = realloc(extras->members, 2 * sz);
+			if (!members)
+				goto err;
+
+			memset(members + sz, 0, sz);
 		}
 
 		if (!members) {
@@ -45,11 +57,12 @@ static struct eu_metadata *add_extra(struct eu_struct_metadata *md, char *s,
 
 	/* The name is always the first field in the member struct */
 	*(struct eu_string_ref *)member = eu_string_ref(name, name_len);
-
-	memset(member + md->extra_member_value_offset, 0,
-	       md->extra_member_size - md->extra_member_value_offset);
 	*value = member + md->extra_member_value_offset;
 	return md->extra_value_metadata;
+
+ err:
+	free(name);
+	return NULL;
 }
 
 void eu_struct_extras_fini(struct eu_struct_metadata *md,
