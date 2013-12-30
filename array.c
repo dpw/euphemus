@@ -74,7 +74,7 @@ static enum eu_parse_result array_parse_resume(struct eu_parse *ep,
 	struct eu_array *result = cont->result;
 	size_t capacity = cont->capacity;
 	size_t len = result->len;
-	char *el = result->a + len * el_size;
+	char *el = (char *)result->a + len * el_size;
 
 	free(cont);
 
