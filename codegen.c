@@ -3,6 +3,7 @@
 #include <string.h>
 #include <errno.h>
 #include <assert.h>
+#include <ctype.h>
 
 #include "euphemus.h"
 
@@ -116,14 +117,30 @@ struct codegen {
 	FILE *c_out;
 	FILE *h_out;
 	struct type_info *type_infos_to_destroy;
+
 	struct definition *defs;
 	size_t n_defs;
+
+	struct type_info *number_type;
+	struct type_info *bool_type;
+	struct type_info *string_type;
+	struct type_info *variant_type;
 };
 
 struct type_info {
 	struct type_info_ops *ops;
-	char *metadata_ptr_expr;
 	struct type_info *next_to_destroy;
+
+	/* The basis for constructed names related to the type */
+	const char *base_name;
+
+	/* The C expression for a pointer to the type's metadata */
+	const char *metadata_ptr_expr;
+
+	/* The name of the C *_members and *member structs, or NULL if
+	the definitions were not emitted yet */
+	const char *members_struct_name;
+	const char *member_struct_name;
 };
 
 struct type_info_ops {
@@ -162,37 +179,76 @@ static void call_fini(struct type_info *ti, FILE *out, const char *var_expr)
 	ti->ops->call_fini(ti, out, var_expr);
 }
 
-
-static void codegen_init(struct codegen *codegen)
+static void upcase_print(FILE *out, const char *s)
 {
-	codegen->type_infos_to_destroy = NULL;
-	codegen->defs = NULL;
-	codegen->n_defs = 0;
+	while (*s)
+		putc(toupper(*s++), out);
 }
 
-static void codegen_fini(struct codegen *codegen)
+/* Emitting the definition of the *_members struct for the type, if
+   not done already. */
+static void define_members_struct(struct type_info *ti, struct codegen *codegen)
 {
-	struct type_info *ti, *next;
+	if (ti->members_struct_name)
+		return;
 
-	for (ti = codegen->type_infos_to_destroy; ti;) {
-		next = ti->next_to_destroy;
-		ti->ops->destroy(ti);
-		ti = next;
-	}
+	define_type(ti, codegen);
 
-	free(codegen->defs);
+	ti->members_struct_name = xsprintf("%s_members", ti->base_name);
+	ti->member_struct_name = xsprintf("%s_member", ti->base_name);
+
+	fprintf(codegen->h_out, "#ifndef ");
+	upcase_print(codegen->h_out, ti->members_struct_name);
+	fprintf(codegen->h_out, "_DEFINED\n");
+	fprintf(codegen->h_out, "#define ");
+	upcase_print(codegen->h_out, ti->members_struct_name);
+	fprintf(codegen->h_out, "_DEFINED\n");
+
+	/* The *_member struct declaration */
+	fprintf(codegen->h_out,
+		"struct %s {\n"
+		"\tstruct eu_string_ref name;\n",
+		ti->member_struct_name);
+	declare(ti, codegen->h_out, eu_cstr("value"));
+	fprintf(codegen->h_out, "};\n\n");
+
+	/* The *_members struct declaration */
+	fprintf(codegen->h_out,
+		"struct %s {\n"
+		"\tstruct %s *members;\n"
+		"\tsize_t len;\n"
+		"\tstruct {\n"
+		"\t\tsize_t capacity;\n"
+		"\t} priv;\n"
+		"};\n",
+		ti->members_struct_name, ti->member_struct_name);
+
+	fprintf(codegen->h_out, "#endif\n\n");
 }
 
 static struct type_info *resolve_type(struct codegen *codegen,
 				      struct eu_variant *schema);
 
-static void add_type_info_to_destroy(struct codegen *codegen,
-				     struct type_info *ti)
+static void type_info_init(struct type_info *ti,
+			   struct codegen *codegen,
+			   struct type_info_ops *ops,
+			   const char *base_name, const char *metadata_ptr_expr)
 {
+	ti->ops = ops;
+	ti->base_name = base_name;
+	ti->metadata_ptr_expr = metadata_ptr_expr;
+	ti->members_struct_name = NULL;
+	ti->member_struct_name = NULL;
+
 	ti->next_to_destroy = codegen->type_infos_to_destroy;
 	codegen->type_infos_to_destroy = ti;
 }
 
+static void type_info_fini(struct type_info *ti)
+{
+	free((void *)ti->members_struct_name);
+	free((void *)ti->member_struct_name);
+}
 
 /* Simple value types (numbers, etc.) */
 
@@ -232,43 +288,41 @@ static void noop_call_fini(struct type_info *ti, FILE *out,
 	(void)var_expr;
 }
 
+struct type_info *make_simple_type(struct codegen *codegen,
+				   struct type_info_ops *ops,
+				   const char *c_type_name,
+				   const char *base_name)
+{
+	struct simple_type_info *sti = xalloc(sizeof *sti);
+
+	type_info_init(&sti->base, codegen, ops, base_name,
+		       xsprintf("&%s_metadata", base_name));
+
+	sti->type_name = c_type_name;
+	return &sti->base;
+}
+
+static void simple_type_destroy(struct type_info *ti)
+{
+	struct simple_type_info *sti = (void *)ti;
+
+	type_info_fini(ti);
+	free((void *)sti->base.metadata_ptr_expr);
+	free(sti);
+}
+
 struct type_info_ops simple_type_info_ops = {
 	noop_fill,
 	simple_type_declare,
 	noop_define,
 	noop_call_fini,
-	NULL
-};
-
-#define DEFINE_SIMPLE_TYPE_INFO(name, type_name, metadata_ptr_expr)   \
-struct  simple_type_info name = {                                     \
-	{                                                             \
-		&simple_type_info_ops,                                \
-		metadata_ptr_expr,                                    \
-		NULL                                                  \
-	},                                                            \
-	type_name                                                     \
-}
-
-DEFINE_SIMPLE_TYPE_INFO(number_type_info, "double",
-			 "&eu_number_metadata");
-DEFINE_SIMPLE_TYPE_INFO(boolean_type_info, "eu_bool_t",
-			 "&eu_bool_metadata");
-
-
-/* Builtin types (strings, etc.) */
-
-struct builtin_type_info {
-	struct simple_type_info base;
-	const char *fini_func;
+	simple_type_destroy
 };
 
 static void builtin_type_call_fini(struct type_info *ti, FILE *out,
 				   const char *var_expr)
 {
-	struct builtin_type_info *bti = (void *)ti;
-
-	fprintf(out, "\t%s(&%s);\n", bti->fini_func, var_expr);
+	fprintf(out, "\t%s_fini(&%s);\n", ti->base_name, var_expr);
 }
 
 struct type_info_ops builtin_type_info_ops = {
@@ -276,29 +330,40 @@ struct type_info_ops builtin_type_info_ops = {
 	simple_type_declare,
 	noop_define,
 	builtin_type_call_fini,
-	NULL
+	simple_type_destroy
 };
 
-#define DEFINE_BUILTIN_TYPE_INFO(name, type_name, metadata_ptr_expr, fini_func) \
-struct  builtin_type_info name = {                                    \
-	{                                                             \
-		{                                                     \
-			&builtin_type_info_ops,                       \
-			metadata_ptr_expr,                            \
-			NULL                                          \
-		},                                                    \
-		type_name,                                            \
-	},                                                            \
-	fini_func                                                     \
+static void codegen_init(struct codegen *codegen)
+{
+	codegen->type_infos_to_destroy = NULL;
+	codegen->defs = NULL;
+	codegen->n_defs = 0;
+
+	codegen->number_type = make_simple_type(codegen, &simple_type_info_ops,
+						"double", "eu_number");
+	codegen->bool_type = make_simple_type(codegen, &simple_type_info_ops,
+					      "eu_bool_t", "eu_bool");
+	codegen->string_type = make_simple_type(codegen, &builtin_type_info_ops,
+						"struct eu_string",
+						"eu_string");
+	codegen->variant_type = make_simple_type(codegen,
+						 &builtin_type_info_ops,
+						 "struct eu_variant",
+						 "eu_variant");
 }
 
-DEFINE_BUILTIN_TYPE_INFO(string_type_info, "struct eu_string",
-			 "&eu_string_metadata",
-			 "eu_string_fini");
+static void codegen_fini(struct codegen *codegen)
+{
+	struct type_info *ti, *next;
 
-DEFINE_BUILTIN_TYPE_INFO(variant_type_info, "struct eu_variant",
-			 "&eu_variant_metadata",
-			 "eu_variant_fini");
+	for (ti = codegen->type_infos_to_destroy; ti;) {
+		next = ti->next_to_destroy;
+		ti->ops->destroy(ti);
+		ti = next;
+	}
+
+	free(codegen->defs);
+}
 
 
 /* Structs */
@@ -316,10 +381,12 @@ struct struct_type_info {
 	struct member_info *members;
 	size_t members_len;
 
+	struct type_info *extras_type;
+
 	char *metadata_name;
 	char *inline_metadata_name;
 
-	int defined_yet;
+	char defined_yet;
 };
 
 static struct type_info_ops struct_type_info_ops;
@@ -333,22 +400,23 @@ static struct type_info *alloc_struct(struct eu_variant *schema,
 
 	assert(name && eu_variant_type(name) == EU_JSON_STRING);
 
-	sti->base.ops = &struct_type_info_ops;
 	sti->struct_name = eu_string_to_ref(&name->u.string);
-	sti->members = NULL;
-	sti->members_len = 0;
-	sti->defined_yet = 0;
-
 	sti->metadata_name
 		= xsprintf("struct_%.*s_metadata",
 			   (int)sti->struct_name.len, sti->struct_name.chars);
 	sti->inline_metadata_name
 		= xsprintf("inline_struct_%.*s_metadata",
 			   (int)sti->struct_name.len, sti->struct_name.chars);
-	sti->base.metadata_ptr_expr
-		= xsprintf("&%s.base", sti->metadata_name);
+	sti->extras_type = NULL;
+	sti->members = NULL;
+	sti->members_len = 0;
+	sti->defined_yet = 0;
 
-	add_type_info_to_destroy(codegen, &sti->base);
+	type_info_init(&sti->base, codegen, &struct_type_info_ops,
+		       xsprintf("struct_%.*s",
+			    (int)sti->struct_name.len, sti->struct_name.chars),
+		       xsprintf("&%s.base", sti->metadata_name));
+
 	return &sti->base;
 }
 
@@ -356,24 +424,36 @@ static void struct_fill(struct type_info *ti, struct codegen *codegen,
 			struct eu_variant *schema)
 {
 	struct struct_type_info *sti = (void *)ti;
-	struct eu_variant *props = eu_variant_get_cstr(schema,
-						       "properties");
-	struct eu_variant_members *props_members;
-	size_t i;
+	struct eu_variant *props, *additional_props;
 
-	assert(props && eu_variant_type(props) == EU_JSON_OBJECT);
+	props = eu_variant_get_cstr(schema, "properties");
+	if (props) {
+		struct eu_variant_members *props_members;
+		size_t i;
 
-	props_members = &props->u.object.members;
-	assert(!sti->members);
-	sti->members = xalloc(props_members->len * sizeof *sti->members);
-	sti->members_len = props_members->len;
+		assert(eu_variant_type(props) == EU_JSON_OBJECT);
 
-	for (i = 0; i < props_members->len; i++) {
-		struct eu_variant_member *sm = &props_members->members[i];
-		struct member_info *mi = &sti->members[i];
+		props_members = &props->u.object.members;
+		assert(!sti->members);
+		sti->members
+			= xalloc(props_members->len * sizeof *sti->members);
+		sti->members_len = props_members->len;
 
-		mi->name = sm->name;
-		mi->type = resolve_type(codegen, &sm->value);
+		for (i = 0; i < props_members->len; i++) {
+			struct eu_variant_member *sm
+				= &props_members->members[i];
+			struct member_info *mi = &sti->members[i];
+
+			mi->name = sm->name;
+			mi->type = resolve_type(codegen, &sm->value);
+		}
+	}
+
+	additional_props
+		= eu_variant_get_cstr(schema, "additionalProperties");
+	if (additional_props) {
+		assert(eu_variant_type(additional_props) == EU_JSON_OBJECT);
+		sti->extras_type = resolve_type(codegen, additional_props);
 	}
 }
 
@@ -439,6 +519,7 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 {
 	struct struct_type_info *sti = (void *)ti;
 	size_t i;
+	struct type_info *extras_type;
 
 	if (sti->defined_yet)
 		return;
@@ -451,6 +532,13 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 		define_type(mi->type, codegen);
 	}
 
+	/* The definition of the extras_type */
+	extras_type = sti->extras_type;
+	if (!extras_type)
+		extras_type = codegen->variant_type;
+
+	define_members_struct(extras_type, codegen);
+
 	/* The definition of the struct itself. */
 	fprintf(codegen->h_out, "struct %.*s {\n",
 		(int)sti->struct_name.len, sti->struct_name.chars);
@@ -461,8 +549,9 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 	}
 
 	fprintf(codegen->h_out,
-		"\tstruct eu_variant_members extras;\n"
-		"};\n\n");
+		"\tstruct %s extras;\n"
+		"};\n\n",
+		extras_type->members_struct_name);
 
 	/* Member metadata */
 	fprintf(codegen->c_out,
@@ -497,13 +586,14 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 	fprintf(codegen->c_out,
 		"struct eu_struct_metadata %s\n"
 		"\t= EU_STRUCT_METADATA_INITIALIZER(struct %.*s, "
-			"%.*s_members, struct eu_variant_member, "
-			"&eu_variant_metadata);\n\n",
+			"%.*s_members, struct %s, %s);\n\n",
 		sti->metadata_name,
 		(int)sti->struct_name.len, sti->struct_name.chars,
-		(int)sti->struct_name.len, sti->struct_name.chars);
+		(int)sti->struct_name.len, sti->struct_name.chars,
+		extras_type->member_struct_name,
+		extras_type->metadata_ptr_expr);
 
-	/* Definitiion of the eu_struct_metadata instance for inline
+	/* Definition of the eu_struct_metadata instance for inline
 	   structs.  Inline support is incomplete currently. */
 	fprintf(codegen->h_out, "extern struct eu_struct_metadata %s;\n\n",
 		sti->inline_metadata_name);
@@ -511,11 +601,12 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 	fprintf(codegen->c_out,
 		"struct eu_struct_metadata %s\n"
 		"\t= EU_INLINE_STRUCT_METADATA_INITIALIZER(struct %.*s, "
-			"%.*s_members, struct eu_variant_member, "
-			"&eu_variant_metadata);\n\n",
+			"%.*s_members, struct %s, %s);\n\n",
 		sti->inline_metadata_name,
 		(int)sti->struct_name.len, sti->struct_name.chars,
-		(int)sti->struct_name.len, sti->struct_name.chars);
+		(int)sti->struct_name.len, sti->struct_name.chars,
+		extras_type->member_struct_name,
+		extras_type->metadata_ptr_expr);
 
 	fprintf(codegen->h_out,
 		"void %.*s_fini(struct %.*s *p);\n",
@@ -565,9 +656,11 @@ static void struct_destroy(struct type_info *ti)
 {
 	struct struct_type_info *sti = (void *)ti;
 
+	type_info_fini(ti);
 	free(sti->metadata_name);
 	free(sti->inline_metadata_name);
-	free(sti->base.metadata_ptr_expr);
+	free((void *)sti->base.base_name);
+	free((void *)sti->base.metadata_ptr_expr);
 	free(sti->members);
 	free(sti);
 }
@@ -639,11 +732,11 @@ static struct type_info *alloc_type(struct codegen *codegen,
 	assert(type && eu_variant_type(type) == EU_JSON_STRING);
 
 	if (eu_variant_equals_cstr(type, "string"))
-		return &string_type_info.base.base;
+		return codegen->string_type;
 	else if (eu_variant_equals_cstr(type, "number"))
-		return &number_type_info.base;
+		return codegen->number_type;
 	else if (eu_variant_equals_cstr(type, "boolean"))
-		return &boolean_type_info.base;
+		return codegen->bool_type;
 	else if (eu_variant_equals_cstr(type, "object"))
 		return alloc_struct(schema, codegen);
 	else
@@ -674,7 +767,7 @@ static struct type_info *resolve_type(struct codegen *codegen,
 	assert(eu_variant_type(schema) == EU_JSON_OBJECT);
 
 	if (is_empty_schema(schema))
-		return &variant_type_info.base.base;
+		return codegen->variant_type;
 
 	ref = eu_variant_get_cstr(schema, "$ref");
 	if (ref) {

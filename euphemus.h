@@ -134,6 +134,7 @@ int eu_resolve_error(struct eu_value *val, struct eu_string_ref name);
 
 /* Variant objects */
 
+#define EU_VARIANT_MEMBERS_DEFINED
 struct eu_variant_members {
 	struct eu_variant_member *members;
 	size_t len;

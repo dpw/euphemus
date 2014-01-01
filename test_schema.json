@@ -18,7 +18,8 @@
 		                "num": { "type": "number" },
                                 "bool": { "type": "boolean" },
                                 "bar": { "$ref": "#/definitions/baz" }
-                        }
+                        },
+                        "additionalProperties": { "type": "string" }
                 },
                 "baz": { "$ref": "#/definitions/bar" }
         }
