@@ -1,4 +1,4 @@
-#include "euphemus.h"
+#include <euphemus.h>
 #include "euphemus_int.h"
 
 enum array_parse_state {

@@ -1,4 +1,4 @@
-#include "euphemus.h"
+#include <euphemus.h>
 
 /* This implements JSON Pointer paths, but without the ~ escaping yet. */
 int eu_resolve_path(struct eu_value *val, struct eu_string_ref path)

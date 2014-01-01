@@ -1,4 +1,4 @@
-#include "euphemus.h"
+#include <euphemus.h>
 
 #include <string.h>
 #include <assert.h>

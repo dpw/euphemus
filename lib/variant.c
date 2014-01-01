@@ -1,4 +1,4 @@
-#include "euphemus.h"
+#include <euphemus.h>
 #include "euphemus_int.h"
 
 static enum eu_parse_result invalid(void *misc, struct eu_parse *ep,

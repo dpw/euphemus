@@ -5,7 +5,7 @@
 #include <assert.h>
 #include <ctype.h>
 
-#include "euphemus.h"
+#include <euphemus.h>
 
 static void die(const char *fmt, ...)
 	__attribute__ ((noreturn,format (printf, 1, 2)));
@@ -800,14 +800,13 @@ static void codegen_prolog(const char *path, const char *out_path,
 {
 	fprintf(h_out,
 		"/* Generated from \"%s\".  You probably shouldn't edit this file. */\n\n"
-		"#include \"euphemus.h\"\n\n",
+		"#include <euphemus.h>\n\n",
 		path);
 
 	fprintf(c_out,
 		"/* Generated from \"%s\".  You probably shouldn't edit this file. */\n\n"
 		"#include <stddef.h>\n\n"
-		"#include \"%s\"\n"
-		"#include \"euphemus.h\"\n\n",
+		"#include \"%s\"\n",
 		path, out_path);
 }
 

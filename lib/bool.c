@@ -1,4 +1,4 @@
-#include "euphemus.h"
+#include <euphemus.h>
 #include "euphemus_int.h"
 
 static enum eu_parse_result bool_parse(struct eu_metadata *metadata,

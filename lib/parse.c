@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "euphemus.h"
+#include <euphemus.h>
 #include "euphemus_int.h"
 
 static enum eu_parse_result initial_parse_resume(struct eu_parse *ep,

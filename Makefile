@@ -20,46 +20,43 @@ ROOT=$(filter-out ./,$(dir $(MAKEFILE)))
 VPATH=$(ROOT)
 
 # It's less likely that you'll want to override this
-PROJECT_CFLAGS=-D_GNU_SOURCE -Wno-multichar -Wpointer-arith
+PROJECT_CFLAGS=-I$(ROOT)include -D_GNU_SOURCE -Wno-multichar -Wpointer-arith
 
 # The euphemus library source files
-LIB_SRCS=parse.c resolve.c struct.c array.c string.c variant.c number.c bool.c null.c
+LIB_SRCS=$(foreach S,parse.c resolve.c struct.c array.c string.c variant.c number.c bool.c null.c,lib/$(S))
 
 # Other source files
-SRCS=codegen.c test.c test_codegen.c parse_perf.c test_schema.c
-
-# Header files
-HDRS=euphemus.h euphemus_int.h test_parse.h
+SRCS=schemac/schemac.c
+SRCS+=$(foreach S,test.c test_codegen.c parse_perf.c test_schema.c,test/$(S))
 
 # Main exectuables that get built
-EXECUTABLES=codegen parse_perf
+EXECUTABLES=schemac/schemac test/parse_perf
 
 # Test executables that get built
-TEST_EXECUTABLES=test test_codegen
+TEST_EXECUTABLES=test/test test/test_codegen
 
-HDROBJS_$(ROOT)euphemus.h=$(LIB_SRCS:%.c=%.o)
-HDROBJS_$(ROOT)euphemus_int.h=$(LIB_SRCS:%.c=%.o)
+HDROBJS_$(ROOT)include/euphemus.h=$(LIB_SRCS:%.c=%.o)
+HDROBJS_$(ROOT)lib/euphemus_int.h=$(LIB_SRCS:%.c=%.o)
 HDROBJS_/usr/include/json/json.h=-ljson
 HDROBJS_$(ROOT)test_parse.h=
 
-test_codegen.o: test_schema.h
+test/test_codegen.o: test/test_schema.h
 
 # Even with .DELETE_ON_ERROR, make will only delete one of the
 # targets, hence the 'rm' here.
-test_schema.c test_schema.h: test_schema.json codegen
-	./codegen $< || (rm -f test_schema.c test_schema.h ; false)
+test/test_schema.c test/test_schema.h: test/test_schema.json schemac/schemac
+	(d=$$PWD ; cd $(<D) && $$d/schemac/schemac $(<F)) || (rm -f test/test_schema.c test/test_schema.h ; false)
 
-HDROBJS_$(ROOT)test_schema.h=test_schema.o
+HDROBJS_$(ROOT)test/test_schema.h=test/test_schema.o
 
 clean::
-	rm -f test_schema.c test_schema.h
+	rm -f test/test_schema.c test/test_schema.h
 
 # That completes the definition of the project sources and structure.
 # Now for the magic.
 
 ALL_EXECUTABLES:=$(EXECUTABLES) $(TEST_EXECUTABLES)
 ALL_SRCS:=$(LIB_SRCS) $(SRCS)
-$(foreach H,$(HDRS),$(eval HDROBJS_$(ROOT)$(H)?=$(notdir $(H:%.h=%.o))))
 
 # Disable builtin rules
 .SUFFIXES:
@@ -84,9 +81,9 @@ endif
 
 .PHONY: clean
 clean::
-	rm -f *.o .*.dep *~ *.gcda *.gcno $(ALL_EXECUTABLES) coverage/*.gcov
+	rm -f $(foreach D,lib test schemac,$(D)/*.o $(call dotify,$(D)/*.dep) $(D)/*~ $(D)/*.gcda $(D)/*.gcno) $(ALL_EXECUTABLES) coverage/*.gcov
 
-%.o $(call dotify,%.c.dep) : %.c
+%.o $(call dotify,%.c.dep): %.c
 	@mkdir -p $(@D)
 	$(COMPILE.c) $(PROJECT_CFLAGS) -MD -o $*.o $<
 	@cat $*.d >$(call dotify,$*.c.dep)

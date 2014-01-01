@@ -1,6 +1,6 @@
 #include <stdint.h>
 
-#include "euphemus.h"
+#include <euphemus.h>
 #include "euphemus_int.h"
 
 #define ONE_TO_9                                                      \

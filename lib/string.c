@@ -1,4 +1,4 @@
-#include "euphemus.h"
+#include <euphemus.h>
 #include "euphemus_int.h"
 
 struct string_parse_cont {

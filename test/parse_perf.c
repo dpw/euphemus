@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 #include <json/json.h>
-#include "euphemus.h"
+#include <euphemus.h>
 
 
 static char *read_file(const char *fname, size_t *len_out)

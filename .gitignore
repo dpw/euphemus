@@ -5,10 +5,10 @@
 *.gcda
 *.gcno
 
-test_schema.c
-test_schema.h
+test/test_schema.c
+test/test_schema.h
 
-test
-test_codegen
-parse_perf
-codegen
+test/test
+test/test_codegen
+test/parse_perf
+schemac/schemac
