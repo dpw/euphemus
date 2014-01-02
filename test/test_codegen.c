@@ -21,7 +21,7 @@ static void test_struct_ptr(void)
 {
 	TEST_PARSE("{\"str\":\"x\",\"any\":null,\"bar\":{\"num\":42,\"bool\":true}}",
 		   struct foo *,
-		   eu_parse_init_struct_foo,
+		   eu_parse_init_struct_foo_ptr,
 		   check_foo(result),
 		   foo_destroy(result));
 }
@@ -39,7 +39,7 @@ static void test_nested(void)
 {
 	TEST_PARSE("{\"bar\":{\"bar\":{\"bar\":{\"bool\":true}}}}",
 		   struct foo *,
-		   eu_parse_init_struct_foo,
+		   eu_parse_init_struct_foo_ptr,
 		   assert(result->bar->bar->bar->bool),
 		   foo_destroy(result));
 }

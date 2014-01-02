@@ -383,7 +383,7 @@ struct struct_type_info {
 
 	struct type_info *extras_type;
 
-	char *metadata_name;
+	char *ptr_metadata_name;
 	char *inline_metadata_name;
 
 	char defined_yet;
@@ -401,8 +401,8 @@ static struct type_info *alloc_struct(struct eu_variant *schema,
 	assert(name && eu_variant_type(name) == EU_JSON_STRING);
 
 	sti->struct_name = eu_string_to_ref(&name->u.string);
-	sti->metadata_name
-		= xsprintf("struct_%.*s_metadata",
+	sti->ptr_metadata_name
+		= xsprintf("struct_%.*s_ptr_metadata",
 			   (int)sti->struct_name.len, sti->struct_name.chars);
 	sti->inline_metadata_name
 		= xsprintf("inline_struct_%.*s_metadata",
@@ -415,7 +415,7 @@ static struct type_info *alloc_struct(struct eu_variant *schema,
 	type_info_init(&sti->base, codegen, &struct_type_info_ops,
 		       xsprintf("struct_%.*s",
 			    (int)sti->struct_name.len, sti->struct_name.chars),
-		       xsprintf("&%s.base", sti->metadata_name));
+		       xsprintf("&%s.base", sti->ptr_metadata_name));
 
 	return &sti->base;
 }
@@ -483,7 +483,7 @@ static void struct_define_parse_init(struct struct_type_info *sti,
 		def_out = codegen->c_out;
 
 		fprintf(codegen->h_out,
-			"void eu_parse_init_struct_%.*s(struct eu_parse *ep, struct %.*s **p);\n",
+			"void eu_parse_init_struct_%.*s_ptr(struct eu_parse *ep, struct %.*s **p);\n",
 			(int)sti->struct_name.len, sti->struct_name.chars,
 			(int)sti->struct_name.len, sti->struct_name.chars);
 
@@ -494,7 +494,7 @@ static void struct_define_parse_init(struct struct_type_info *sti,
 	}
 
 	fprintf(def_out,
-		"%svoid eu_parse_init_struct_%.*s(struct eu_parse *ep, struct %.*s **p)\n"
+		"%svoid eu_parse_init_struct_%.*s_ptr(struct eu_parse *ep, struct %.*s **p)\n"
 		"{\n"
 		"\teu_parse_init(ep, %s, p);\n"
 		"}\n\n",
@@ -581,13 +581,13 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 
 	/* Definitiion of the eu_struct_metadata instance */
 	fprintf(codegen->h_out, "extern struct eu_struct_metadata %s;\n",
-		sti->metadata_name);
+		sti->ptr_metadata_name);
 
 	fprintf(codegen->c_out,
 		"struct eu_struct_metadata %s\n"
-		"\t= EU_STRUCT_METADATA_INITIALIZER(struct %.*s, "
+		"\t= EU_STRUCT_PTR_METADATA_INITIALIZER(struct %.*s, "
 			"%.*s_members, struct %s, %s);\n\n",
-		sti->metadata_name,
+		sti->ptr_metadata_name,
 		(int)sti->struct_name.len, sti->struct_name.chars,
 		(int)sti->struct_name.len, sti->struct_name.chars,
 		extras_type->member_struct_name,
@@ -632,7 +632,7 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 		"\tif (p->extras.len)\n"
 		"\t\teu_struct_extras_fini(&%s, &p->extras);\n"
 		"}\n\n",
-		sti->metadata_name);
+		sti->ptr_metadata_name);
 
 	fprintf(codegen->h_out,
 		"void %.*s_destroy(struct %.*s *p);\n\n",
@@ -657,7 +657,7 @@ static void struct_destroy(struct type_info *ti)
 	struct struct_type_info *sti = (void *)ti;
 
 	type_info_fini(ti);
-	free(sti->metadata_name);
+	free(sti->ptr_metadata_name);
 	free(sti->inline_metadata_name);
 	free((void *)sti->base.base_name);
 	free((void *)sti->base.metadata_ptr_expr);

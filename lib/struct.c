@@ -180,8 +180,8 @@ enum eu_parse_result eu_variant_object(void *object_metadata,
 	return struct_parse(object_metadata, ep, &result->u.object, NULL);
 }
 
-enum eu_parse_result eu_struct_parse(struct eu_metadata *gmetadata,
-				     struct eu_parse *ep, void *result)
+enum eu_parse_result eu_struct_ptr_parse(struct eu_metadata *gmetadata,
+					 struct eu_parse *ep, void *result)
 {
 	struct eu_struct_metadata *metadata
 		= (struct eu_struct_metadata *)gmetadata;
@@ -294,7 +294,7 @@ void eu_inline_struct_fini(struct eu_metadata *gmetadata, void *s)
 	eu_struct_extras_fini(metadata, (char *)s + metadata->extras_offset);
 }
 
-void eu_struct_fini(struct eu_metadata *gmetadata, void *value)
+void eu_struct_ptr_fini(struct eu_metadata *gmetadata, void *value)
 {
 	void *s = *(void **)value;
 
@@ -382,7 +382,7 @@ int eu_inline_struct_resolve(struct eu_value *val, struct eu_string_ref name)
 	return 0;
 }
 
-int eu_struct_resolve(struct eu_value *val, struct eu_string_ref name)
+int eu_struct_ptr_resolve(struct eu_value *val, struct eu_string_ref name)
 {
 	val->value = *(void **)val->value;
 	return eu_inline_struct_resolve(val, name);

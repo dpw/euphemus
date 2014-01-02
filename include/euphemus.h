@@ -301,11 +301,11 @@ struct eu_struct_metadata {
 	struct eu_metadata *extra_value_metadata;
 };
 
-enum eu_parse_result eu_struct_parse(struct eu_metadata *gmetadata,
-				     struct eu_parse *ep,
-				     void *result);
-void eu_struct_fini(struct eu_metadata *gmetadata, void *value);
-int eu_struct_resolve(struct eu_value *val, struct eu_string_ref name);
+enum eu_parse_result eu_struct_ptr_parse(struct eu_metadata *gmetadata,
+					 struct eu_parse *ep,
+					 void *result);
+void eu_struct_ptr_fini(struct eu_metadata *gmetadata, void *value);
+int eu_struct_ptr_resolve(struct eu_value *val, struct eu_string_ref name);
 enum eu_parse_result eu_inline_struct_parse(struct eu_metadata *gmetadata,
 					    struct eu_parse *ep,
 					    void *result);
@@ -314,12 +314,12 @@ int eu_inline_struct_resolve(struct eu_value *val, struct eu_string_ref name);
 void eu_struct_extras_fini(struct eu_struct_metadata *md, void *v_extras);
 
 
-#define EU_STRUCT_METADATA_INITIALIZER(struct_name, struct_members, extra_member_struct, extra_member_metadata) \
+#define EU_STRUCT_PTR_METADATA_INITIALIZER(struct_name, struct_members, extra_member_struct, extra_member_metadata) \
 	{                                                             \
 		{                                                     \
-			eu_struct_parse,                              \
-			eu_struct_fini,                               \
-			eu_struct_resolve,                            \
+			eu_struct_ptr_parse,                          \
+			eu_struct_ptr_fini,                           \
+			eu_struct_ptr_resolve,                        \
 			sizeof(struct_name *),                        \
 			EU_JSON_INVALID                               \
 		},                                                    \
