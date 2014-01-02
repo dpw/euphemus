@@ -723,13 +723,34 @@ static struct type_info *resolve_ref(struct codegen *codegen,
 	return def->u.type;
 }
 
+static int is_empty_schema(struct eu_variant *schema)
+{
+	struct eu_variant_members *ms = &schema->u.object.members;
+	size_t i;
+
+	for (i = 0; i < ms->len; i++) {
+		struct eu_variant_member *m = &ms->members[i];
+
+		if (!eu_string_ref_equal(m->name, eu_cstr("definitions"))
+		    && !eu_string_ref_equal(m->name, eu_cstr("title")))
+			return 0;
+	}
+
+	return 1;
+}
+
 static struct type_info *alloc_type(struct codegen *codegen,
 				    struct eu_variant *schema)
 {
 	struct eu_variant *type;
 
 	type = eu_variant_get_cstr(schema, "type");
-	assert(type && eu_variant_type(type) == EU_JSON_STRING);
+	if (!type) {
+		assert(is_empty_schema(schema));
+		return codegen->variant_type;
+	}
+
+	assert(eu_variant_type(type) == EU_JSON_STRING);
 
 	if (eu_variant_equals_cstr(type, "string"))
 		return codegen->string_type;
@@ -744,20 +765,6 @@ static struct type_info *alloc_type(struct codegen *codegen,
 		    type->u.string.chars);
 }
 
-static int is_empty_schema(struct eu_variant *schema)
-{
-	struct eu_variant_member *m;
-
-	if (!schema->u.object.members.len)
-		return 1;
-
-	if (schema->u.object.members.len > 1)
-		return 0;
-
-	m = schema->u.object.members.members;
-	return eu_string_ref_equal(m->name, eu_cstr("definitions"));
-}
-
 static struct type_info *resolve_type(struct codegen *codegen,
 				      struct eu_variant *schema)
 {
@@ -765,9 +772,6 @@ static struct type_info *resolve_type(struct codegen *codegen,
 	struct type_info *ti;
 
 	assert(eu_variant_type(schema) == EU_JSON_OBJECT);
-
-	if (is_empty_schema(schema))
-		return codegen->variant_type;
 
 	ref = eu_variant_get_cstr(schema, "$ref");
 	if (ref) {
