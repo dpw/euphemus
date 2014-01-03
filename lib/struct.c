@@ -358,7 +358,8 @@ int eu_struct_resolve(struct eu_value *val, struct eu_string_ref name)
 		= (struct eu_struct_metadata *)val->metadata;
 	size_t i;
 	char *s = val->value;
-	struct eu_variant_members *extras;
+	struct eu_generic_members *extras;
+	char *em;
 
 	for (i = 0; i < md->n_members; i++) {
 		struct eu_struct_member *m = &md->members[i];
@@ -371,12 +372,15 @@ int eu_struct_resolve(struct eu_value *val, struct eu_string_ref name)
 	}
 
 	extras = (void *)(s + md->extras_offset);
+	em = extras->members;
 	for (i = 0; i < extras->len; i++) {
-		struct eu_variant_member *m = &extras->members[i];
-		if (eu_string_ref_equal(m->name, name)) {
-			*val = eu_variant_value(&m->value);
+		if (eu_string_ref_equal(*(struct eu_string_ref *)em, name)) {
+			*val = eu_value(em + md->extra_member_value_offset,
+					md->extra_value_metadata);
 			return 1;
 		}
+
+		em += md->extra_member_size;
 	}
 
 	return 0;

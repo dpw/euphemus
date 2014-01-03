@@ -91,6 +91,27 @@ static void test_resolve(void)
 	foo_fini(&foo);
 }
 
+static void test_resolve_extras(void)
+{
+	struct bar bar;
+	struct eu_parse ep;
+	const char *json = "{\"x\":\"y\"}";
+	struct eu_value val;
+
+	eu_parse_init_struct_bar(&ep, &bar);
+	assert(eu_parse(&ep, json, strlen(json)));
+	assert(eu_parse_finish(&ep));
+	eu_parse_fini(&ep);
+
+	val = eu_value(&bar, &inline_struct_bar_metadata.base);
+	assert(eu_resolve_path(&val, eu_cstr("/x")));
+	assert(eu_value_type(val) == EU_JSON_STRING);
+	assert(eu_string_ref_equal(eu_string_to_ref(val.value),
+				   eu_cstr("y")));
+
+	bar_fini(&bar);
+}
+
 int main(void)
 {
 	test_struct_ptr();
@@ -98,5 +119,6 @@ int main(void)
 	test_nested();
 	test_extras();
 	test_resolve();
+	test_resolve_extras();
 	return 0;
 }
