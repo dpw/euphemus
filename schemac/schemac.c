@@ -488,7 +488,7 @@ static void struct_define_parse_init(struct struct_type_info *sti,
 			(int)sti->struct_name.len, sti->struct_name.chars);
 
 		fprintf(codegen->h_out,
-			"void eu_parse_init_inline_struct_%.*s(struct eu_parse *ep, struct %.*s *p);\n\n",
+			"void eu_parse_init_struct_%.*s(struct eu_parse *ep, struct %.*s *p);\n\n",
 			(int)sti->struct_name.len, sti->struct_name.chars,
 			(int)sti->struct_name.len, sti->struct_name.chars);
 	}
@@ -505,7 +505,7 @@ static void struct_define_parse_init(struct struct_type_info *sti,
 
 
 	fprintf(def_out,
-		"%svoid eu_parse_init_inline_struct_%.*s(struct eu_parse *ep, struct %.*s *p)\n"
+		"%svoid eu_parse_init_struct_%.*s(struct eu_parse *ep, struct %.*s *p)\n"
 		"{\n"
 		"\teu_parse_init(ep, &%s.base, p);\n"
 		"}\n\n",
@@ -600,7 +600,7 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 
 	fprintf(codegen->c_out,
 		"struct eu_struct_metadata %s\n"
-		"\t= EU_INLINE_STRUCT_METADATA_INITIALIZER(struct %.*s, "
+		"\t= EU_STRUCT_METADATA_INITIALIZER(struct %.*s, "
 			"%.*s_members, struct %s, %s);\n\n",
 		sti->inline_metadata_name,
 		(int)sti->struct_name.len, sti->struct_name.chars,

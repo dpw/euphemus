@@ -204,8 +204,8 @@ enum eu_parse_result eu_struct_ptr_parse(struct eu_metadata *gmetadata,
 	}
 }
 
-enum eu_parse_result eu_inline_struct_parse(struct eu_metadata *gmetadata,
-					    struct eu_parse *ep, void *result)
+enum eu_parse_result eu_struct_parse(struct eu_metadata *gmetadata,
+				     struct eu_parse *ep, void *result)
 {
 	enum eu_parse_result res
 		= eu_consume_whitespace_until(gmetadata, ep, result, '{');
@@ -279,7 +279,7 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 #undef RESUME_ONLY
 }
 
-void eu_inline_struct_fini(struct eu_metadata *gmetadata, void *s)
+void eu_struct_fini(struct eu_metadata *gmetadata, void *s)
 {
 	struct eu_struct_metadata *metadata
 		= (struct eu_struct_metadata *)gmetadata;
@@ -299,7 +299,7 @@ void eu_struct_ptr_fini(struct eu_metadata *gmetadata, void *value)
 	void *s = *(void **)value;
 
 	if (s) {
-		eu_inline_struct_fini(gmetadata, s);
+		eu_struct_fini(gmetadata, s);
 		free(s);
 		*(void **)value = NULL;
 	}
@@ -312,7 +312,7 @@ static void struct_parse_cont_destroy(struct eu_parse *ep,
 
 	(void)ep;
 
-	eu_inline_struct_fini(&cont->metadata->base, cont->result);
+	eu_struct_fini(&cont->metadata->base, cont->result);
 	if (cont->result_ptr) {
 		free(cont->result);
 		*cont->result_ptr = NULL;
@@ -321,11 +321,11 @@ static void struct_parse_cont_destroy(struct eu_parse *ep,
 	free(cont);
 }
 
-struct eu_struct_metadata eu_inline_object_metadata = {
+struct eu_struct_metadata eu_object_metadata = {
 	{
-		eu_inline_struct_parse,
-		eu_inline_struct_fini,
-		eu_inline_struct_resolve,
+		eu_struct_parse,
+		eu_struct_fini,
+		eu_struct_resolve,
 		sizeof(struct eu_object),
 		EU_JSON_OBJECT
 	},
@@ -352,7 +352,7 @@ struct eu_variant *eu_variant_members_get(struct eu_variant_members *members,
 	return NULL;
 }
 
-int eu_inline_struct_resolve(struct eu_value *val, struct eu_string_ref name)
+int eu_struct_resolve(struct eu_value *val, struct eu_string_ref name)
 {
 	struct eu_struct_metadata *md
 		= (struct eu_struct_metadata *)val->metadata;
@@ -385,6 +385,6 @@ int eu_inline_struct_resolve(struct eu_value *val, struct eu_string_ref name)
 int eu_struct_ptr_resolve(struct eu_value *val, struct eu_string_ref name)
 {
 	val->value = *(void **)val->value;
-	return eu_inline_struct_resolve(val, name);
+	return eu_struct_resolve(val, name);
 }
 

@@ -39,7 +39,7 @@ static struct char_type_slot char_type_slots[CHAR_TYPE_MAX] = {
 	[CHAR_TYPE_WS] = { whitespace, &eu_variant_metadata },
 	[CHAR_TYPE_DQUOTES] = { eu_variant_string, &eu_string_metadata },
 	[CHAR_TYPE_BRACE] = { eu_variant_object,
-			      &eu_inline_object_metadata.base },
+			      &eu_object_metadata.base },
 	[CHAR_TYPE_BRACKET] = { eu_variant_array,
 				&eu_variant_array_metadata.base },
 	[CHAR_TYPE_NUMBER] = { eu_variant_number, &eu_number_metadata },

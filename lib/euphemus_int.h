@@ -22,7 +22,7 @@ int eu_parse_append_buffer_nul(struct eu_parse *ep, const char *start,
 
 void eu_noop_fini(struct eu_metadata *metadata, void *value);
 
-extern struct eu_struct_metadata eu_inline_object_metadata;
+extern struct eu_struct_metadata eu_object_metadata;
 extern struct eu_array_metadata eu_variant_array_metadata;
 extern struct eu_metadata eu_null_metadata;
 extern struct eu_bool_misc eu_bool_true;

@@ -30,7 +30,7 @@ static void test_inline_struct(void)
 {
 	TEST_PARSE("{\"str\":\"x\",\"any\":null,\"bar\":{\"num\":42,\"bool\":true}}",
 		   struct foo,
-		   eu_parse_init_inline_struct_foo,
+		   eu_parse_init_struct_foo,
 		   check_foo(&result),
 		   foo_fini(&result));
 }
@@ -57,13 +57,13 @@ static void test_extras(void)
 {
 	TEST_PARSE("{\"quux\":\"foo\"}",
 		   struct foo,
-		   eu_parse_init_inline_struct_foo,
+		   eu_parse_init_struct_foo,
 		   check_extras(&result),
 		   foo_fini(&result));
 
 	TEST_PARSE("{\"quux\":\"bar\"}",
 		   struct bar,
-		   eu_parse_init_inline_struct_bar,
+		   eu_parse_init_struct_bar,
 		   assert(result.extras.len == 1
 			  && eu_string_ref_equal(
 			      eu_string_to_ref(&result.extras.members[0].value),
@@ -78,7 +78,7 @@ static void test_resolve(void)
 	const char *json = "{\"bar\":{\"bar\":{\"bar\":{\"bool\":true}}}}";
 	struct eu_value val;
 
-	eu_parse_init_inline_struct_foo(&ep, &foo);
+	eu_parse_init_struct_foo(&ep, &foo);
 	assert(eu_parse(&ep, json, strlen(json)));
 	assert(eu_parse_finish(&ep));
 	eu_parse_fini(&ep);
