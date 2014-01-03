@@ -83,7 +83,7 @@ static void test_resolve(void)
 	assert(eu_parse_finish(&ep));
 	eu_parse_fini(&ep);
 
-	val = eu_value(&foo, &inline_struct_foo_metadata.base);
+	val = eu_value(&foo, &struct_foo_metadata.base);
 	assert(eu_resolve_path(&val, eu_cstr("/bar/bar/bar/bool")));
 	assert(eu_value_type(val) == EU_JSON_BOOL);
 	assert(*(eu_bool_t *)val.value);
@@ -103,7 +103,7 @@ static void test_resolve_extras(void)
 	assert(eu_parse_finish(&ep));
 	eu_parse_fini(&ep);
 
-	val = eu_value(&bar, &inline_struct_bar_metadata.base);
+	val = eu_value(&bar, &struct_bar_metadata.base);
 	assert(eu_resolve_path(&val, eu_cstr("/x")));
 	assert(eu_value_type(val) == EU_JSON_STRING);
 	assert(eu_string_ref_equal(eu_string_to_ref(val.value),

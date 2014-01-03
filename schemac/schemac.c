@@ -405,7 +405,7 @@ static struct type_info *alloc_struct(struct eu_variant *schema,
 		= xsprintf("struct_%.*s_ptr_metadata",
 			   (int)sti->struct_name.len, sti->struct_name.chars);
 	sti->inline_metadata_name
-		= xsprintf("inline_struct_%.*s_metadata",
+		= xsprintf("struct_%.*s_metadata",
 			   (int)sti->struct_name.len, sti->struct_name.chars);
 	sti->extras_type = NULL;
 	sti->members = NULL;
