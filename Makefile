@@ -23,7 +23,7 @@ VPATH=$(ROOT)
 PROJECT_CFLAGS=-I$(ROOT)include -D_GNU_SOURCE -Wno-multichar -Wpointer-arith
 
 # The euphemus library source files
-LIB_SRCS=$(foreach S,parse.c resolve.c struct.c array.c string.c variant.c number.c bool.c null.c,lib/$(S))
+LIB_SRCS=$(foreach S,parse.c path.c struct.c array.c string.c variant.c number.c bool.c null.c,lib/$(S))
 
 # Other source files
 SRCS=schemac/schemac.c

@@ -121,38 +121,39 @@ void eu_array_fini(struct eu_metadata *gmetadata, void *value)
 	array_fini(metadata->element_metadata, value);
 }
 
-int eu_array_resolve(struct eu_value *val, struct eu_string_ref name)
+struct eu_value eu_array_get(struct eu_value val, struct eu_string_ref name)
 {
-	struct eu_array_metadata *md
-		= (struct eu_array_metadata *)val->metadata;
-	struct eu_array *array = val->value;
+	struct eu_array_metadata *md = (struct eu_array_metadata *)val.metadata;
+	struct eu_array *array = val.value;
 	size_t index, i;
 	unsigned char digit;
 
 	if (name.len == 0 || name.chars[0] < '0' || name.chars[0] > '9')
-		return 0;
+		goto fail;
 
 	index = name.chars[0] - '0';
 
 	for (i = 1; i < name.len; i++) {
 		if (name.chars[i] < '0' || name.chars[i] > '9')
-			return 0;
+			goto fail;
 
 		if (index > ((size_t)-1)/10)
-			return 0;
+			goto fail;
 
 		index *= 10;
 
 		digit = name.chars[i] - '0';
 		if (index > ((size_t)-1)-digit)
-			return 0;
+			goto fail;
 
 		index += digit;
 	}
 
-	*val = eu_value((char *)array->a + index * md->element_metadata->size,
+	return eu_value((char *)array->a + index * md->element_metadata->size,
 			md->element_metadata);
-	return 1;
+
+ fail:
+	return eu_value_none;
 }
 
 struct eu_array_metadata eu_variant_array_metadata

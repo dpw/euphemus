@@ -136,7 +136,7 @@ static void test_parse_variant(void)
 		   eu_variant_fini(&result));
 }
 
-static void test_resolve(void)
+static void test_path(void)
 {
 	struct eu_variant var;
 	struct eu_parse ep;
@@ -150,7 +150,8 @@ static void test_resolve(void)
 	eu_parse_fini(&ep);
 
 	val = eu_variant_value(&var);
-	assert(eu_resolve_path(&val, eu_cstr("/a/c")));
+	val = eu_get_path(val, eu_cstr("/a/c"));
+	assert(eu_value_ok(val));
 	assert(eu_value_type(val) == EU_JSON_BOOL);
 	assert(*(eu_bool_t *)val.value);
 	eu_variant_fini(&var);
@@ -162,7 +163,8 @@ static void test_resolve(void)
 	eu_parse_fini(&ep);
 
 	val = eu_variant_value(&var);
-	assert(eu_resolve_path(&val, eu_cstr("/1")));
+	val = eu_get_path(val, eu_cstr("/1"));
+	assert(eu_value_ok(val));
 	assert(eu_value_type(val) == EU_JSON_NUMBER);
 	assert(*(double *)val.value == 20);
 	eu_variant_fini(&var);
@@ -176,7 +178,7 @@ int main(void)
 	test_parse_array();
 	test_parse_variant();
 
-	test_resolve();
+	test_path();
 
 	return 0;
 }

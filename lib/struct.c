@@ -325,7 +325,7 @@ struct eu_struct_metadata eu_object_metadata = {
 	{
 		eu_struct_parse,
 		eu_struct_fini,
-		eu_struct_resolve,
+		eu_struct_get,
 		sizeof(struct eu_object),
 		EU_JSON_OBJECT
 	},
@@ -352,43 +352,39 @@ struct eu_variant *eu_variant_members_get(struct eu_variant_members *members,
 	return NULL;
 }
 
-int eu_struct_resolve(struct eu_value *val, struct eu_string_ref name)
+struct eu_value eu_struct_get(struct eu_value val, struct eu_string_ref name)
 {
 	struct eu_struct_metadata *md
-		= (struct eu_struct_metadata *)val->metadata;
+		= (struct eu_struct_metadata *)val.metadata;
 	size_t i;
-	char *s = val->value;
+	char *s = val.value;
 	struct eu_generic_members *extras;
 	char *em;
 
 	for (i = 0; i < md->n_members; i++) {
 		struct eu_struct_member *m = &md->members[i];
 		if (m->name_len == name.len
-		    && !memcmp(m->name, name.chars, name.len)) {
-			val->value = s + m->offset;
-			val->metadata = m->metadata;
-			return 1;
-		}
+		    && !memcmp(m->name, name.chars, name.len))
+			return eu_value(s + m->offset, m->metadata);
 	}
 
 	extras = (void *)(s + md->extras_offset);
 	em = extras->members;
 	for (i = 0; i < extras->len; i++) {
-		if (eu_string_ref_equal(*(struct eu_string_ref *)em, name)) {
-			*val = eu_value(em + md->extra_member_value_offset,
+		if (eu_string_ref_equal(*(struct eu_string_ref *)em, name))
+			return eu_value(em + md->extra_member_value_offset,
 					md->extra_value_metadata);
-			return 1;
-		}
 
 		em += md->extra_member_size;
 	}
 
-	return 0;
+	return eu_value_none;
 }
 
-int eu_struct_ptr_resolve(struct eu_value *val, struct eu_string_ref name)
+struct eu_value eu_struct_ptr_get(struct eu_value val,
+				  struct eu_string_ref name)
 {
-	val->value = *(void **)val->value;
-	return eu_struct_resolve(val, name);
+	val.value = *(void **)val.value;
+	return eu_struct_get(val, name);
 }
 

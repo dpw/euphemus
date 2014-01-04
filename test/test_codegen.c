@@ -71,7 +71,7 @@ static void test_extras(void)
 		   bar_fini(&result));
 }
 
-static void test_resolve(void)
+static void test_path(void)
 {
 	struct foo foo;
 	struct eu_parse ep;
@@ -84,14 +84,15 @@ static void test_resolve(void)
 	eu_parse_fini(&ep);
 
 	val = eu_value(&foo, &struct_foo_metadata.base);
-	assert(eu_resolve_path(&val, eu_cstr("/bar/bar/bar/bool")));
+	val = eu_get_path(val, eu_cstr("/bar/bar/bar/bool"));
+	assert(eu_value_ok(val));
 	assert(eu_value_type(val) == EU_JSON_BOOL);
 	assert(*(eu_bool_t *)val.value);
 
 	foo_fini(&foo);
 }
 
-static void test_resolve_extras(void)
+static void test_path_extras(void)
 {
 	struct bar bar;
 	struct eu_parse ep;
@@ -104,7 +105,8 @@ static void test_resolve_extras(void)
 	eu_parse_fini(&ep);
 
 	val = eu_value(&bar, &struct_bar_metadata.base);
-	assert(eu_resolve_path(&val, eu_cstr("/x")));
+	val = eu_get_path(val, eu_cstr("/x"));
+	assert(eu_value_ok(val));
 	assert(eu_value_type(val) == EU_JSON_STRING);
 	assert(eu_string_ref_equal(eu_string_to_ref(val.value),
 				   eu_cstr("y")));
@@ -118,7 +120,7 @@ int main(void)
 	test_inline_struct();
 	test_nested();
 	test_extras();
-	test_resolve();
-	test_resolve_extras();
+	test_path();
+	test_path_extras();
 	return 0;
 }

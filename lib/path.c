@@ -1,17 +1,17 @@
 #include <euphemus.h>
 
 /* This implements JSON Pointer paths, but without the ~ escaping yet. */
-int eu_resolve_path(struct eu_value *val, struct eu_string_ref path)
+struct eu_value eu_get_path(struct eu_value val, struct eu_string_ref path)
 {
 	const char *end, *p = path.chars;
 
 	if (path.len == 0)
 		/* An empty path means the whole document */
-		return 1;
+		return val;
 
 	if (*p != '/')
 		/* All non-empty paths should start with '/' */
-		return 0;
+		return eu_value_none;
 
 	end = path.chars + path.len;
 	for (path.chars = ++p; p != end;) {
@@ -21,20 +21,20 @@ int eu_resolve_path(struct eu_value *val, struct eu_string_ref path)
 		}
 
 		path.len = p - path.chars;
-		if (!val->metadata->resolve(val, path))
-			return 0;
+		val = val.metadata->get(val, path);
+		if (!eu_value_ok(val))
+			return val;
 
 		path.chars = ++p;
 	}
 
 	path.len = p - path.chars;
-	return val->metadata->resolve(val, path);
+	return val.metadata->get(val, path);
 }
 
-int eu_resolve_error(struct eu_value *val, struct eu_string_ref name)
+struct eu_value eu_get_error(struct eu_value val, struct eu_string_ref name)
 {
 	(void)val;
 	(void)name;
-	return 0;
+	return eu_value_none;
 }
-

@@ -122,7 +122,7 @@ struct eu_variant *eu_variant_get(struct eu_variant *variant,
 struct eu_metadata eu_variant_metadata = {
 	variant_parse,
 	variant_fini,
-	eu_resolve_error,
+	eu_get_error,
 	sizeof(struct eu_variant),
 	EU_JSON_INVALID
 };
