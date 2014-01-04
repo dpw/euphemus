@@ -93,36 +93,33 @@ static void test_parse_array(void)
 
 static void check_variant(struct eu_variant *var)
 {
-	struct eu_variant *str, *obj, *num, *bool, *null, *array;
+	struct eu_value var_val = eu_variant_value(var);
+	struct eu_value val;
 
-	assert(eu_variant_type(var) == EU_JSON_OBJECT);
-	assert(str = eu_variant_get_cstr(var, "str"));
-	assert(obj = eu_variant_get_cstr(var, "obj"));
-	assert(bool = eu_variant_get_cstr(var, "bool"));
-	assert(null = eu_variant_get_cstr(var, "null"));
-	assert(array = eu_variant_get_cstr(var, "array"));
+	assert(eu_value_type(var_val) == EU_JSON_OBJECT);
 
-	assert(eu_variant_type(str) == EU_JSON_STRING);
-	assert(eu_string_ref_equal(eu_string_to_ref(&str->u.string),
+	assert(eu_value_ok(val = eu_value_get_cstr(var_val, "str")));
+	assert(eu_value_type(val) == EU_JSON_STRING);
+	assert(eu_string_ref_equal(eu_string_to_ref(val.value),
 				   eu_cstr("hello, world!")));
 
-	assert(eu_variant_type(obj) == EU_JSON_OBJECT);
-	assert(num = eu_variant_get_cstr(obj, "num"));
+	assert(eu_value_ok(val = eu_value_get_cstr(var_val, "obj")));
+	assert(eu_value_type(val) == EU_JSON_OBJECT);
+	assert(eu_value_ok(val = eu_value_get_cstr(val, "num")));
+	assert(eu_value_type(val) == EU_JSON_NUMBER);
+	assert(*(double *)val.value = 42);
 
-	assert(eu_variant_type(num) == EU_JSON_NUMBER);
-	assert(num->u.number = 42);
+	assert(eu_value_ok(val = eu_value_get_cstr(var_val, "bool")));
+	assert(eu_value_type(val) == EU_JSON_BOOL);
+	assert(*(eu_bool_t *)val.value);
 
-	assert(eu_variant_type(bool) == EU_JSON_BOOL);
-	assert(bool->u.bool);
+	assert(eu_value_ok(val = eu_value_get_cstr(var_val, "null")));
+	assert(eu_value_type(val) == EU_JSON_NULL);
 
-	assert(eu_variant_type(null) == EU_JSON_NULL);
-
-	assert(eu_variant_type(array) == EU_JSON_ARRAY);
-	assert(array->u.array.len == 2);
-	assert(eu_variant_type(&array->u.array.a[0]) == EU_JSON_STRING);
-	assert(eu_variant_type(&array->u.array.a[1]) == EU_JSON_ARRAY);
+	assert(eu_value_ok(val = eu_value_get_cstr(var_val, "array")));
+	assert(eu_value_type(val) == EU_JSON_ARRAY);
+	assert(((struct eu_array *)val.value)->len == 2);
 }
-
 static void test_parse_variant(void)
 {
 	TEST_PARSE("  {  \"str\":  \"hello, world!\","

@@ -57,43 +57,6 @@ static char *xstrdup(const char *s)
 	die("strdup failed");
 }
 
-static void parse_schema_file(const char *path, struct eu_variant *var)
-{
-	struct eu_parse parse;
-	FILE *fp = fopen(path, "r");
-
-	if (!fp)
-		die("error opening \"%s\": %s", path, strerror(errno));
-
-	eu_parse_init_variant(&parse, var);
-
-	while (!feof(fp)) {
-		char buf[1000];
-		size_t res = fread(buf, 1, 1000, fp);
-
-		if (res < 1000 && ferror(fp))
-			die("error reading \"%s\": %s", path, strerror(errno));
-
-		if (!eu_parse(&parse, buf, res))
-			die("parse error in \"%s\"", path);
-	}
-
-	if (!eu_parse_finish(&parse))
-		die("parse error in \"%s\"", path);
-
-	fclose(fp);
-
-	eu_parse_fini(&parse);
-}
-
-static int eu_variant_equals_cstr(struct eu_variant *var, const char *str)
-{
-	size_t len = strlen(str);
-	assert(eu_variant_type(var) == EU_JSON_STRING);
-	return len == var->u.string.len
-		&& !memcmp(str, var->u.string.chars, len);
-}
-
 /* The codegen object holds everything for code generation */
 
 struct definition {
@@ -106,7 +69,7 @@ struct definition {
 		DEF_TYPE
 	} state;
 	union {
-		struct eu_variant *schema;
+		struct eu_value schema;
 		struct definition *ref;
 		struct type_info *type;
 	} u;
@@ -145,7 +108,7 @@ struct type_info {
 
 struct type_info_ops {
 	void (*fill)(struct type_info *ti, struct codegen *codegen,
-		     struct eu_variant *schema);
+		     struct eu_value schema);
 	void (*declare)(struct type_info *ti, FILE *out,
 			struct eu_string_ref name);
 	void (*define)(struct type_info *ti, struct codegen *codegen);
@@ -156,7 +119,7 @@ struct type_info_ops {
 
 /* Fill in sub-schema information. */
 static void fill_type(struct type_info *ti, struct codegen *codegen,
-		      struct eu_variant *schema)
+		      struct eu_value schema)
 {
 	ti->ops->fill(ti, codegen, schema);
 }
@@ -227,7 +190,7 @@ static void define_members_struct(struct type_info *ti, struct codegen *codegen)
 }
 
 static struct type_info *resolve_type(struct codegen *codegen,
-				      struct eu_variant *schema);
+				      struct eu_value schema);
 
 static void type_info_init(struct type_info *ti,
 			   struct codegen *codegen,
@@ -267,7 +230,7 @@ static void simple_type_declare(struct type_info *ti, FILE *out,
 }
 
 static void noop_fill(struct type_info *ti, struct codegen *codegen,
-		      struct eu_variant *schema)
+		      struct eu_value schema)
 {
 	(void)ti;
 	(void)codegen;
@@ -391,16 +354,15 @@ struct struct_type_info {
 
 static struct type_info_ops struct_type_info_ops;
 
-static struct type_info *alloc_struct(struct eu_variant *schema,
+static struct type_info *alloc_struct(struct eu_value schema,
 				      struct codegen *codegen)
 {
 	struct struct_type_info *sti = xalloc(sizeof *sti);
-	struct eu_variant *name = eu_variant_get_cstr(schema,
-						      "euphemusStructName");
+	struct eu_value name = eu_value_get_cstr(schema, "euphemusStructName");
 
-	assert(name && eu_variant_type(name) == EU_JSON_STRING);
+	assert(eu_value_ok(name) && eu_value_type(name) == EU_JSON_STRING);
 
-	sti->struct_name = eu_string_to_ref(&name->u.string);
+	sti->struct_name = eu_string_to_ref(name.value);
 	sti->ptr_metadata_name
 		= xsprintf("struct_%.*s_ptr_metadata",
 			   (int)sti->struct_name.len, sti->struct_name.chars);
@@ -421,19 +383,19 @@ static struct type_info *alloc_struct(struct eu_variant *schema,
 }
 
 static void struct_fill(struct type_info *ti, struct codegen *codegen,
-			struct eu_variant *schema)
+			struct eu_value schema)
 {
 	struct struct_type_info *sti = (void *)ti;
-	struct eu_variant *props, *additional_props;
+	struct eu_value props, additional_props;
 
-	props = eu_variant_get_cstr(schema, "properties");
-	if (props) {
+	props = eu_value_get_cstr(schema, "properties");
+	if (eu_value_ok(props)) {
 		struct eu_variant_members *props_members;
 		size_t i;
 
-		assert(eu_variant_type(props) == EU_JSON_OBJECT);
+		assert(eu_value_type(props) == EU_JSON_OBJECT);
 
-		props_members = &props->u.object.members;
+		props_members = props.value;
 		assert(!sti->members);
 		sti->members
 			= xalloc(props_members->len * sizeof *sti->members);
@@ -445,14 +407,15 @@ static void struct_fill(struct type_info *ti, struct codegen *codegen,
 			struct member_info *mi = &sti->members[i];
 
 			mi->name = sm->name;
-			mi->type = resolve_type(codegen, &sm->value);
+			mi->type = resolve_type(codegen,
+						eu_variant_value(&sm->value));
 		}
 	}
 
 	additional_props
-		= eu_variant_get_cstr(schema, "additionalProperties");
-	if (additional_props) {
-		assert(eu_variant_type(additional_props) == EU_JSON_OBJECT);
+		= eu_value_get_cstr(schema, "additionalProperties");
+	if (eu_value_ok(additional_props)) {
+		assert(eu_value_type(additional_props) == EU_JSON_OBJECT);
 		sti->extras_type = resolve_type(codegen, additional_props);
 	}
 }
@@ -688,14 +651,14 @@ static struct type_info_ops struct_type_info_ops = {
 #define REF_PREFIX_LEN 14
 
 static struct definition *find_def(struct codegen *codegen,
-				   struct eu_variant *ref)
+				   struct eu_value ref)
 {
 	size_t i;
 	struct eu_string_ref name;
 
-	assert(eu_variant_type(ref) == EU_JSON_STRING);
+	assert(eu_value_type(ref) == EU_JSON_STRING);
 
-	name = eu_string_ref(ref->u.string.chars, ref->u.string.len);
+	name = eu_string_to_ref(ref.value);
 	if (name.len < REF_PREFIX_LEN
 	    || memcmp(name.chars, REF_PREFIX, REF_PREFIX_LEN))
 		die("only refs beginning with '" REF_PREFIX "' are supported");
@@ -715,17 +678,16 @@ static struct definition *find_def(struct codegen *codegen,
 }
 
 static struct type_info *resolve_ref(struct codegen *codegen,
-				     struct eu_variant *ref)
+				     struct eu_value ref)
 {
 	struct definition *def = find_def(codegen, ref);
-
 	assert(def->state == DEF_TYPE || def->state == DEF_SCHEMA_TYPE);
 	return def->u.type;
 }
 
-static int is_empty_schema(struct eu_variant *schema)
+static int is_empty_schema(struct eu_value schema)
 {
-	struct eu_variant_members *ms = &schema->u.object.members;
+	struct eu_variant_members *ms = schema.value;
 	size_t i;
 
 	for (i = 0; i < ms->len; i++) {
@@ -740,42 +702,43 @@ static int is_empty_schema(struct eu_variant *schema)
 }
 
 static struct type_info *alloc_type(struct codegen *codegen,
-				    struct eu_variant *schema)
+				    struct eu_value schema)
 {
-	struct eu_variant *type;
+	struct eu_value type;
+	struct eu_string_ref type_str;
 
-	type = eu_variant_get_cstr(schema, "type");
-	if (!type) {
+	type = eu_value_get_cstr(schema, "type");
+	if (!eu_value_ok(type)) {
 		assert(is_empty_schema(schema));
 		return codegen->variant_type;
 	}
 
-	assert(eu_variant_type(type) == EU_JSON_STRING);
+	assert(eu_value_type(type) == EU_JSON_STRING);
+	type_str = eu_string_to_ref(type.value);
 
-	if (eu_variant_equals_cstr(type, "string"))
+	if (eu_string_ref_equal(type_str, eu_cstr("string")))
 		return codegen->string_type;
-	else if (eu_variant_equals_cstr(type, "number"))
+	else if (eu_string_ref_equal(type_str, eu_cstr("number")))
 		return codegen->number_type;
-	else if (eu_variant_equals_cstr(type, "boolean"))
+	else if (eu_string_ref_equal(type_str, eu_cstr("boolean")))
 		return codegen->bool_type;
-	else if (eu_variant_equals_cstr(type, "object"))
+	else if (eu_string_ref_equal(type_str, eu_cstr("object")))
 		return alloc_struct(schema, codegen);
 	else
-		die("unknown type \"%.*s\"", (int)type->u.string.len,
-		    type->u.string.chars);
+		die("unknown type \"%.*s\"", (int)type_str.len, type_str.chars);
 }
 
 static struct type_info *resolve_type(struct codegen *codegen,
-				      struct eu_variant *schema)
+				      struct eu_value schema)
 {
-	struct eu_variant *ref;
+	struct eu_value ref;
 	struct type_info *ti;
 
-	assert(eu_variant_type(schema) == EU_JSON_OBJECT);
+	assert(eu_value_type(schema) == EU_JSON_OBJECT);
 
-	ref = eu_variant_get_cstr(schema, "$ref");
-	if (ref) {
-		assert(schema->u.object.members.len == 1);
+	ref = eu_value_get_cstr(schema, "$ref");
+	if (eu_value_ok(ref)) {
+		assert(((struct eu_variant_members *)schema.value)->len == 1);
 		return resolve_ref(codegen, ref);
 	}
 
@@ -844,17 +807,17 @@ static struct type_info *alloc_definition(struct codegen *codegen,
 }
 
 static void codegen_definitions(struct codegen *codegen,
-				struct eu_variant *definitions)
+				struct eu_value definitions)
 {
 	struct eu_variant_members *sdefs;
 	size_t i;
 
-	if (!definitions)
+	if (!eu_value_ok(definitions))
 		return;
 
-	assert(eu_variant_type(definitions) == EU_JSON_OBJECT);
+	assert(eu_value_type(definitions) == EU_JSON_OBJECT);
 
-	sdefs = &definitions->u.object.members;
+	sdefs = definitions.value;
 
 	codegen->n_defs = sdefs->len;
 	codegen->defs = xalloc(sdefs->len * sizeof *codegen->defs);
@@ -871,18 +834,19 @@ static void codegen_definitions(struct codegen *codegen,
 	   and the target definitions in such cases. */
 	for (i = 0; i < sdefs->len; i++) {
 		struct definition *def = &codegen->defs[i];
-		struct eu_variant *schema = &sdefs->members[i].value;
-		struct eu_variant *ref;
+		struct eu_value schema
+			= eu_variant_value(&sdefs->members[i].value);
+		struct eu_value ref;
 
-		assert(eu_variant_type(schema) == EU_JSON_OBJECT);
+		assert(eu_value_type(schema) == EU_JSON_OBJECT);
 
-		ref = eu_variant_get_cstr(schema, "$ref");
-		if (!ref) {
+		ref = eu_value_get_cstr(schema, "$ref");
+		if (!eu_value_ok(ref)) {
 			def->state = DEF_SCHEMA;
 			def->u.schema = schema;
 		}
 		else {
-			assert(schema->u.object.members.len == 1);
+			assert(((struct eu_variant_members *)schema.value)->len == 1);
 			def->state = DEF_REF;
 			def->u.ref = find_def(codegen, ref);
 		}
@@ -896,7 +860,8 @@ static void codegen_definitions(struct codegen *codegen,
 	/* Fill any non-ref definition schemas */
 	for (i = 0; i < sdefs->len; i++) {
 		struct definition *def = &codegen->defs[i];
-		struct eu_variant *schema = &sdefs->members[i].value;
+		struct eu_value schema
+			= eu_variant_value(&sdefs->members[i].value);
 
 		if (def->state == DEF_SCHEMA_TYPE)
 			fill_type(def->u.type, codegen, schema);
@@ -910,7 +875,7 @@ static void codegen_definitions(struct codegen *codegen,
 	}
 }
 
-static void codegen(const char *path, struct eu_variant *schema)
+static void codegen(const char *path, struct eu_value schema)
 {
 	struct codegen codegen;
 	char *out_path;
@@ -936,9 +901,9 @@ static void codegen(const char *path, struct eu_variant *schema)
 	codegen_init(&codegen);
 
 	/* Generate code for definitions */
-	assert(eu_variant_type(schema) == EU_JSON_OBJECT);
+	assert(eu_value_type(schema) == EU_JSON_OBJECT);
 	codegen_definitions(&codegen,
-			    eu_variant_get_cstr(schema, "definitions"));
+			    eu_value_get_cstr(schema, "definitions"));
 
 	/* Generate code for the main schema */
 	define_type(resolve_type(&codegen, schema), &codegen);
@@ -950,6 +915,35 @@ static void codegen(const char *path, struct eu_variant *schema)
 	free(basename);
 }
 
+static void parse_schema_file(const char *path, struct eu_variant *var)
+{
+	struct eu_parse parse;
+	FILE *fp = fopen(path, "r");
+
+	if (!fp)
+		die("error opening \"%s\": %s", path, strerror(errno));
+
+	eu_parse_init_variant(&parse, var);
+
+	while (!feof(fp)) {
+		char buf[1000];
+		size_t res = fread(buf, 1, 1000, fp);
+
+		if (res < 1000 && ferror(fp))
+			die("error reading \"%s\": %s", path, strerror(errno));
+
+		if (!eu_parse(&parse, buf, res))
+			die("parse error in \"%s\"", path);
+	}
+
+	if (!eu_parse_finish(&parse))
+		die("parse error in \"%s\"", path);
+
+	fclose(fp);
+
+	eu_parse_fini(&parse);
+}
+
 int main(int argc, char **argv)
 {
 	int i;
@@ -957,7 +951,7 @@ int main(int argc, char **argv)
 
 	for (i = 1; i < argc; i++) {
 		parse_schema_file(argv[i], &var);
-		codegen(argv[1], &var);
+		codegen(argv[1], eu_variant_value(&var));
 		eu_variant_fini(&var);
 	}
 

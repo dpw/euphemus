@@ -338,20 +338,6 @@ struct eu_struct_metadata eu_object_metadata = {
 	&eu_variant_metadata
 };
 
-struct eu_variant *eu_variant_members_get(struct eu_variant_members *members,
-					  struct eu_string_ref name)
-{
-	size_t i;
-
-	for (i = 0; i < members->len; i++) {
-		struct eu_variant_member *m = &members->members[i];
-		if (eu_string_ref_equal(m->name, name))
-			return &m->value;
-	}
-
-	return NULL;
-}
-
 struct eu_value eu_struct_get(struct eu_value val, struct eu_string_ref name)
 {
 	struct eu_struct_metadata *md

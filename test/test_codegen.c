@@ -10,7 +10,7 @@ static void check_foo(struct foo *foo)
 {
 	assert(foo->str.len == 1);
 	assert(*foo->str.chars == 'x');
-	assert(eu_variant_type(&foo->any) == EU_JSON_NULL);
+	assert(eu_value_type(eu_variant_value(&foo->any)) == EU_JSON_NULL);
 
 	assert(foo->bar);
 	assert(foo->bar->num == 42);
@@ -46,10 +46,8 @@ static void test_nested(void)
 
 static void check_extras(struct foo *foo)
 {
-	struct eu_variant *var = eu_variant_members_get(&foo->extras,
-							eu_cstr("quux"));
-	assert(eu_variant_type(var) == EU_JSON_STRING);
-	assert(eu_string_ref_equal(eu_string_to_ref(&var->u.string),
+	struct eu_value val = eu_value_get(eu_value(foo, &struct_foo_metadata.base), eu_cstr("quux"));
+	assert(eu_string_ref_equal(eu_string_to_ref(val.value),
 				   eu_cstr("foo")));
 }
 
