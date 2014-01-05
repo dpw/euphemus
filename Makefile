@@ -70,25 +70,20 @@ else
 TESTABLEGOALS:=$(MAKECMDGOALS)
 endif
 
-# dotify puts a dot in front of the given filename, respecting any
-# directories that may be in the path.
-dotify=$(call fileprefix,.,$(1))
-fileprefix=$(foreach F,$(2),$(if $(filter $(notdir $(F)),$(F)),$(1)$(F),$(dir $(F))$(1)$(notdir $(F))))
-
 ifneq "$(strip $(patsubst clean%,,$(patsubst %clean,,$(TESTABLEGOALS))))" ""
--include $(foreach S,$(ALL_SRCS),$(call dotify,$(S).dep))
+-include $(foreach S,$(ALL_SRCS),$(S).dep)
 endif
 
 .PHONY: clean
 clean::
-	rm -f $(foreach D,lib test schemac,$(D)/*.o $(call dotify,$(D)/*.dep) $(D)/*~ $(D)/*.gcda $(D)/*.gcno) $(ALL_EXECUTABLES) coverage/*.gcov
+	rm -f $(foreach D,lib test schemac,$(D)/*.o $(D)/*.dep $(D)/*~ $(D)/*.gcda $(D)/*.gcno) $(ALL_EXECUTABLES) coverage/*.gcov
 
-%.o $(call dotify,%.c.dep): %.c
+%.o %.c.dep: %.c
 	@mkdir -p $(@D)
 	$(COMPILE.c) $(PROJECT_CFLAGS) -MD -o $*.o $<
-	@cat $*.d >$(call dotify,$*.c.dep)
-	@sed -e 's/#.*//;s/^[^:]*://;s/ *\\$$//;s/^ *//;/^$$/d;s/$$/ :/' <$*.d >>$(call dotify,$*.c.dep)
-	@sed -e 's/#.*//;s/ [^ ]*\.c//g;s/^\([^ ][^ ]*\):/OBJNEEDS_\1=/;s/\([^ ]*\.h\)/\$$(HDROBJS_\1)/g' <$*.d >>$(call dotify,$*.c.dep)
+	@sed -e 's|^\([^:]*\):|$*.o $*.c.dep:|' <$*.d >>$*.c.dep
+	@sed -e 's/#.*//;s/^[^:]*://;s/ *\\$$//;s/^ *//;/^$$/d;s/$$/ :/' <$*.d >>$*.c.dep
+	@sed -e 's/#.*//;s/ [^ ]*\.c//g;s/^\([^ ][^ ]*\):/OBJNEEDS_\1=/;s/\([^ ]*\.h\)/\$$(HDROBJS_\1)/g' <$*.d >>$*.c.dep
 	@rm $*.d
 
 # objneeds works out which object files are required to link the given
