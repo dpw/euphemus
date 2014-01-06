@@ -390,25 +390,23 @@ static void struct_fill(struct type_info *ti, struct codegen *codegen,
 
 	props = eu_value_get_cstr(schema, "properties");
 	if (eu_value_ok(props)) {
-		struct eu_variant_members *props_members;
+		struct eu_object_iter pi;
 		size_t i;
 
 		assert(eu_value_type(props) == EU_JSON_OBJECT);
 
-		props_members = props.value;
 		assert(!sti->members);
+		sti->members_len = eu_object_size(props);
 		sti->members
-			= xalloc(props_members->len * sizeof *sti->members);
-		sti->members_len = props_members->len;
+			= xalloc(sti->members_len * sizeof *sti->members);
 
-		for (i = 0; i < props_members->len; i++) {
-			struct eu_variant_member *sm
-				= &props_members->members[i];
+		for (eu_object_iter_init(&pi, props), i = 0;
+		     eu_object_iter_next(&pi);
+		     i++) {
 			struct member_info *mi = &sti->members[i];
 
-			mi->name = sm->name;
-			mi->type = resolve_type(codegen,
-						eu_variant_value(&sm->value));
+			mi->name = pi.name;
+			mi->type = resolve_type(codegen, pi.value);
 		}
 	}
 
@@ -687,14 +685,11 @@ static struct type_info *resolve_ref(struct codegen *codegen,
 
 static int is_empty_schema(struct eu_value schema)
 {
-	struct eu_variant_members *ms = schema.value;
-	size_t i;
+	struct eu_object_iter i;
 
-	for (i = 0; i < ms->len; i++) {
-		struct eu_variant_member *m = &ms->members[i];
-
-		if (!eu_string_ref_equal(m->name, eu_cstr("definitions"))
-		    && !eu_string_ref_equal(m->name, eu_cstr("title")))
+	for (eu_object_iter_init(&i, schema); eu_object_iter_next(&i);) {
+		if (!eu_string_ref_equal(i.name, eu_cstr("definitions"))
+		    && !eu_string_ref_equal(i.name, eu_cstr("title")))
 			return 0;
 	}
 
@@ -738,7 +733,7 @@ static struct type_info *resolve_type(struct codegen *codegen,
 
 	ref = eu_value_get_cstr(schema, "$ref");
 	if (eu_value_ok(ref)) {
-		assert(((struct eu_variant_members *)schema.value)->len == 1);
+		assert(eu_object_size(schema) == 1);
 		return resolve_ref(codegen, ref);
 	}
 
@@ -809,7 +804,7 @@ static struct type_info *alloc_definition(struct codegen *codegen,
 static void codegen_definitions(struct codegen *codegen,
 				struct eu_value definitions)
 {
-	struct eu_variant_members *sdefs;
+	struct eu_object_iter di;
 	size_t i;
 
 	if (!eu_value_ok(definitions))
@@ -817,36 +812,35 @@ static void codegen_definitions(struct codegen *codegen,
 
 	assert(eu_value_type(definitions) == EU_JSON_OBJECT);
 
-	sdefs = definitions.value;
-
-	codegen->n_defs = sdefs->len;
-	codegen->defs = xalloc(sdefs->len * sizeof *codegen->defs);
+	/* XXX */
+	codegen->n_defs = eu_object_size(definitions);
+	codegen->defs = xalloc(codegen->n_defs * sizeof *codegen->defs);
 
 	/* Fill in name field of definitions so that find_def works. */
-	for (i = 0; i < sdefs->len; i++) {
-		struct eu_variant_member *sdef = &sdefs->members[i];
+	for (eu_object_iter_init(&di, definitions), i = 0;
+	     eu_object_iter_next(&di);
+	     i++) {
 		struct definition *cdef = &codegen->defs[i];
-
-		cdef->name = sdef->name;
+		cdef->name = di.name;
 	}
 
 	/* Identify definitions which directly contain a reference,
 	   and the target definitions in such cases. */
-	for (i = 0; i < sdefs->len; i++) {
+	for (eu_object_iter_init(&di, definitions), i = 0;
+	     eu_object_iter_next(&di);
+	     i++) {
 		struct definition *def = &codegen->defs[i];
-		struct eu_value schema
-			= eu_variant_value(&sdefs->members[i].value);
 		struct eu_value ref;
 
-		assert(eu_value_type(schema) == EU_JSON_OBJECT);
+		assert(eu_value_type(di.value) == EU_JSON_OBJECT);
 
-		ref = eu_value_get_cstr(schema, "$ref");
+		ref = eu_value_get_cstr(di.value, "$ref");
 		if (!eu_value_ok(ref)) {
 			def->state = DEF_SCHEMA;
-			def->u.schema = schema;
+			def->u.schema = di.value;
 		}
 		else {
-			assert(((struct eu_variant_members *)schema.value)->len == 1);
+			assert(eu_object_size(di.value) == 1);
 			def->state = DEF_REF;
 			def->u.ref = find_def(codegen, ref);
 		}
@@ -854,21 +848,21 @@ static void codegen_definitions(struct codegen *codegen,
 
 	/* Allocate all definition schemas and resolve definitions
 	   which directly contain a reference. */
-	for (i = 0; i < sdefs->len; i++)
+	for (i = 0; i < codegen->n_defs; i++)
 		alloc_definition(codegen, &codegen->defs[i]);
 
 	/* Fill any non-ref definition schemas */
-	for (i = 0; i < sdefs->len; i++) {
+	for (eu_object_iter_init(&di, definitions), i = 0;
+	     eu_object_iter_next(&di);
+	     i++) {
 		struct definition *def = &codegen->defs[i];
-		struct eu_value schema
-			= eu_variant_value(&sdefs->members[i].value);
 
 		if (def->state == DEF_SCHEMA_TYPE)
-			fill_type(def->u.type, codegen, schema);
+			fill_type(def->u.type, codegen, di.value);
 	}
 
 	/* And finally, actually codegen the non-ref schemas */
-	for (i = 0; i < sdefs->len; i++) {
+	for (i = 0; i < codegen->n_defs; i++) {
 		struct definition *def = &codegen->defs[i];
 		if (def->state == DEF_SCHEMA_TYPE)
 			define_type(def->u.type, codegen);
