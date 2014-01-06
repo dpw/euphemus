@@ -39,9 +39,10 @@ static enum eu_parse_result bool_parse(struct eu_metadata *metadata,
 struct eu_metadata eu_bool_metadata = {
 	bool_parse,
 	eu_noop_fini,
-	eu_get_error,
+	eu_get_fail,
 	sizeof(eu_bool_t),
-	EU_JSON_BOOL
+	EU_JSON_BOOL,
+	eu_object_iter_init_fail
 };
 
 void eu_parse_init_bool(struct eu_parse *ep, eu_bool_t *bool)

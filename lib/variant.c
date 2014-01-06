@@ -113,9 +113,10 @@ static enum eu_parse_result whitespace(void *variant_metadata,
 struct eu_metadata eu_variant_metadata = {
 	variant_parse,
 	variant_fini,
-	eu_get_error,
+	eu_get_fail,
 	sizeof(struct eu_variant),
-	EU_JSON_INVALID
+	EU_JSON_INVALID,
+	eu_object_iter_init_fail
 };
 
 void eu_parse_init_variant(struct eu_parse *ep, struct eu_variant *var)

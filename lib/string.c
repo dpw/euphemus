@@ -177,9 +177,10 @@ static void string_fini(struct eu_metadata *metadata, void *value)
 struct eu_metadata eu_string_metadata = {
 	string_parse,
 	string_fini,
-	eu_get_error,
+	eu_get_fail,
 	sizeof(struct eu_string),
-	EU_JSON_STRING
+	EU_JSON_STRING,
+	eu_object_iter_init_fail
 };
 
 void eu_parse_init_string(struct eu_parse *ep, struct eu_string *str)

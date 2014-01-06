@@ -327,7 +327,8 @@ struct eu_struct_metadata eu_object_metadata = {
 		eu_struct_fini,
 		eu_struct_get,
 		sizeof(struct eu_object),
-		EU_JSON_OBJECT
+		EU_JSON_OBJECT,
+		eu_struct_iter_init
 	},
 	-1,
 	0,
@@ -374,3 +375,44 @@ struct eu_value eu_struct_ptr_get(struct eu_value val,
 	return eu_struct_get(val, name);
 }
 
+void eu_struct_iter_init(struct eu_value val, struct eu_object_iter *iter)
+{
+	struct eu_struct_metadata *md
+		= (struct eu_struct_metadata *)val.metadata;
+	struct eu_generic_members *extras;
+
+	iter->priv.struct_i = md->n_members;
+	iter->priv.struct_p = val.value;
+	iter->priv.m = md->members;
+
+	extras = (void *)(iter->priv.struct_p + md->extras_offset);
+	iter->priv.extras_i = extras->len;
+	iter->priv.extras_p = extras->members;
+	iter->priv.extra_size = md->extra_member_size;
+	iter->priv.extra_value_offset = md->extra_member_value_offset;
+	iter->priv.extra_value_metadata = md->extra_value_metadata;
+}
+
+void eu_struct_ptr_iter_init(struct eu_value val, struct eu_object_iter *iter)
+{
+	val.value = *(void **)val.value;
+	eu_struct_iter_init(val, iter);
+}
+
+void eu_object_iter_init_fail(struct eu_value val, struct eu_object_iter *iter)
+{
+	(void)val;
+	(void)iter;
+	abort();
+}
+
+size_t eu_object_size(struct eu_value val)
+{
+	struct eu_object_iter i;
+	size_t n = 0;
+
+	for (eu_object_iter_init(&i, val); eu_object_iter_next(&i);)
+		n++;
+
+	return n;
+}

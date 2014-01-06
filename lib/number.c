@@ -141,9 +141,10 @@ static void number_parse_cont_destroy(struct eu_parse *ep,
 struct eu_metadata eu_number_metadata = {
 	number_parse,
 	eu_noop_fini,
-	eu_get_error,
+	eu_get_fail,
 	sizeof(double),
-	EU_JSON_NUMBER
+	EU_JSON_NUMBER,
+	eu_object_iter_init_fail
 };
 
 enum eu_parse_result eu_variant_number(void *number_metadata,

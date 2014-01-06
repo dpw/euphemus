@@ -60,6 +60,8 @@ struct eu_value {
 	struct eu_metadata *metadata;
 };
 
+struct eu_object_iter;
+
 /* A description of a type of data (including things like how to
    allocate, release etc.) */
 struct eu_metadata {
@@ -81,6 +83,9 @@ struct eu_metadata {
 
 	unsigned int size;
 	unsigned char json_type;
+
+	void (*object_iter_init)(struct eu_value val,
+				 struct eu_object_iter *iter);
 };
 
 static __inline__ int eu_value_ok(struct eu_value val)
@@ -149,7 +154,6 @@ void eu_parse_metadata_cont_destroy(struct eu_parse *ep,
 /* Path resolution */
 
 struct eu_value eu_get_path(struct eu_value val, struct eu_string_ref path);
-struct eu_value eu_get_error(struct eu_value val, struct eu_string_ref name);
 
 /* Variant objects */
 
@@ -205,6 +209,7 @@ enum eu_parse_result eu_array_parse(struct eu_metadata *gmetadata,
 				    struct eu_parse *ep, void *result);
 void eu_array_fini(struct eu_metadata *gmetadata, void *value);
 struct eu_value eu_array_get(struct eu_value val, struct eu_string_ref name);
+void eu_object_iter_init_fail(struct eu_value val, struct eu_object_iter *iter);
 
 #define EU_ARRAY_METADATA_INITIALIZER(el_metadata)                    \
 	{                                                             \
@@ -213,7 +218,9 @@ struct eu_value eu_array_get(struct eu_value val, struct eu_string_ref name);
 			eu_array_fini,                                \
 			eu_array_get,                                 \
 			sizeof(struct eu_array),                      \
-			EU_JSON_ARRAY                                 \
+			EU_JSON_ARRAY,                                \
+			eu_object_iter_init_fail                      \
+                                                                      \
 		},                                                    \
 		el_metadata                                           \
 	}
@@ -296,19 +303,42 @@ struct eu_struct_metadata {
 	struct eu_metadata *extra_value_metadata;
 };
 
+enum eu_parse_result eu_struct_parse(struct eu_metadata *gmetadata,
+				     struct eu_parse *ep,
+				     void *result);
+void eu_struct_fini(struct eu_metadata *gmetadata, void *value);
+struct eu_value eu_struct_get(struct eu_value val, struct eu_string_ref name);
+void eu_struct_iter_init(struct eu_value val, struct eu_object_iter *iter);
+
 enum eu_parse_result eu_struct_ptr_parse(struct eu_metadata *gmetadata,
 					 struct eu_parse *ep,
 					 void *result);
 void eu_struct_ptr_fini(struct eu_metadata *gmetadata, void *value);
 struct eu_value eu_struct_ptr_get(struct eu_value val,
 				  struct eu_string_ref name);
-enum eu_parse_result eu_struct_parse(struct eu_metadata *gmetadata,
-				     struct eu_parse *ep,
-				     void *result);
-void eu_struct_fini(struct eu_metadata *gmetadata, void *value);
-struct eu_value eu_struct_get(struct eu_value val, struct eu_string_ref name);
-void eu_struct_extras_fini(struct eu_struct_metadata *md, void *v_extras);
+void eu_struct_ptr_iter_init(struct eu_value val, struct eu_object_iter *iter);
 
+void eu_struct_extras_fini(struct eu_struct_metadata *md, void *v_extras);
+size_t eu_object_size(struct eu_value val);
+
+#define EU_STRUCT_METADATA_INITIALIZER(struct_name, struct_members, extra_member_struct, extra_member_metadata) \
+	{                                                             \
+		{                                                     \
+			eu_struct_parse,                              \
+			eu_struct_fini,                               \
+			eu_struct_get,                                \
+			sizeof(struct_name),                          \
+			EU_JSON_INVALID,                              \
+			eu_struct_iter_init                           \
+		},                                                    \
+		-1,                                                   \
+		offsetof(struct_name, extras),                        \
+		sizeof(extra_member_struct),                          \
+		offsetof(extra_member_struct, value),                 \
+		sizeof(struct_members) / sizeof(struct eu_struct_member), \
+		struct_members,                                       \
+		extra_member_metadata                                 \
+	}
 
 #define EU_STRUCT_PTR_METADATA_INITIALIZER(struct_name, struct_members, extra_member_struct, extra_member_metadata) \
 	{                                                             \
@@ -317,7 +347,8 @@ void eu_struct_extras_fini(struct eu_struct_metadata *md, void *v_extras);
 			eu_struct_ptr_fini,                           \
 			eu_struct_ptr_get,                            \
 			sizeof(struct_name *),                        \
-			EU_JSON_INVALID                               \
+				EU_JSON_INVALID,                      \
+			eu_struct_ptr_iter_init                       \
 		},                                                    \
 		sizeof(struct_name),                                  \
 		offsetof(struct_name, extras),                        \
@@ -328,22 +359,53 @@ void eu_struct_extras_fini(struct eu_struct_metadata *md, void *v_extras);
 		extra_member_metadata                                 \
 	}
 
-#define EU_STRUCT_METADATA_INITIALIZER(struct_name, struct_members, extra_member_struct, extra_member_metadata) \
-	{                                                             \
-		{                                                     \
-			eu_struct_parse,                              \
-			eu_struct_fini,                               \
-			eu_struct_get,                                \
-			sizeof(struct_name),                          \
-			EU_JSON_INVALID                               \
-		},                                                    \
-		-1,                                                   \
-		offsetof(struct_name, extras),                        \
-		sizeof(extra_member_struct),                          \
-		offsetof(extra_member_struct, value),                 \
-		sizeof(struct_members) / sizeof(struct eu_struct_member), \
-		struct_members,                                       \
-		extra_member_metadata                                 \
+struct eu_object_iter {
+	struct eu_string_ref name;
+	struct eu_value value;
+
+	struct {
+		unsigned int struct_i;
+		char *struct_p;
+		struct eu_struct_member *m;
+
+		size_t extras_i;
+		char *extras_p;
+		unsigned int extra_size;
+		unsigned int extra_value_offset;
+		struct eu_metadata *extra_value_metadata;
+	} priv;
+};
+
+static __inline__ void eu_object_iter_init(struct eu_object_iter *iter,
+					   struct eu_value val)
+{
+	val.metadata->object_iter_init(val, iter);
+}
+
+static __inline__ int eu_object_iter_next(struct eu_object_iter *iter)
+{
+	if (iter->priv.struct_i) {
+		iter->name = eu_string_ref(iter->priv.m->name,
+					   iter->priv.m->name_len);
+		iter->value
+			= eu_value(iter->priv.struct_p + iter->priv.m->offset,
+				   iter->priv.m->metadata);
+		iter->priv.struct_i--;
+		iter->priv.m++;
+		return 1;
 	}
+	else if (iter->priv.extras_i) {
+		iter->name = *(struct eu_string_ref *)iter->priv.extras_p;
+		iter->value = eu_value(iter->priv.extras_p
+				       + iter->priv.extra_value_offset,
+				       iter->priv.extra_value_metadata);
+		iter->priv.extras_i--;
+		iter->priv.extras_p += iter->priv.extra_size;
+		return 1;
+	}
+	else {
+		return 0;
+	}
+}
 
 #endif

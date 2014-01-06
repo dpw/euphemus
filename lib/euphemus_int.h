@@ -21,6 +21,7 @@ int eu_parse_append_buffer_nul(struct eu_parse *ep, const char *start,
 			       const char *end);
 
 void eu_noop_fini(struct eu_metadata *metadata, void *value);
+struct eu_value eu_get_fail(struct eu_value val, struct eu_string_ref name);
 
 extern struct eu_struct_metadata eu_object_metadata;
 extern struct eu_array_metadata eu_variant_array_metadata;

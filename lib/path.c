@@ -32,7 +32,7 @@ struct eu_value eu_get_path(struct eu_value val, struct eu_string_ref path)
 	return val.metadata->get(val, path);
 }
 
-struct eu_value eu_get_error(struct eu_value val, struct eu_string_ref name)
+struct eu_value eu_get_fail(struct eu_value val, struct eu_string_ref name)
 {
 	(void)val;
 	(void)name;
