@@ -133,38 +133,54 @@ static void test_parse_variant(void)
 		   eu_variant_fini(&result));
 }
 
-static void test_path(void)
+static void parse_variant(const char *json, struct eu_variant *var)
 {
-	struct eu_variant var;
 	struct eu_parse ep;
-	const char *json;
-	struct eu_value val;
 
-	eu_parse_init_variant(&ep, &var);
-	json = "{\"a\":{\"b\":null,\"c\":true}}";
+	eu_parse_init_variant(&ep, var);
 	assert(eu_parse(&ep, json, strlen(json)));
 	assert(eu_parse_finish(&ep));
 	eu_parse_fini(&ep);
+}
 
+static void test_path(void)
+{
+	struct eu_variant var;
+	struct eu_value val;
+
+	parse_variant("{\"a\":{\"b\":null,\"c\":true}}", &var);
 	val = eu_variant_value(&var);
+	assert(!eu_value_ok(eu_get_path(val, eu_cstr("/nosuch"))));
 	val = eu_get_path(val, eu_cstr("/a/c"));
 	assert(eu_value_ok(val));
 	assert(eu_value_type(val) == EU_JSON_BOOL);
 	assert(*(eu_bool_t *)val.value);
 	eu_variant_fini(&var);
 
-	eu_parse_init_variant(&ep, &var);
-	json = "[10, 20, 30]";
-	assert(eu_parse(&ep, json, strlen(json)));
-	assert(eu_parse_finish(&ep));
-	eu_parse_fini(&ep);
-
+	parse_variant("[10, 20, 30]", &var);
 	val = eu_variant_value(&var);
 	val = eu_get_path(val, eu_cstr("/1"));
 	assert(eu_value_ok(val));
 	assert(eu_value_type(val) == EU_JSON_NUMBER);
 	assert(*(double *)val.value == 20);
 	eu_variant_fini(&var);
+}
+
+static void check_size(const char *json, size_t size)
+{
+	struct eu_variant var;
+
+	parse_variant(json, &var);
+	assert(eu_object_size(eu_variant_value(&var)) == size);
+	eu_variant_fini(&var);
+}
+
+static void test_size(void)
+{
+	check_size("{}", 0);
+	check_size("{\"x\":\"y\"}", 1);
+	check_size("{\"baz\":{}}", 1);
+	check_size("{\"baz\":{},\"x\":\"y\"}", 2);
 }
 
 int main(void)
@@ -176,6 +192,7 @@ int main(void)
 	test_parse_variant();
 
 	test_path();
+	test_size();
 
 	return 0;
 }

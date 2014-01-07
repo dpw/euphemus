@@ -104,6 +104,8 @@ struct type_info {
 	the definitions were not emitted yet */
 	const char *members_struct_name;
 	const char *member_struct_name;
+
+	eu_bool_t is_pointer;
 };
 
 struct type_info_ops {
@@ -195,13 +197,16 @@ static struct type_info *resolve_type(struct codegen *codegen,
 static void type_info_init(struct type_info *ti,
 			   struct codegen *codegen,
 			   struct type_info_ops *ops,
-			   const char *base_name, const char *metadata_ptr_expr)
+			   const char *base_name,
+			   const char *metadata_ptr_expr,
+			   eu_bool_t is_pointer)
 {
 	ti->ops = ops;
 	ti->base_name = base_name;
 	ti->metadata_ptr_expr = metadata_ptr_expr;
 	ti->members_struct_name = NULL;
 	ti->member_struct_name = NULL;
+	ti->is_pointer = is_pointer;
 
 	ti->next_to_destroy = codegen->type_infos_to_destroy;
 	codegen->type_infos_to_destroy = ti;
@@ -259,7 +264,7 @@ struct type_info *make_simple_type(struct codegen *codegen,
 	struct simple_type_info *sti = xalloc(sizeof *sti);
 
 	type_info_init(&sti->base, codegen, ops, base_name,
-		       xsprintf("&%s_metadata", base_name));
+		       xsprintf("&%s_metadata", base_name), 0);
 
 	sti->type_name = c_type_name;
 	return &sti->base;
@@ -377,7 +382,7 @@ static struct type_info *alloc_struct(struct eu_value schema,
 	type_info_init(&sti->base, codegen, &struct_type_info_ops,
 		       xsprintf("struct_%.*s",
 			    (int)sti->struct_name.len, sti->struct_name.chars),
-		       xsprintf("&%s.base", sti->ptr_metadata_name));
+		       xsprintf("&%s.base", sti->ptr_metadata_name), 1);
 
 	return &sti->base;
 }
@@ -528,12 +533,14 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 			"\t{\n"
 			"\t\toffsetof(struct %.*s, %.*s),\n"
 			"\t\t%d,\n"
+			"\t\t%d,\n"
 			"\t\t\"%.*s\",\n"
 			"\t\t%s\n"
 			"\t},\n",
 			(int)sti->struct_name.len, sti->struct_name.chars,
 			(int)mi->name.len, mi->name.chars,
 			(int)mi->name.len,
+			(int)mi->type->is_pointer,
 			(int)mi->name.len, mi->name.chars,
 			mi->type->metadata_ptr_expr);
 	}

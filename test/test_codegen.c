@@ -8,18 +8,16 @@
 
 static void check_foo(struct foo *foo)
 {
-	assert(foo->str.len == 1);
-	assert(*foo->str.chars == 'x');
+	assert(eu_string_ref_equal(eu_string_to_ref(&foo->str), eu_cstr("x")));
+	assert(foo->num == 42);
+	assert(foo->bool);
 	assert(eu_value_type(eu_variant_value(&foo->any)) == EU_JSON_NULL);
-
 	assert(foo->bar);
-	assert(foo->bar->num == 42);
-	assert(foo->bar->bool);
 }
 
 static void test_struct_ptr(void)
 {
-	TEST_PARSE("{\"str\":\"x\",\"any\":null,\"bar\":{\"num\":42,\"bool\":true}}",
+	TEST_PARSE("{\"str\":\"x\",\"any\":null,\"bar\":{},\"num\":42,\"bool\":true}",
 		   struct foo *,
 		   eu_parse_init_struct_foo_ptr,
 		   check_foo(result),
@@ -28,7 +26,7 @@ static void test_struct_ptr(void)
 
 static void test_inline_struct(void)
 {
-	TEST_PARSE("{\"str\":\"x\",\"any\":null,\"bar\":{\"num\":42,\"bool\":true}}",
+	TEST_PARSE("{\"str\":\"x\",\"any\":null,\"bar\":{},\"num\":42,\"bool\":true}",
 		   struct foo,
 		   eu_parse_init_struct_foo,
 		   check_foo(&result),
@@ -37,10 +35,10 @@ static void test_inline_struct(void)
 
 static void test_nested(void)
 {
-	TEST_PARSE("{\"bar\":{\"bar\":{\"bar\":{\"bool\":true}}}}",
+	TEST_PARSE("{\"bar\":{\"bar\":{\"bar\":{\"bar\":{}}}}}",
 		   struct foo *,
 		   eu_parse_init_struct_foo_ptr,
-		   assert(result->bar->bar->bar->bool),
+		   assert(result->bar->bar->bar->bar),
 		   foo_destroy(result));
 }
 
@@ -73,7 +71,7 @@ static void test_path(void)
 {
 	struct foo foo;
 	struct eu_parse ep;
-	const char *json = "{\"bar\":{\"bar\":{\"bar\":{\"bool\":true}}}}";
+	const char *json = "{\"bar\":{\"bar\":{\"bar\":{\"hello\":\"world\"}}}}";
 	struct eu_value val;
 
 	eu_parse_init_struct_foo(&ep, &foo);
@@ -82,10 +80,12 @@ static void test_path(void)
 	eu_parse_fini(&ep);
 
 	val = eu_value(&foo, &struct_foo_metadata.base);
-	val = eu_get_path(val, eu_cstr("/bar/bar/bar/bool"));
+	assert(!eu_value_ok(eu_get_path(val, eu_cstr("/baz"))));
+	val = eu_get_path(val, eu_cstr("/bar/bar/bar/hello"));
 	assert(eu_value_ok(val));
-	assert(eu_value_type(val) == EU_JSON_BOOL);
-	assert(*(eu_bool_t *)val.value);
+	assert(eu_value_type(val) == EU_JSON_STRING);
+	assert(eu_string_ref_equal(eu_string_to_ref(val.value),
+				   eu_cstr("world")));
 
 	foo_fini(&foo);
 }
@@ -112,6 +112,30 @@ static void test_path_extras(void)
 	bar_fini(&bar);
 }
 
+static void check_size(const char *json, size_t size)
+{
+	struct bar bar;
+	struct eu_parse ep;
+
+	eu_parse_init_struct_bar(&ep, &bar);
+	assert(eu_parse(&ep, json, strlen(json)));
+	assert(eu_parse_finish(&ep));
+	eu_parse_fini(&ep);
+
+	assert(eu_object_size(eu_value(&bar, &struct_bar_metadata.base))
+	       == size);
+
+	bar_fini(&bar);
+}
+
+static void test_size(void)
+{
+	check_size("{}", 0);
+	check_size("{\"x\":\"y\"}", 1);
+	check_size("{\"baz\":{}}", 1);
+	check_size("{\"baz\":{},\"x\":\"y\"}", 2);
+}
+
 int main(void)
 {
 	test_struct_ptr();
@@ -120,5 +144,6 @@ int main(void)
 	test_extras();
 	test_path();
 	test_path_extras();
+	test_size();
 	return 0;
 }

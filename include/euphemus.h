@@ -287,7 +287,8 @@ struct eu_variant_member {
 
 struct eu_struct_member {
 	unsigned int offset;
-	unsigned int name_len;
+	unsigned short name_len;
+	unsigned char is_pointer;
 	const char *name;
 	struct eu_metadata *metadata;
 };
@@ -384,17 +385,19 @@ static __inline__ void eu_object_iter_init(struct eu_object_iter *iter,
 
 static __inline__ int eu_object_iter_next(struct eu_object_iter *iter)
 {
-	if (iter->priv.struct_i) {
-		iter->name = eu_string_ref(iter->priv.m->name,
-					   iter->priv.m->name_len);
-		iter->value
-			= eu_value(iter->priv.struct_p + iter->priv.m->offset,
-				   iter->priv.m->metadata);
+	while (iter->priv.struct_i) {
+		struct eu_struct_member *m = iter->priv.m++;
+		void *p = iter->priv.struct_p + m->offset;
 		iter->priv.struct_i--;
-		iter->priv.m++;
-		return 1;
+
+		if (!m->is_pointer || *(void **)p) {
+			iter->name = eu_string_ref(m->name, m->name_len);
+			iter->value = eu_value(p, m->metadata);
+			return 1;
+		}
 	}
-	else if (iter->priv.extras_i) {
+
+	if (iter->priv.extras_i) {
 		iter->name = *(struct eu_string_ref *)iter->priv.extras_p;
 		iter->value = eu_value(iter->priv.extras_p
 				       + iter->priv.extra_value_offset,

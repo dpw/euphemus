@@ -3,10 +3,10 @@
 	"type": "object",
 	"euphemusStructName": "foo",
 	"properties": {
-		"str": {
-			"type": "string"
-		},
-                "any": {},
+		"str": { "type": "string" },
+		"num": { "type": "number" },
+		"bool": { "type": "boolean" },
+		"any": {},
 		"bar": { "$ref": "#/definitions/bar" }
         },
 
@@ -15,9 +15,8 @@
                         "type": "object",
 	                "euphemusStructName": "bar",
                         "properties": {
-		                "num": { "type": "number" },
-                                "bool": { "type": "boolean" },
-                                "bar": { "$ref": "#/definitions/baz" }
+                                "bar": { "$ref": "#/definitions/baz" },
+                                "baz": { "$ref": "#/definitions/baz" }
                         },
                         "additionalProperties": { "type": "string" }
                 },

@@ -351,8 +351,14 @@ struct eu_value eu_struct_get(struct eu_value val, struct eu_string_ref name)
 	for (i = 0; i < md->n_members; i++) {
 		struct eu_struct_member *m = &md->members[i];
 		if (m->name_len == name.len
-		    && !memcmp(m->name, name.chars, name.len))
-			return eu_value(s + m->offset, m->metadata);
+		    && !memcmp(m->name, name.chars, name.len)) {
+			void *p = s + m->offset;
+
+			if (!m->is_pointer || *(void **)p)
+				return eu_value(p, m->metadata);
+			else
+				return eu_value_none;
+		}
 	}
 
 	extras = (void *)(s + md->extras_offset);
