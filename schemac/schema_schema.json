@@ -1,0 +1,36 @@
+{
+	"title": "Schema of schemas accepted by schemac",
+
+        "definitions": {
+                "schema": {
+                        "type": "object",
+                        "euphemusStructName": "schema",
+                        "properties": {
+                                "$ref": { "type": "string" },
+
+                                "definitions": {
+                                        "$ref": "#/definitions/named-schemas"
+                                },
+
+                                "type": { "type": "string" },
+                                "title": { "type": "string" },
+                                "properties": {
+                                        "$ref": "#/definitions/named-schemas"
+                                },
+                                "additionalProperties": {
+                                        "$ref": "#/definitions/schema"
+                                },
+
+	                        "euphemusStructName": { "type": "string" }
+                        }
+                },
+
+                "named-schemas": {
+                        "type": "object",
+                        "euphemusStructName": "named_schemas",
+                        "additionalProperties": {
+                                "$ref": "#/definitions/schema"
+                        }
+                }
+        }
+}

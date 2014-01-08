@@ -29,7 +29,7 @@ PROJECT_CFLAGS=-I$(ROOT)include -D_GNU_SOURCE -Wno-multichar -Wpointer-arith
 LIB_SRCS=$(foreach S,euphemus.c parse.c path.c struct.c array.c string.c variant.c number.c bool.c null.c unescape.c,lib/$(S))
 
 # Other source files
-SRCS=schemac/schemac.c
+SRCS=schemac/schemac.c schemac/schema_schema.c
 SRCS+=$(foreach S,test.c test_codegen.c parse_perf.c test_schema.c,test/$(S))
 
 # Main exectuables that get built
@@ -43,6 +43,7 @@ HDROBJS_$(ROOT)lib/euphemus_int.h=$(LIB_SRCS:%.c=%.o)
 HDROBJS_$(ROOT)lib/unescape.h=lib/unescape.o
 HDROBJS_/usr/include/json/json.h=-ljson
 HDROBJS_$(ROOT)test_parse.h=
+HDROBJS_$(ROOT)schemac/schema_schema.h=schemac/schema_schema.o
 
 test/test_codegen.o test/test_codegen.c.dep: test/test_schema.h
 

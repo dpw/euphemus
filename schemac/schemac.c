@@ -7,6 +7,8 @@
 
 #include <euphemus.h>
 
+#include "schema_schema.h"
+
 static void die(const char *fmt, ...)
 	__attribute__ ((noreturn,format (printf, 1, 2)));
 
@@ -1198,7 +1200,7 @@ static void do_codegen(struct codegen *codegen, struct eu_value schema)
 	free(schema_name);
 }
 
-static void parse_schema_file(struct codegen *codegen, struct eu_variant *var)
+static void parse_schema_file(struct codegen *codegen, struct eu_value dest)
 {
 	struct eu_parse *parse;
 	FILE *fp = fopen(codegen->source_path, "r");
@@ -1208,7 +1210,7 @@ static void parse_schema_file(struct codegen *codegen, struct eu_variant *var)
 		return;
 	}
 
-	parse = eu_parse_create(eu_variant_value(var));
+	parse = eu_parse_create(dest);
 
 	while (!feof(fp)) {
 		char buf[1000];
@@ -1236,17 +1238,19 @@ static void parse_schema_file(struct codegen *codegen, struct eu_variant *var)
 int main(int argc, char **argv)
 {
 	int i;
-	struct eu_variant var;
 	struct codegen codegen;
 	int all_ok = 1;
 
 	for (i = 1; i < argc; i++) {
+		struct schema schema;
+		struct eu_value schema_val = schema_to_eu_value(&schema);
+
 		codegen_init(&codegen, argv[i]);
 
-		parse_schema_file(&codegen, &var);
+		parse_schema_file(&codegen, schema_val);
 		if (!codegen.error_count) {
-			do_codegen(&codegen, eu_variant_value(&var));
-			eu_variant_fini(&var);
+			do_codegen(&codegen, schema_val);
+			schema_fini(&schema);
 		}
 
 		if (codegen.error_count) {
