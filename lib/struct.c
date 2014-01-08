@@ -98,6 +98,9 @@ static struct eu_metadata *lookup_member(struct eu_struct_metadata *md,
 			continue;
 
 		if (!memcmp(m->name, name, name_len)) {
+			if (m->presence_offset >= 0)
+				s[m->presence_offset] |= m->presence_bit;
+
 			*value = s + m->offset;
 			return m->metadata;
 		}
@@ -129,6 +132,9 @@ static struct eu_metadata *lookup_member_2(struct eu_struct_metadata *md,
 
 		if (!memcmp(m->name, buf, buf_len)
 		    && !memcmp(m->name + buf_len, more, more_len)) {
+			if (m->presence_offset >= 0)
+				s[m->presence_offset] |= m->presence_bit;
+
 			*value = s + m->offset;
 			return m->metadata;
 		}
@@ -344,7 +350,7 @@ struct eu_value eu_struct_get(struct eu_value val, struct eu_string_ref name)
 	struct eu_struct_metadata *md
 		= (struct eu_struct_metadata *)val.metadata;
 	size_t i;
-	char *s = val.value;
+	unsigned char *s = val.value;
 	struct eu_generic_members *extras;
 	char *em;
 
@@ -352,10 +358,8 @@ struct eu_value eu_struct_get(struct eu_value val, struct eu_string_ref name)
 		struct eu_struct_member *m = &md->members[i];
 		if (m->name_len == name.len
 		    && !memcmp(m->name, name.chars, name.len)) {
-			void *p = s + m->offset;
-
-			if (!m->is_pointer || *(void **)p)
-				return eu_value(p, m->metadata);
+			if (eu_struct_member_present(m, s))
+				return eu_value(s + m->offset, m->metadata);
 			else
 				return eu_value_none;
 		}

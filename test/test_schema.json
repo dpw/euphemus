@@ -16,7 +16,8 @@
 	                "euphemusStructName": "bar",
                         "properties": {
                                 "bar": { "$ref": "#/definitions/baz" },
-                                "baz": { "$ref": "#/definitions/baz" }
+                                "baz": { "$ref": "#/definitions/baz" },
+		                "str": { "type": "string" }
                         },
                         "additionalProperties": { "type": "string" }
                 },

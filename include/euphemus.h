@@ -288,7 +288,8 @@ struct eu_variant_member {
 struct eu_struct_member {
 	unsigned int offset;
 	unsigned short name_len;
-	unsigned char is_pointer;
+	signed char presence_offset;
+	unsigned char presence_bit;
 	const char *name;
 	struct eu_metadata *metadata;
 };
@@ -329,7 +330,7 @@ size_t eu_object_size(struct eu_value val);
 			eu_struct_fini,                               \
 			eu_struct_get,                                \
 			sizeof(struct_name),                          \
-			EU_JSON_INVALID,                              \
+			EU_JSON_OBJECT,                               \
 			eu_struct_iter_init                           \
 		},                                                    \
 		-1,                                                   \
@@ -348,7 +349,7 @@ size_t eu_object_size(struct eu_value val);
 			eu_struct_ptr_fini,                           \
 			eu_struct_ptr_get,                            \
 			sizeof(struct_name *),                        \
-				EU_JSON_INVALID,                      \
+			EU_JSON_OBJECT,                               \
 			eu_struct_ptr_iter_init                       \
 		},                                                    \
 		sizeof(struct_name),                                  \
@@ -366,7 +367,7 @@ struct eu_object_iter {
 
 	struct {
 		unsigned int struct_i;
-		char *struct_p;
+		unsigned char *struct_p;
 		struct eu_struct_member *m;
 
 		size_t extras_i;
@@ -383,16 +384,25 @@ static __inline__ void eu_object_iter_init(struct eu_object_iter *iter,
 	val.metadata->object_iter_init(val, iter);
 }
 
+static __inline__ int eu_struct_member_present(struct eu_struct_member *m,
+					       unsigned char *p)
+{
+	if (m->presence_offset >= 0)
+		return !!(p[m->presence_offset] & m->presence_bit);
+	else
+		return !!*(void **)(p + m->offset);
+}
+
 static __inline__ int eu_object_iter_next(struct eu_object_iter *iter)
 {
 	while (iter->priv.struct_i) {
 		struct eu_struct_member *m = iter->priv.m++;
-		void *p = iter->priv.struct_p + m->offset;
 		iter->priv.struct_i--;
 
-		if (!m->is_pointer || *(void **)p) {
+		if (eu_struct_member_present(m, iter->priv.struct_p)) {
 			iter->name = eu_string_ref(m->name, m->name_len);
-			iter->value = eu_value(p, m->metadata);
+			iter->value = eu_value(iter->priv.struct_p + m->offset,
+					       m->metadata);
 			return 1;
 		}
 	}

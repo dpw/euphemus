@@ -134,6 +134,7 @@ static void test_size(void)
 	check_size("{\"x\":\"y\"}", 1);
 	check_size("{\"baz\":{}}", 1);
 	check_size("{\"baz\":{},\"x\":\"y\"}", 2);
+	check_size("{\"str\":\"str\"}", 1);
 }
 
 int main(void)

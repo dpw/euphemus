@@ -485,6 +485,7 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 {
 	struct struct_type_info *sti = (void *)ti;
 	size_t i;
+	int presence_count;
 	struct type_info *extras_type;
 
 	if (sti->defined_yet)
@@ -505,9 +506,21 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 
 	define_members_struct(extras_type, codegen);
 
+	/* Count how many presence bits we need */
+	for (i = 0, presence_count = 0; i < sti->members_len; i++) {
+		struct member_info *mi = &sti->members[i];
+		if (!mi->type->is_pointer)
+			presence_count++;
+	}
+
 	/* The definition of the struct itself. */
 	fprintf(codegen->h_out, "struct %.*s {\n",
 		(int)sti->struct_name.len, sti->struct_name.chars);
+
+	if (presence_count)
+		fprintf(codegen->h_out,
+		    "\tunsigned char presence_bits[(%d - 1) / CHAR_BIT + 1];\n",
+			presence_count);
 
 	for (i = 0; i < sti->members_len; i++) {
 		struct member_info *mi = &sti->members[i];
@@ -525,22 +538,34 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 		(int)sti->struct_name.len, sti->struct_name.chars,
 		(int)sti->members_len);
 
-	for (i = 0; i < sti->members_len; i++) {
+	for (i = 0, presence_count = 0; i < sti->members_len; i++) {
 		struct member_info *mi = &sti->members[i];
 
-		/* TODO need to escape member name below */
 		fprintf(codegen->c_out,
 			"\t{\n"
-			"\t\toffsetof(struct %.*s, %.*s),\n"
-			"\t\t%d,\n"
-			"\t\t%d,\n"
-			"\t\t\"%.*s\",\n"
-			"\t\t%s\n"
-			"\t},\n",
+			"\t\toffsetof(struct %.*s, %.*s),\n" /* offset */
+			"\t\t%d,\n", /* name_len */
 			(int)sti->struct_name.len, sti->struct_name.chars,
 			(int)mi->name.len, mi->name.chars,
-			(int)mi->name.len,
-			(int)mi->type->is_pointer,
+			(int)mi->name.len);
+
+		if (mi->type->is_pointer) {
+			fprintf(codegen->c_out,
+				"\t\t-1, 0,\n");
+		}
+		else {
+			fprintf(codegen->c_out,
+				"\t\t%d / CHAR_BIT, 1 << (%d %% CHAR_BIT),\n",
+				presence_count,
+				presence_count);
+			presence_count++;
+		}
+
+		/* TODO need to escape member name */
+		fprintf(codegen->c_out,
+			"\t\t\"%.*s\",\n" /* name */
+			"\t\t%s\n" /* metadata */
+			"\t},\n",
 			(int)mi->name.len, mi->name.chars,
 			mi->type->metadata_ptr_expr);
 	}
@@ -769,13 +794,14 @@ static void codegen_prolog(const char *path, const char *out_path,
 {
 	fprintf(h_out,
 		"/* Generated from \"%s\".  You probably shouldn't edit this file. */\n\n"
+		"#include <limits.h>\n"
 		"#include <euphemus.h>\n\n",
 		path);
 
 	fprintf(c_out,
 		"/* Generated from \"%s\".  You probably shouldn't edit this file. */\n\n"
 		"#include <stddef.h>\n\n"
-		"#include \"%s\"\n",
+		"#include \"%s\"\n\n",
 		path, out_path);
 }
 
