@@ -111,8 +111,7 @@ struct type_info {
 struct type_info_ops {
 	void (*fill)(struct type_info *ti, struct codegen *codegen,
 		     struct eu_value schema);
-	void (*declare)(struct type_info *ti, FILE *out,
-			struct eu_string_ref name);
+	void (*declare)(struct type_info *ti, FILE *out, const char *name);
 	void (*define)(struct type_info *ti, struct codegen *codegen);
 	void (*call_fini)(struct type_info *ti, FILE *out,
 			  const char *var_expr);
@@ -127,7 +126,7 @@ static void fill_type(struct type_info *ti, struct codegen *codegen,
 }
 
 /* Declare a variable or field of the given type. */
-static void declare(struct type_info *ti, FILE *out, struct eu_string_ref name)
+static void declare(struct type_info *ti, FILE *out, const char *name)
 {
 	ti->ops->declare(ti, out, name);
 }
@@ -174,7 +173,7 @@ static void define_members_struct(struct type_info *ti, struct codegen *codegen)
 		"struct %s {\n"
 		"\tstruct eu_string_ref name;\n",
 		ti->member_struct_name);
-	declare(ti, codegen->h_out, eu_cstr("value"));
+	declare(ti, codegen->h_out, "value");
 	fprintf(codegen->h_out, "};\n\n");
 
 	/* The *_members struct declaration */
@@ -226,12 +225,11 @@ struct simple_type_info {
 };
 
 static void simple_type_declare(struct type_info *ti, FILE *out,
-				struct eu_string_ref name)
+				const char *name)
 {
 	struct simple_type_info *sti = (void *)ti;
 
-	fprintf(out, "\t%s %.*s;\n", sti->type_name,
-		(int)name.len, name.chars);
+	fprintf(out, "\t%s %s;\n", sti->type_name, name);
 }
 
 static void noop_fill(struct type_info *ti, struct codegen *codegen,
@@ -337,7 +335,8 @@ static void codegen_fini(struct codegen *codegen)
 /* Structs */
 
 struct member_info {
-	struct eu_string_ref name;
+	struct eu_string_ref json_name;
+	char *c_name;
 	struct type_info *type;
 };
 
@@ -387,6 +386,22 @@ static struct type_info *alloc_struct(struct eu_value schema,
 	return &sti->base;
 }
 
+/* Convert a JSON string to one that is a valid C identifier. */
+static char *sanitize_name(struct eu_string_ref name)
+{
+	char *res = malloc(name.len + 1);
+	size_t i;
+	char *p;
+
+	for (i = 0, p = res; i < name.len; i++) {
+		if (isalnum(name.chars[i]))
+			*p++ = name.chars[i];
+	}
+
+	*p = 0;
+	return res;
+}
+
 static void struct_fill(struct type_info *ti, struct codegen *codegen,
 			struct eu_value schema)
 {
@@ -410,7 +425,8 @@ static void struct_fill(struct type_info *ti, struct codegen *codegen,
 		     i++) {
 			struct member_info *mi = &sti->members[i];
 
-			mi->name = pi.name;
+			mi->json_name = pi.name;
+			mi->c_name = sanitize_name(mi->json_name);
 			mi->type = resolve_type(codegen, pi.value);
 		}
 	}
@@ -424,14 +440,12 @@ static void struct_fill(struct type_info *ti, struct codegen *codegen,
 }
 
 
-static void struct_declare(struct type_info *ti, FILE *out,
-			   struct eu_string_ref name)
+static void struct_declare(struct type_info *ti, FILE *out, const char *name)
 {
 	struct struct_type_info *sti = (void *)ti;
 
-	fprintf(out, "\tstruct %.*s *%.*s;\n",
-		(int)sti->struct_name.len, sti->struct_name.chars,
-		(int)name.len, name.chars);
+	fprintf(out, "\tstruct %.*s *%s;\n",
+		(int)sti->struct_name.len, sti->struct_name.chars, name);
 }
 
 static void struct_define_parse_init(struct struct_type_info *sti,
@@ -524,7 +538,7 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 
 	for (i = 0; i < sti->members_len; i++) {
 		struct member_info *mi = &sti->members[i];
-		declare(mi->type, codegen->h_out, mi->name);
+		declare(mi->type, codegen->h_out, mi->c_name);
 	}
 
 	fprintf(codegen->h_out,
@@ -543,11 +557,11 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 
 		fprintf(codegen->c_out,
 			"\t{\n"
-			"\t\toffsetof(struct %.*s, %.*s),\n" /* offset */
+			"\t\toffsetof(struct %.*s, %s),\n" /* offset */
 			"\t\t%d,\n", /* name_len */
 			(int)sti->struct_name.len, sti->struct_name.chars,
-			(int)mi->name.len, mi->name.chars,
-			(int)mi->name.len);
+			mi->c_name,
+			(int)mi->json_name.len);
 
 		if (mi->type->is_pointer) {
 			fprintf(codegen->c_out,
@@ -566,7 +580,7 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 			"\t\t\"%.*s\",\n" /* name */
 			"\t\t%s\n" /* metadata */
 			"\t},\n",
-			(int)mi->name.len, mi->name.chars,
+			(int)mi->json_name.len, mi->json_name.chars,
 			mi->type->metadata_ptr_expr);
 	}
 
@@ -616,7 +630,7 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 		struct member_info *mi = &sti->members[i];
 		char *var;
 
-		var = xsprintf("p->%.*s", (int)mi->name.len, mi->name.chars);
+		var = xsprintf("p->%s", mi->c_name);
 		call_fini(mi->type, codegen->c_out, var);
 		free(var);
 	}
@@ -648,6 +662,12 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 static void struct_destroy(struct type_info *ti)
 {
 	struct struct_type_info *sti = (void *)ti;
+	size_t i;
+
+	for (i = 0; i < sti->members_len; i++) {
+		struct member_info *mi = &sti->members[i];
+		free(mi->c_name);
+	}
 
 	type_info_fini(ti);
 	free(sti->ptr_metadata_name);
