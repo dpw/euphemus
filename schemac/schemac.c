@@ -76,7 +76,7 @@ struct definition {
 };
 
 struct codegen {
-	int inline_parse_inits;
+	int inline_funcs;
 	FILE *c_out;
 	FILE *h_out;
 	struct type_info *type_infos_to_destroy;
@@ -448,51 +448,96 @@ static void struct_declare(struct type_info *ti, FILE *out, const char *name)
 		(int)sti->struct_name.len, sti->struct_name.chars, name);
 }
 
+static void emit_inlinish_func_decl(struct codegen *codegen, const char *fmt,
+				    ...)
+	__attribute__ ((format (printf, 2, 3)));
+
+static void emit_inlinish_func_decl(struct codegen *codegen, const char *fmt,
+				    ...)
+{
+	va_list ap;
+	FILE *out;
+
+	if (codegen->inline_funcs) {
+		out = codegen->h_out;
+		fprintf(out, "static __inline__ ");
+	}
+	else {
+		va_start(ap, fmt);
+		vfprintf(codegen->h_out, fmt, ap);
+		va_end(ap);
+		fprintf(codegen->h_out, ";\n");
+
+		out = codegen->c_out;
+	}
+
+	va_start(ap, fmt);
+	vfprintf(out, fmt, ap);
+	va_end(ap);
+	fprintf(out, "\n");
+}
+
+static void emit_inlinish_func_body(struct codegen *codegen, const char *fmt,
+				    ...)
+	__attribute__ ((format (printf, 2, 3)));
+
+static void emit_inlinish_func_body(struct codegen *codegen, const char *fmt,
+				    ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	vfprintf(codegen->inline_funcs ? codegen->h_out : codegen->c_out,
+		 fmt, ap);
+	va_end(ap);
+}
+
 static void struct_define_parse_init(struct struct_type_info *sti,
 				     struct codegen *codegen)
 {
-	const char *def_prefix;
-	FILE *def_out;
+	emit_inlinish_func_decl(codegen,
+			    "void eu_parse_init_struct_%.*s_ptr(struct eu_parse *ep, struct %.*s **p)",
+			    (int)sti->struct_name.len, sti->struct_name.chars,
+			    (int)sti->struct_name.len, sti->struct_name.chars);
+	emit_inlinish_func_body(codegen,
+				"{\n"
+				"\teu_parse_init(ep, %s, p);\n"
+				"}\n\n",
+				sti->base.metadata_ptr_expr);
 
-	if (codegen->inline_parse_inits) {
-		def_prefix = "static __inline__ ";
-		def_out = codegen->h_out;
-	}
-	else {
-		def_prefix = "";
-		def_out = codegen->c_out;
+	emit_inlinish_func_decl(codegen,
+			    "void eu_parse_init_struct_%.*s(struct eu_parse *ep, struct %.*s *p)\n",
+			    (int)sti->struct_name.len, sti->struct_name.chars,
+			    (int)sti->struct_name.len, sti->struct_name.chars);
+	emit_inlinish_func_body(codegen,
+				"{\n"
+				"\teu_parse_init(ep, &%s.base, p);\n"
+				"}\n\n",
+				sti->inline_metadata_name);
+}
 
-		fprintf(codegen->h_out,
-			"void eu_parse_init_struct_%.*s_ptr(struct eu_parse *ep, struct %.*s **p);\n",
+static void struct_define_converters(struct struct_type_info *sti,
+				     struct codegen *codegen)
+{
+	emit_inlinish_func_decl(codegen,
+			"struct eu_value %.*s_ptr_to_eu_value(struct %.*s **p)",
 			(int)sti->struct_name.len, sti->struct_name.chars,
 			(int)sti->struct_name.len, sti->struct_name.chars);
+	emit_inlinish_func_body(codegen,
+				"{\n"
+				"\treturn eu_value(p, %s);\n"
+				"}\n\n",
+				sti->base.metadata_ptr_expr);
 
-		fprintf(codegen->h_out,
-			"void eu_parse_init_struct_%.*s(struct eu_parse *ep, struct %.*s *p);\n\n",
+	emit_inlinish_func_decl(codegen,
+			"struct eu_value %.*s_to_eu_value(struct %.*s *p)",
 			(int)sti->struct_name.len, sti->struct_name.chars,
 			(int)sti->struct_name.len, sti->struct_name.chars);
-	}
-
-	fprintf(def_out,
-		"%svoid eu_parse_init_struct_%.*s_ptr(struct eu_parse *ep, struct %.*s **p)\n"
-		"{\n"
-		"\teu_parse_init(ep, %s, p);\n"
-		"}\n\n",
-		def_prefix,
-		(int)sti->struct_name.len, sti->struct_name.chars,
-		(int)sti->struct_name.len, sti->struct_name.chars,
-		sti->base.metadata_ptr_expr);
-
-
-	fprintf(def_out,
-		"%svoid eu_parse_init_struct_%.*s(struct eu_parse *ep, struct %.*s *p)\n"
-		"{\n"
-		"\teu_parse_init(ep, &%s.base, p);\n"
-		"}\n\n",
-		def_prefix,
-		(int)sti->struct_name.len, sti->struct_name.chars,
-		(int)sti->struct_name.len, sti->struct_name.chars,
-		sti->inline_metadata_name);
+	emit_inlinish_func_body(codegen,
+				"{\n"
+				"\treturn eu_value(p, &%s.base);\n"
+				"}\n\n",
+				sti->inline_metadata_name);
 }
 
 static void struct_define(struct type_info *ti, struct codegen *codegen)
@@ -657,6 +702,7 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 		(int)sti->struct_name.len, sti->struct_name.chars);
 
 	struct_define_parse_init(sti, codegen);
+	struct_define_converters(sti, codegen);
 }
 
 static void struct_destroy(struct type_info *ti)
@@ -928,7 +974,7 @@ static void codegen(const char *path, struct eu_value schema)
 	char *out_path;
 	char *basename = xstrdup(path);
 
-	codegen.inline_parse_inits = 1;
+	codegen.inline_funcs = 1;
 
 	remove_extension(basename);
 	out_path = xsprintf("%s.c", basename);

@@ -44,7 +44,8 @@ static void test_nested(void)
 
 static void check_extras(struct foo *foo)
 {
-	struct eu_value val = eu_value_get(eu_value(foo, &struct_foo_metadata.base), eu_cstr("quux"));
+	struct eu_value val
+		= eu_value_get(foo_to_eu_value(foo), eu_cstr("quux"));
 	assert(eu_string_ref_equal(eu_string_to_ref(val.value),
 				   eu_cstr("foo")));
 }
@@ -79,7 +80,7 @@ static void test_path(void)
 	assert(eu_parse_finish(&ep));
 	eu_parse_fini(&ep);
 
-	val = eu_value(&foo, &struct_foo_metadata.base);
+	val = foo_to_eu_value(&foo);
 	assert(!eu_value_ok(eu_get_path(val, eu_cstr("/baz"))));
 	val = eu_get_path(val, eu_cstr("/bar/bar/bar/hello"));
 	assert(eu_value_ok(val));
@@ -102,7 +103,7 @@ static void test_path_extras(void)
 	assert(eu_parse_finish(&ep));
 	eu_parse_fini(&ep);
 
-	val = eu_value(&bar, &struct_bar_metadata.base);
+	val = bar_to_eu_value(&bar);
 	val = eu_get_path(val, eu_cstr("/x"));
 	assert(eu_value_ok(val));
 	assert(eu_value_type(val) == EU_JSON_STRING);
@@ -122,8 +123,7 @@ static void check_size(const char *json, size_t size)
 	assert(eu_parse_finish(&ep));
 	eu_parse_fini(&ep);
 
-	assert(eu_object_size(eu_value(&bar, &struct_bar_metadata.base))
-	       == size);
+	assert(eu_object_size(bar_to_eu_value(&bar)) == size);
 
 	bar_fini(&bar);
 }
