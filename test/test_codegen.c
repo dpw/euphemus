@@ -44,9 +44,8 @@ static void test_nested(void)
 
 static void check_extras(struct foo *foo)
 {
-	struct eu_value val
-		= eu_value_get(foo_to_eu_value(foo), eu_cstr("quux"));
-	assert(eu_string_ref_equal(eu_string_to_ref(val.value),
+	struct eu_value val = eu_value_get_cstr(foo_to_eu_value(foo), "quux");
+	assert(eu_string_ref_equal(eu_value_to_string_ref(val),
 				   eu_cstr("foo")));
 }
 
@@ -57,15 +56,6 @@ static void test_extras(void)
 		   eu_parse_init_struct_foo,
 		   check_extras(&result),
 		   foo_fini(&result));
-
-	TEST_PARSE("{\"quux\":\"bar\"}",
-		   struct bar,
-		   eu_parse_init_struct_bar,
-		   assert(result.extras.len == 1
-			  && eu_string_ref_equal(
-			      eu_string_to_ref(&result.extras.members[0].value),
-			      eu_cstr("bar"))),
-		   bar_fini(&result));
 }
 
 static void test_path(void)
@@ -85,7 +75,7 @@ static void test_path(void)
 	val = eu_get_path(val, eu_cstr("/bar/bar/bar/hello"));
 	assert(eu_value_ok(val));
 	assert(eu_value_type(val) == EU_JSON_STRING);
-	assert(eu_string_ref_equal(eu_string_to_ref(val.value),
+	assert(eu_string_ref_equal(eu_value_to_string_ref(val),
 				   eu_cstr("world")));
 
 	foo_fini(&foo);
@@ -107,8 +97,7 @@ static void test_path_extras(void)
 	val = eu_get_path(val, eu_cstr("/x"));
 	assert(eu_value_ok(val));
 	assert(eu_value_type(val) == EU_JSON_STRING);
-	assert(eu_string_ref_equal(eu_string_to_ref(val.value),
-				   eu_cstr("y")));
+	assert(eu_string_ref_equal(eu_value_to_string_ref(val), eu_cstr("y")));
 
 	bar_fini(&bar);
 }

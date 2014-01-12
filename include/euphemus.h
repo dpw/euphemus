@@ -6,7 +6,7 @@
 #include <string.h>
 
 enum eu_json_type {
-	EU_JSON_INVALID,
+	EU_JSON_VARIANT,
 	EU_JSON_STRING,
 	EU_JSON_OBJECT,
 	EU_JSON_ARRAY,
@@ -88,17 +88,19 @@ struct eu_metadata {
 				 struct eu_object_iter *iter);
 };
 
+static __inline__ struct eu_value eu_value(void *value,
+					   struct eu_metadata *metadata)
+{
+	struct eu_value v = { value, metadata };
+	return v;
+}
+
 static __inline__ int eu_value_ok(struct eu_value val)
 {
 	return !!val.metadata;
 }
 
 static const struct eu_value eu_value_none = { NULL, NULL };
-
-static __inline__ enum eu_json_type eu_value_type(struct eu_value val)
-{
-	return val.metadata->json_type;
-}
 
 static __inline__ struct eu_value eu_value_get(struct eu_value val,
 					       struct eu_string_ref name)
@@ -257,25 +259,60 @@ void eu_parse_init_variant(struct eu_parse *ep, struct eu_variant *var);
 
 static __inline__ struct eu_value eu_variant_value(struct eu_variant *variant)
 {
-	struct eu_value v = { &variant->u, variant->metadata };
-	return v;
-}
-
-static __inline__ struct eu_value eu_value(void *value,
-					   struct eu_metadata *metadata)
-{
-	struct eu_value v = { value, metadata };
-
-	if (metadata == &eu_variant_metadata)
-		v = eu_variant_value(value);
-
-	return v;
+	return eu_value(&variant->u, variant->metadata);
 }
 
 static __inline__ void eu_variant_fini(struct eu_variant *variant)
 {
 	if (variant->metadata)
 		variant->metadata->fini(variant->metadata, &variant->u);
+}
+
+static __inline__ enum eu_json_type eu_value_type(struct eu_value val)
+{
+	enum eu_json_type t = val.metadata->json_type;
+	if (t != EU_JSON_VARIANT)
+		return t;
+	else
+		return ((struct eu_variant *)val.value)->metadata->json_type;
+}
+
+static __inline__ void *eu_value_extract(struct eu_value val,
+					 enum eu_json_type type)
+{
+	enum eu_json_type t = val.metadata->json_type;
+
+	if (t == type)
+		return val.value;
+
+	if (t == EU_JSON_VARIANT) {
+		struct eu_variant *var = val.value;
+		if (var->metadata->json_type == type)
+			return &var->u;
+	}
+
+	abort();
+}
+
+static __inline__ struct eu_string_ref eu_value_to_string_ref(
+							   struct eu_value val)
+{
+	return eu_string_to_ref(eu_value_extract(val, EU_JSON_STRING));
+}
+
+static __inline__ double *eu_value_to_number(struct eu_value val)
+{
+	return eu_value_extract(val, EU_JSON_NUMBER);
+}
+
+static __inline__ eu_bool_t *eu_value_to_bool(struct eu_value val)
+{
+	return eu_value_extract(val, EU_JSON_BOOL);
+}
+
+static __inline__ struct eu_array *eu_value_to_array(struct eu_value val)
+{
+	return eu_value_extract(val, EU_JSON_ARRAY);
 }
 
 struct eu_variant_member {

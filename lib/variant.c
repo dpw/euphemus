@@ -87,17 +87,6 @@ static enum eu_parse_result variant_parse(struct eu_metadata *metadata,
 	return slot.func(slot.misc, ep, result);
 }
 
-static void variant_fini(struct eu_metadata *metadata, void *value)
-{
-	struct eu_variant *var = value;
-	(void)metadata;
-
-	if (var->metadata) {
-		var->metadata->fini(var->metadata, &var->u);
-		var->metadata = NULL;
-	}
-}
-
 static enum eu_parse_result whitespace(void *variant_metadata,
 				       struct eu_parse *ep,
 				       struct eu_variant *result)
@@ -110,13 +99,38 @@ static enum eu_parse_result whitespace(void *variant_metadata,
 		return res;
 }
 
+static void variant_fini(struct eu_metadata *metadata, void *value)
+{
+	struct eu_variant *var = value;
+	(void)metadata;
+
+	if (var->metadata) {
+		var->metadata->fini(var->metadata, &var->u);
+		var->metadata = NULL;
+	}
+}
+
+static struct eu_value variant_get(struct eu_value val,
+				   struct eu_string_ref name)
+{
+	struct eu_variant *var = val.value;
+	return eu_value_get(eu_variant_value(var), name);
+}
+
+static void variant_object_iter_init(struct eu_value val,
+				     struct eu_object_iter *iter)
+{
+	struct eu_variant *var = val.value;
+	eu_object_iter_init(iter, eu_variant_value(var));
+}
+
 struct eu_metadata eu_variant_metadata = {
 	variant_parse,
 	variant_fini,
-	eu_get_fail,
+	variant_get,
 	sizeof(struct eu_variant),
-	EU_JSON_INVALID,
-	eu_object_iter_init_fail
+	EU_JSON_VARIANT,
+	variant_object_iter_init
 };
 
 void eu_parse_init_variant(struct eu_parse *ep, struct eu_variant *var)

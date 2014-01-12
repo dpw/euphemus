@@ -366,7 +366,7 @@ static struct type_info *alloc_struct(struct eu_value schema,
 
 	assert(eu_value_ok(name) && eu_value_type(name) == EU_JSON_STRING);
 
-	sti->struct_name = eu_string_to_ref(name.value);
+	sti->struct_name = eu_value_to_string_ref(name);
 	sti->ptr_metadata_name
 		= xsprintf("struct_%.*s_ptr_metadata",
 			   (int)sti->struct_name.len, sti->struct_name.chars);
@@ -754,7 +754,7 @@ static struct definition *find_def(struct codegen *codegen,
 
 	assert(eu_value_type(ref) == EU_JSON_STRING);
 
-	name = eu_string_to_ref(ref.value);
+	name = eu_value_to_string_ref(ref);
 	if (name.len < REF_PREFIX_LEN
 	    || memcmp(name.chars, REF_PREFIX, REF_PREFIX_LEN))
 		die("only refs beginning with '" REF_PREFIX "' are supported");
@@ -807,7 +807,7 @@ static struct type_info *alloc_type(struct codegen *codegen,
 	}
 
 	assert(eu_value_type(type) == EU_JSON_STRING);
-	type_str = eu_string_to_ref(type.value);
+	type_str = eu_value_to_string_ref(type);
 
 	if (eu_string_ref_equal(type_str, eu_cstr("string")))
 		return codegen->string_type;
