@@ -154,8 +154,3 @@ enum eu_parse_result eu_variant_number(void *number_metadata,
 	result->metadata = number_metadata;
 	return number_parse(number_metadata, ep, &result->u.number);
 }
-
-void eu_parse_init_number(struct eu_parse *ep, double *num)
-{
-	eu_parse_init(ep, &eu_number_metadata, num);
-}

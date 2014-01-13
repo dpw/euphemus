@@ -492,30 +492,6 @@ static void emit_inlinish_func_body(struct codegen *codegen, const char *fmt,
 	va_end(ap);
 }
 
-static void struct_define_parse_init(struct struct_type_info *sti,
-				     struct codegen *codegen)
-{
-	emit_inlinish_func_decl(codegen,
-			    "void eu_parse_init_struct_%.*s_ptr(struct eu_parse *ep, struct %.*s **p)",
-			    (int)sti->struct_name.len, sti->struct_name.chars,
-			    (int)sti->struct_name.len, sti->struct_name.chars);
-	emit_inlinish_func_body(codegen,
-				"{\n"
-				"\teu_parse_init(ep, %s, p);\n"
-				"}\n\n",
-				sti->base.metadata_ptr_expr);
-
-	emit_inlinish_func_decl(codegen,
-			    "void eu_parse_init_struct_%.*s(struct eu_parse *ep, struct %.*s *p)\n",
-			    (int)sti->struct_name.len, sti->struct_name.chars,
-			    (int)sti->struct_name.len, sti->struct_name.chars);
-	emit_inlinish_func_body(codegen,
-				"{\n"
-				"\teu_parse_init(ep, &%s.base, p);\n"
-				"}\n\n",
-				sti->inline_metadata_name);
-}
-
 static void struct_define_converters(struct struct_type_info *sti,
 				     struct codegen *codegen)
 {
@@ -701,7 +677,6 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 		(int)sti->struct_name.len, sti->struct_name.chars,
 		(int)sti->struct_name.len, sti->struct_name.chars);
 
-	struct_define_parse_init(sti, codegen);
 	struct_define_converters(sti, codegen);
 }
 
@@ -1016,7 +991,7 @@ static void parse_schema_file(const char *path, struct eu_variant *var)
 	if (!fp)
 		die("error opening \"%s\": %s", path, strerror(errno));
 
-	eu_parse_init_variant(&parse, var);
+	eu_parse_init(&parse, eu_variant_value(var));
 
 	while (!feof(fp)) {
 		char buf[1000];

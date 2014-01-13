@@ -110,18 +110,23 @@ static void variant_fini(struct eu_metadata *metadata, void *value)
 	}
 }
 
+static struct eu_value eu_variant_peek(struct eu_variant *variant)
+{
+	return eu_value(&variant->u, variant->metadata);
+}
+
 static struct eu_value variant_get(struct eu_value val,
 				   struct eu_string_ref name)
 {
 	struct eu_variant *var = val.value;
-	return eu_value_get(eu_variant_value(var), name);
+	return eu_value_get(eu_variant_peek(var), name);
 }
 
 static void variant_object_iter_init(struct eu_value val,
 				     struct eu_object_iter *iter)
 {
 	struct eu_variant *var = val.value;
-	eu_object_iter_init(iter, eu_variant_value(var));
+	eu_object_iter_init(iter, eu_variant_peek(var));
 }
 
 struct eu_metadata eu_variant_metadata = {
@@ -132,8 +137,3 @@ struct eu_metadata eu_variant_metadata = {
 	EU_JSON_VARIANT,
 	variant_object_iter_init
 };
-
-void eu_parse_init_variant(struct eu_parse *ep, struct eu_variant *var)
-{
-	eu_parse_init(ep, &eu_variant_metadata, var);
-}

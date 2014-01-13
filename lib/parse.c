@@ -32,18 +32,17 @@ struct eu_parse_cont initial_parse_cont = {
 	initial_parse_destroy
 };
 
-void eu_parse_init(struct eu_parse *ep, struct eu_metadata *metadata,
-		   void *result)
+void eu_parse_init(struct eu_parse *ep, struct eu_value result)
 {
 	ep->outer_stack = &initial_parse_cont;
 	ep->stack_top = ep->stack_bottom = NULL;
-	ep->metadata = metadata;
-	ep->result = result;
+	ep->metadata = result.metadata;
+	ep->result = result.value;
 	ep->buf = NULL;
 	ep->buf_size = 0;
 	ep->error = 0;
 
-	memset(result, 0, metadata->size);
+	memset(ep->result, 0, ep->metadata->size);
 }
 
 void eu_parse_fini(struct eu_parse *ep)

@@ -74,7 +74,7 @@ int main(int argc, char **argv)
 		struct eu_parse parse;
 		struct eu_variant var;
 
-		eu_parse_init_variant(&parse, &var);
+		eu_parse_init(&parse, eu_variant_value(&var));
 		if (!eu_parse(&parse, json, json_len))
 			goto error;
 

@@ -45,11 +45,6 @@ struct eu_metadata eu_bool_metadata = {
 	eu_object_iter_init_fail
 };
 
-void eu_parse_init_bool(struct eu_parse *ep, eu_bool_t *bool)
-{
-	eu_parse_init(ep, &eu_bool_metadata, bool);
-}
-
 struct eu_bool_misc {
 	eu_bool_t value;
 	struct expect expect;

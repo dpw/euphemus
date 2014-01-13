@@ -142,8 +142,7 @@ struct eu_parse_cont {
 	void (*destroy)(struct eu_parse *ep, struct eu_parse_cont *cont);
 };
 
-void eu_parse_init(struct eu_parse *ep, struct eu_metadata *metadata,
-		   void *result);
+void eu_parse_init(struct eu_parse *ep, struct eu_value result);
 int eu_parse(struct eu_parse *ep, const char *input, size_t len);
 int eu_parse_finish(struct eu_parse *ep);
 void eu_parse_fini(struct eu_parse *ep);
@@ -193,7 +192,11 @@ static __inline__ void eu_string_fini(struct eu_string *string)
 }
 
 extern struct eu_metadata eu_string_metadata;
-void eu_parse_init_string(struct eu_parse *ep, struct eu_string *str);
+
+static __inline__ struct eu_value eu_string_value(struct eu_string *string)
+{
+	return eu_value(string, &eu_string_metadata);
+}
 
 /* Arrays */
 
@@ -230,11 +233,20 @@ void eu_object_iter_init_fail(struct eu_value val, struct eu_object_iter *iter);
 /* Others */
 
 extern struct eu_metadata eu_number_metadata;
-void eu_parse_init_number(struct eu_parse *ep, double *num);
+
+static __inline__ struct eu_value eu_number_value(double *number)
+{
+	return eu_value(number, &eu_number_metadata);
+}
+
 
 typedef unsigned char eu_bool_t;
 extern struct eu_metadata eu_bool_metadata;
-void eu_parse_init_bool(struct eu_parse *ep, eu_bool_t *num);
+
+static __inline__ struct eu_value eu_bool_value(eu_bool_t *bool)
+{
+	return eu_value(bool, &eu_bool_metadata);
+}
 
 /* Variants */
 
@@ -255,11 +267,10 @@ struct eu_variant {
 };
 
 extern struct eu_metadata eu_variant_metadata;
-void eu_parse_init_variant(struct eu_parse *ep, struct eu_variant *var);
 
 static __inline__ struct eu_value eu_variant_value(struct eu_variant *variant)
 {
-	return eu_value(&variant->u, variant->metadata);
+	return eu_value(variant, &eu_variant_metadata);
 }
 
 static __inline__ void eu_variant_fini(struct eu_variant *variant)

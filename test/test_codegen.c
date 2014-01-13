@@ -19,7 +19,7 @@ static void test_struct_ptr(void)
 {
 	TEST_PARSE("{\"str\":\"x\",\"any\":null,\"bar\":{},\"num\":42,\"bool\":true}",
 		   struct foo *,
-		   eu_parse_init_struct_foo_ptr,
+		   foo_ptr_to_eu_value,
 		   check_foo(result),
 		   foo_destroy(result));
 }
@@ -28,7 +28,7 @@ static void test_inline_struct(void)
 {
 	TEST_PARSE("{\"str\":\"x\",\"any\":null,\"bar\":{},\"num\":42,\"bool\":true}",
 		   struct foo,
-		   eu_parse_init_struct_foo,
+		   foo_to_eu_value,
 		   check_foo(&result),
 		   foo_fini(&result));
 }
@@ -37,7 +37,7 @@ static void test_nested(void)
 {
 	TEST_PARSE("{\"bar\":{\"bar\":{\"bar\":{\"bar\":{}}}}}",
 		   struct foo *,
-		   eu_parse_init_struct_foo_ptr,
+		   foo_ptr_to_eu_value,
 		   assert(result->bar->bar->bar->bar),
 		   foo_destroy(result));
 }
@@ -53,7 +53,7 @@ static void test_extras(void)
 {
 	TEST_PARSE("{\"quux\":\"foo\"}",
 		   struct foo,
-		   eu_parse_init_struct_foo,
+		   foo_to_eu_value,
 		   check_extras(&result),
 		   foo_fini(&result));
 }
@@ -65,7 +65,7 @@ static void test_path(void)
 	const char *json = "{\"bar\":{\"bar\":{\"bar\":{\"hello\":\"world\"}}}}";
 	struct eu_value val;
 
-	eu_parse_init_struct_foo(&ep, &foo);
+	eu_parse_init(&ep, foo_to_eu_value(&foo));
 	assert(eu_parse(&ep, json, strlen(json)));
 	assert(eu_parse_finish(&ep));
 	eu_parse_fini(&ep);
@@ -88,7 +88,7 @@ static void test_path_extras(void)
 	const char *json = "{\"x\":\"y\"}";
 	struct eu_value val;
 
-	eu_parse_init_struct_bar(&ep, &bar);
+	eu_parse_init(&ep, bar_to_eu_value(&bar));
 	assert(eu_parse(&ep, json, strlen(json)));
 	assert(eu_parse_finish(&ep));
 	eu_parse_fini(&ep);
@@ -107,7 +107,7 @@ static void check_size(const char *json, size_t size)
 	struct bar bar;
 	struct eu_parse ep;
 
-	eu_parse_init_struct_bar(&ep, &bar);
+	eu_parse_init(&ep, bar_to_eu_value(&bar));
 	assert(eu_parse(&ep, json, strlen(json)));
 	assert(eu_parse_finish(&ep));
 	eu_parse_fini(&ep);

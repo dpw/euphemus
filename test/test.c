@@ -13,9 +13,9 @@ struct eu_string_array {
 	size_t len;
 };
 
-void eu_parse_init_string_array(struct eu_parse *ep, struct eu_string_array *a)
+struct eu_value eu_string_array_value(struct eu_string_array *a)
 {
-	eu_parse_init(ep, &eu_string_array_metadata.base, a);
+	return eu_value(a, &eu_string_array_metadata.base);
 }
 
 void eu_string_array_fini(struct eu_string_array *a)
@@ -29,7 +29,7 @@ static void test_parse_string(void)
 {
 	TEST_PARSE("  \"hello, world!\"  ",
 		   struct eu_string,
-		   eu_parse_init_string,
+		   eu_string_value,
 		   assert(eu_string_ref_equal(eu_string_to_ref(&result),
 					      eu_cstr("hello, world!"))),
 		   eu_string_fini(&result));
@@ -39,35 +39,35 @@ static void test_parse_number(void)
 {
 	TEST_PARSE("  123456789.0123456789e0  ",
 		   double,
-		   eu_parse_init_number,
+		   eu_number_value,
 		   assert(result == (double)123456789.0123456789e0),);
 	TEST_PARSE("  -0.0123456789e10  ",
 		   double,
-		   eu_parse_init_number,
+		   eu_number_value,
 		   assert(result == (double)-0.0123456789e10),);
 	TEST_PARSE("  0  ",
 		   double,
-		   eu_parse_init_number,
+		   eu_number_value,
 		   assert(result == 0),);
 	TEST_PARSE("  123456789  ",
 		   double,
-		   eu_parse_init_number,
+		   eu_number_value,
 		   assert(result == (double)123456789),);
 	TEST_PARSE("  -123456789  ",
 		   double,
-		   eu_parse_init_number,
+		   eu_number_value,
 		   assert(result == (double)-123456789),);
 	TEST_PARSE("  1000000000000000000000000  ",
 		   double,
-		   eu_parse_init_number,
+		   eu_number_value,
 		   assert(result == (double)1000000000000000000000000.0),);
 }
 
 static void test_parse_bool(void)
 {
-	TEST_PARSE("  true  ", eu_bool_t, eu_parse_init_bool,
+	TEST_PARSE("  true  ", eu_bool_t, eu_bool_value,
 		   assert(result),);
-	TEST_PARSE("  false  ", eu_bool_t, eu_parse_init_bool,
+	TEST_PARSE("  false  ", eu_bool_t, eu_bool_value,
 		   assert(!result),);
 }
 
@@ -85,7 +85,7 @@ static void test_parse_array(void)
 {
 	TEST_PARSE("  [  \"foo\"  ,  \"bar\"  ]  ",
 		   struct eu_string_array,
-		   eu_parse_init_string_array,
+		   eu_string_array_value,
 		   check_array(&result),
 		   eu_string_array_fini(&result));
 }
@@ -128,7 +128,7 @@ static void test_parse_variant(void)
 		   "  \"null\"  :  null  ,"
 		   "  \"array\"  :  [  \"element\"  ,  [  ]  ]  }  ",
 		   struct eu_variant,
-		   eu_parse_init_variant,
+		   eu_variant_value,
 		   check_variant(&result),
 		   eu_variant_fini(&result));
 }
@@ -137,7 +137,7 @@ static void parse_variant(const char *json, struct eu_variant *var)
 {
 	struct eu_parse ep;
 
-	eu_parse_init_variant(&ep, var);
+	eu_parse_init(&ep, eu_variant_value(var));
 	assert(eu_parse(&ep, json, strlen(json)));
 	assert(eu_parse_finish(&ep));
 	eu_parse_fini(&ep);
