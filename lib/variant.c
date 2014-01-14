@@ -130,10 +130,10 @@ static void variant_object_iter_init(struct eu_value val,
 }
 
 struct eu_metadata eu_variant_metadata = {
+	EU_JSON_VARIANT,
+	sizeof(struct eu_variant),
 	variant_parse,
 	variant_fini,
 	variant_get,
-	sizeof(struct eu_variant),
-	EU_JSON_VARIANT,
 	variant_object_iter_init
 };

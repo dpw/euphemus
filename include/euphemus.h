@@ -65,6 +65,12 @@ struct eu_object_iter;
 /* A description of a type of data (including things like how to
    allocate, release etc.) */
 struct eu_metadata {
+	/* The EU_JSON_ value for this type. */
+	unsigned char json_type;
+
+	/* Size in bytes occupied by values of this type */
+	unsigned int size;
+
 	/* A parse function expects that there is at least one
 	   character available in ep->input.  But it might be
 	   whitespace.
@@ -80,9 +86,6 @@ struct eu_metadata {
 
 	/* Get a member of an object or array. */
 	struct eu_value (*get)(struct eu_value val, struct eu_string_ref name);
-
-	unsigned int size;
-	unsigned char json_type;
 
 	void (*object_iter_init)(struct eu_value val,
 				 struct eu_object_iter *iter);
@@ -219,11 +222,11 @@ void eu_object_iter_init_fail(struct eu_value val, struct eu_object_iter *iter);
 #define EU_ARRAY_METADATA_INITIALIZER(el_metadata)                    \
 	{                                                             \
 		{                                                     \
+			EU_JSON_ARRAY,                                \
+			sizeof(struct eu_array),                      \
 			eu_array_parse,                               \
 			eu_array_fini,                                \
 			eu_array_get,                                 \
-			sizeof(struct eu_array),                      \
-			EU_JSON_ARRAY,                                \
 			eu_object_iter_init_fail                      \
                                                                       \
 		},                                                    \
@@ -374,11 +377,11 @@ size_t eu_object_size(struct eu_value val);
 #define EU_STRUCT_METADATA_INITIALIZER(struct_name, struct_members, extra_member_struct, extra_member_metadata) \
 	{                                                             \
 		{                                                     \
+			EU_JSON_OBJECT,                               \
+			sizeof(struct_name),                          \
 			eu_struct_parse,                              \
 			eu_struct_fini,                               \
 			eu_struct_get,                                \
-			sizeof(struct_name),                          \
-			EU_JSON_OBJECT,                               \
 			eu_struct_iter_init                           \
 		},                                                    \
 		-1,                                                   \
@@ -393,11 +396,11 @@ size_t eu_object_size(struct eu_value val);
 #define EU_STRUCT_PTR_METADATA_INITIALIZER(struct_name, struct_members, extra_member_struct, extra_member_metadata) \
 	{                                                             \
 		{                                                     \
+			EU_JSON_OBJECT,                               \
+			sizeof(struct_name *),                        \
 			eu_struct_ptr_parse,                          \
 			eu_struct_ptr_fini,                           \
 			eu_struct_ptr_get,                            \
-			sizeof(struct_name *),                        \
-			EU_JSON_OBJECT,                               \
 			eu_struct_ptr_iter_init                       \
 		},                                                    \
 		sizeof(struct_name),                                  \

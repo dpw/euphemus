@@ -139,11 +139,11 @@ static void number_parse_cont_destroy(struct eu_parse *ep,
 }
 
 struct eu_metadata eu_number_metadata = {
+	EU_JSON_NUMBER,
+	sizeof(double),
 	number_parse,
 	eu_noop_fini,
 	eu_get_fail,
-	sizeof(double),
-	EU_JSON_NUMBER,
 	eu_object_iter_init_fail
 };
 

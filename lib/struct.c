@@ -329,11 +329,11 @@ static void struct_parse_cont_destroy(struct eu_parse *ep,
 
 struct eu_struct_metadata eu_object_metadata = {
 	{
+		EU_JSON_OBJECT,
+		sizeof(struct eu_object),
 		eu_struct_parse,
 		eu_struct_fini,
 		eu_struct_get,
-		sizeof(struct eu_object),
-		EU_JSON_OBJECT,
 		eu_struct_iter_init
 	},
 	-1,
