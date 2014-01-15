@@ -2,8 +2,14 @@
 
 A JSON parser.  In C.
 
-(I know about json-c.  Euphemus is different.)
+There are several JSON parsers in C out there already.  Euphemus is a
+different because it supports schema-assisted parsing: You give it a
+JSON schema, and it will generate C source files defining the
+corresponding structures, and produce them during parsing.  So code in
+C can access JSON data almost as easily as code in a dynamic language.
 
-It's not finished yet.
+However, Euphemus isn't finished yet.  It can parse JSON, but only
+supports a limited subset of JSON schema.  And it can't generate JSON,
+And some optimization is needed.  And the API is not stable.
 
 Euphemus was the helmsman on the voyage of the Argonauts.
