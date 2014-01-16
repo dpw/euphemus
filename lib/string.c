@@ -16,31 +16,6 @@ static void string_parse_cont_destroy(struct eu_parse *ep,
 
 static enum eu_parse_result string_parse_common(struct eu_metadata *metadata,
 						struct eu_parse *ep,
-						void *v_result);
-
-enum eu_parse_result eu_variant_string(void *string_metadata,
-				       struct eu_parse *ep,
-				       struct eu_variant *result)
-{
-	result->metadata = string_metadata;
-	return string_parse_common(string_metadata, ep, &result->u.string);
-}
-
-static enum eu_parse_result string_parse(struct eu_metadata *metadata,
-					 struct eu_parse *ep,
-					 void *result)
-{
-	enum eu_parse_result res
-		= eu_consume_whitespace_until(metadata, ep, result, '\"');
-
-	if (res == EU_PARSE_OK)
-		return string_parse_common(metadata, ep, result);
-	else
-		return res;
-}
-
-static enum eu_parse_result string_parse_common(struct eu_metadata *metadata,
-						struct eu_parse *ep,
 						void *v_result)
 {
 	const char *p = ep->input;
@@ -164,6 +139,27 @@ static void string_parse_cont_destroy(struct eu_parse *ep,
 
 	free(cont->buf);
 	free(cont);
+}
+
+enum eu_parse_result eu_variant_string(void *string_metadata,
+				       struct eu_parse *ep,
+				       struct eu_variant *result)
+{
+	result->metadata = string_metadata;
+	return string_parse_common(string_metadata, ep, &result->u.string);
+}
+
+static enum eu_parse_result string_parse(struct eu_metadata *metadata,
+					 struct eu_parse *ep,
+					 void *result)
+{
+	enum eu_parse_result res
+		= eu_consume_whitespace_until(metadata, ep, result, '\"');
+
+	if (res == EU_PARSE_OK)
+		return string_parse_common(metadata, ep, result);
+	else
+		return res;
 }
 
 static void string_fini(struct eu_metadata *metadata, void *value)
