@@ -7,6 +7,19 @@
 
 #include <euphemus.h>
 
+static void error(const char *fmt, ...)
+	__attribute__ ((format (printf, 1, 2)));
+
+static void error(const char *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	vfprintf(stderr, fmt, ap);
+	va_end(ap);
+	fputc('\n', stderr);
+}
+
 static void die(const char *fmt, ...)
 	__attribute__ ((noreturn,format (printf, 1, 2)));
 
@@ -983,33 +996,45 @@ static void codegen(const char *path, struct eu_value schema)
 	free(basename);
 }
 
-static void parse_schema_file(const char *path, struct eu_variant *var)
+static int parse_schema_file(const char *path, struct eu_variant *var)
 {
 	struct eu_parse parse;
 	FILE *fp = fopen(path, "r");
+	int res = 0;
 
-	if (!fp)
-		die("error opening \"%s\": %s", path, strerror(errno));
+	if (!fp) {
+		error("%s: %s", path, strerror(errno));
+		return 0;
+	}
 
 	eu_parse_init(&parse, eu_variant_value(var));
 
 	while (!feof(fp)) {
 		char buf[1000];
-		size_t res = fread(buf, 1, 1000, fp);
+		size_t got = fread(buf, 1, 1000, fp);
 
-		if (res < 1000 && ferror(fp))
-			die("error reading \"%s\": %s", path, strerror(errno));
+		if (got < 1000 && ferror(fp)) {
+			error("%s: %s", path, strerror(errno));
+			goto out;
+		}
 
-		if (!eu_parse(&parse, buf, res))
-			die("parse error in \"%s\"", path);
+		if (!eu_parse(&parse, buf, got)) {
+			error("%s: parse error", path);
+			goto out;
+		}
 	}
 
-	if (!eu_parse_finish(&parse))
-		die("parse error in \"%s\"", path);
+	if (!eu_parse_finish(&parse)) {
+		error("%s: parse error", path);
+		goto out;
+	}
 
+	res = 1;
+
+ out:
 	fclose(fp);
-
 	eu_parse_fini(&parse);
+	return res;
 }
 
 int main(int argc, char **argv)
@@ -1018,9 +1043,10 @@ int main(int argc, char **argv)
 	struct eu_variant var;
 
 	for (i = 1; i < argc; i++) {
-		parse_schema_file(argv[i], &var);
-		codegen(argv[1], eu_variant_value(&var));
-		eu_variant_fini(&var);
+		if (parse_schema_file(argv[i], &var)) {
+			codegen(argv[1], eu_variant_value(&var));
+			eu_variant_fini(&var);
+		}
 	}
 
 	return 0;
