@@ -956,26 +956,33 @@ static void codegen_definitions(struct codegen *codegen,
 	}
 }
 
-static void codegen(const char *path, struct eu_value schema)
+static int codegen(const char *path, struct eu_value schema)
 {
 	struct codegen codegen;
 	char *out_path;
 	char *basename = xstrdup(path);
+	int ok = 0;
 
 	codegen.inline_funcs = 1;
 
 	remove_extension(basename);
 	out_path = xsprintf("%s.c", basename);
 	codegen.c_out = fopen(out_path, "w");
-	if (!codegen.c_out)
-		die("error opening \"%s\": %s", out_path, strerror(errno));
+	if (!codegen.c_out) {
+		error("%s: error opening \"%s\": %s", path, out_path,
+		      strerror(errno));
+		goto out;
+	}
 
 	free(out_path);
 
 	out_path = xsprintf("%s.h", basename);
 	codegen.h_out = fopen(out_path, "w");
-	if (!codegen.h_out)
-		die("error opening \"%s\": %s", out_path, strerror(errno));
+	if (!codegen.h_out) {
+		error("%s: error opening \"%s\": %s", path, out_path,
+		      strerror(errno));
+		goto out_c_open;
+	}
 
 	codegen_prolog(path, out_path, codegen.c_out, codegen.h_out);
 
@@ -990,17 +997,21 @@ static void codegen(const char *path, struct eu_value schema)
 	define_type(resolve_type(&codegen, schema), &codegen);
 	codegen_fini(&codegen);
 
-	fclose(codegen.c_out);
+	ok = 1;
 	fclose(codegen.h_out);
+ out_c_open:
+	fclose(codegen.c_out);
+ out:
 	free(out_path);
 	free(basename);
+	return ok;
 }
 
 static int parse_schema_file(const char *path, struct eu_variant *var)
 {
 	struct eu_parse parse;
 	FILE *fp = fopen(path, "r");
-	int res = 0;
+	int ok = 0;
 
 	if (!fp) {
 		error("%s: %s", path, strerror(errno));
@@ -1029,25 +1040,31 @@ static int parse_schema_file(const char *path, struct eu_variant *var)
 		goto out;
 	}
 
-	res = 1;
+	ok = 1;
 
  out:
 	fclose(fp);
 	eu_parse_fini(&parse);
-	return res;
+	return ok;
 }
 
 int main(int argc, char **argv)
 {
 	int i;
 	struct eu_variant var;
+	int ok = 1;
 
 	for (i = 1; i < argc; i++) {
 		if (parse_schema_file(argv[i], &var)) {
-			codegen(argv[1], eu_variant_value(&var));
+			if (!codegen(argv[i], eu_variant_value(&var)))
+				ok = 0;
+
 			eu_variant_fini(&var);
+		}
+		else {
+			ok = 0;
 		}
 	}
 
-	return 0;
+	return !ok;
 }
