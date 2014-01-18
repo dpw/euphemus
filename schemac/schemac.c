@@ -90,6 +90,11 @@ struct definition {
 
 struct codegen {
 	int inline_funcs;
+
+	const char *source_path;
+	char *c_out_path;
+	char *h_out_path;
+
 	FILE *c_out;
 	FILE *h_out;
 	struct type_info *type_infos_to_destroy;
@@ -312,8 +317,38 @@ struct type_info_ops builtin_type_info_ops = {
 	simple_type_destroy
 };
 
-static void codegen_init(struct codegen *codegen)
+static char *remove_extension(const char *path)
 {
+	char *res = xstrdup(path);
+	char *c;
+	char *last_dot = NULL;
+
+	for (c = res; *c; c++) {
+		if (*c == '.')
+			last_dot = c;
+		else if (*c == '/')
+			last_dot = NULL;
+	}
+
+	if (last_dot)
+		*last_dot = 0;
+
+	return res;
+}
+
+static void codegen_init(struct codegen *codegen, const char *source_path)
+{
+	char *basename;
+
+	codegen->inline_funcs = 1;
+
+	codegen->source_path = source_path;
+	basename = remove_extension(source_path);
+	codegen->c_out_path = xsprintf("%s.c", basename);
+	codegen->h_out_path = xsprintf("%s.h", basename);
+	free(basename);
+
+	codegen->c_out = codegen->h_out = NULL;
 	codegen->type_infos_to_destroy = NULL;
 	codegen->defs = NULL;
 	codegen->n_defs = 0;
@@ -342,8 +377,53 @@ static void codegen_fini(struct codegen *codegen)
 	}
 
 	free(codegen->defs);
+
+	free(codegen->c_out_path);
+	free(codegen->h_out_path);
+
+	if (codegen->c_out)
+		fclose(codegen->c_out);
+	if (codegen->h_out)
+		fclose(codegen->h_out);
 }
 
+static int codegen_open_output_files(struct codegen *codegen)
+{
+	int ok = 0;
+
+	codegen->c_out = fopen(codegen->c_out_path, "w");
+	if (!codegen->c_out) {
+		error("%s: error opening \"%s\": %s", codegen->source_path,
+		      codegen->c_out_path, strerror(errno));
+		goto out;
+	}
+
+	codegen->h_out = fopen(codegen->h_out_path, "w");
+	if (!codegen->h_out) {
+		error("%s: error opening \"%s\": %s", codegen->source_path,
+		      codegen->h_out_path, strerror(errno));
+		goto out;
+	}
+
+	ok = 1;
+ out:
+	return ok;
+}
+
+static void codegen_delete_output_files(struct codegen *codegen)
+{
+	if (codegen->c_out) {
+		fclose(codegen->c_out);
+		codegen->c_out = NULL;
+		remove(codegen->c_out_path);
+	}
+
+	if (codegen->h_out) {
+		fclose(codegen->h_out);
+		codegen->h_out = NULL;
+		remove(codegen->h_out_path);
+	}
+}
 
 /* Structs */
 
@@ -828,37 +908,6 @@ static struct type_info *resolve_type(struct codegen *codegen,
 	return ti;
 }
 
-static void remove_extension(char *c)
-{
-	char *last_dot = NULL;
-
-	for (; *c; c++) {
-		if (*c == '.')
-			last_dot = c;
-		else if (*c == '/')
-			last_dot = NULL;
-	}
-
-	if (last_dot)
-		*last_dot = 0;
-}
-
-static void codegen_prolog(const char *path, const char *out_path,
-			   FILE *c_out, FILE *h_out)
-{
-	fprintf(h_out,
-		"/* Generated from \"%s\".  You probably shouldn't edit this file. */\n\n"
-		"#include <limits.h>\n"
-		"#include <euphemus.h>\n\n",
-		path);
-
-	fprintf(c_out,
-		"/* Generated from \"%s\".  You probably shouldn't edit this file. */\n\n"
-		"#include <stddef.h>\n\n"
-		"#include \"%s\"\n\n",
-		path, out_path);
-}
-
 static struct type_info *alloc_definition(struct codegen *codegen,
 					  struct definition *def)
 {
@@ -899,7 +948,6 @@ static void codegen_definitions(struct codegen *codegen,
 
 	assert(eu_value_type(definitions) == EU_JSON_OBJECT);
 
-	/* XXX */
 	codegen->n_defs = eu_object_size(definitions);
 	codegen->defs = xalloc(codegen->n_defs * sizeof *codegen->defs);
 
@@ -956,37 +1004,32 @@ static void codegen_definitions(struct codegen *codegen,
 	}
 }
 
+static void codegen_prolog(struct codegen *codegen)
+{
+	fprintf(codegen->h_out,
+		"/* Generated from \"%s\".  You probably shouldn't edit this file. */\n\n"
+		"#include <limits.h>\n"
+		"#include <euphemus.h>\n\n",
+		codegen->source_path);
+
+	fprintf(codegen->c_out,
+		"/* Generated from \"%s\".  You probably shouldn't edit this file. */\n\n"
+		"#include <stddef.h>\n\n"
+		"#include \"%s\"\n\n",
+		codegen->source_path, codegen->h_out_path);
+}
+
 static int codegen(const char *path, struct eu_value schema)
 {
 	struct codegen codegen;
-	char *out_path;
-	char *basename = xstrdup(path);
 	int ok = 0;
 
-	codegen.inline_funcs = 1;
+	codegen_init(&codegen, path);
 
-	remove_extension(basename);
-	out_path = xsprintf("%s.c", basename);
-	codegen.c_out = fopen(out_path, "w");
-	if (!codegen.c_out) {
-		error("%s: error opening \"%s\": %s", path, out_path,
-		      strerror(errno));
+	if (!codegen_open_output_files(&codegen))
 		goto out;
-	}
 
-	free(out_path);
-
-	out_path = xsprintf("%s.h", basename);
-	codegen.h_out = fopen(out_path, "w");
-	if (!codegen.h_out) {
-		error("%s: error opening \"%s\": %s", path, out_path,
-		      strerror(errno));
-		goto out_c_open;
-	}
-
-	codegen_prolog(path, out_path, codegen.c_out, codegen.h_out);
-
-	codegen_init(&codegen);
+	codegen_prolog(&codegen);
 
 	/* Generate code for definitions */
 	assert(eu_value_type(schema) == EU_JSON_OBJECT);
@@ -995,15 +1038,13 @@ static int codegen(const char *path, struct eu_value schema)
 
 	/* Generate code for the main schema */
 	define_type(resolve_type(&codegen, schema), &codegen);
-	codegen_fini(&codegen);
 
 	ok = 1;
-	fclose(codegen.h_out);
- out_c_open:
-	fclose(codegen.c_out);
  out:
-	free(out_path);
-	free(basename);
+	if (!ok)
+		codegen_delete_output_files(&codegen);
+
+	codegen_fini(&codegen);
 	return ok;
 }
 
@@ -1052,19 +1093,19 @@ int main(int argc, char **argv)
 {
 	int i;
 	struct eu_variant var;
-	int ok = 1;
+	int all_ok = 1;
 
 	for (i = 1; i < argc; i++) {
-		if (parse_schema_file(argv[i], &var)) {
-			if (!codegen(argv[i], eu_variant_value(&var)))
-				ok = 0;
+		if (!parse_schema_file(argv[i], &var)) {
+			all_ok = 0;
+			continue;
+		}
 
-			eu_variant_fini(&var);
-		}
-		else {
-			ok = 0;
-		}
+		if (!codegen(argv[i], eu_variant_value(&var)))
+			all_ok = 0;
+
+		eu_variant_fini(&var);
 	}
 
-	return !ok;
+	return !all_ok;
 }
