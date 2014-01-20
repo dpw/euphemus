@@ -75,11 +75,26 @@ static char *xstrdup(const char *s)
 struct definition {
 	struct eu_string_ref name;
 	enum {
+		/* The definition has a schema in u.schema */
 		DEF_SCHEMA,
+
+		/* The definition is a reference in u.ref */
 		DEF_REF,
+
+		/* We are in the process of resolving a DEF_REF */
 		DEF_RESOLVING,
+
+		/* The definition has a schema that has been processed
+		   to a type_info in u.type */
 		DEF_SCHEMA_TYPE,
-		DEF_TYPE
+
+		/* The definition is a reference that has been resolve
+		   to u.type. */
+		DEF_TYPE,
+
+		/* The definition was found to be in error in some
+		   way.  u.type gets set to NULL. */
+		DEF_ERROR
 	} state;
 	union {
 		struct eu_value schema;
@@ -835,8 +850,11 @@ static struct definition *find_def(struct codegen *codegen,
 
 	name = eu_value_to_string_ref(ref);
 	if (name.len < REF_PREFIX_LEN
-	    || memcmp(name.chars, REF_PREFIX, REF_PREFIX_LEN))
-		die("only refs beginning with '" REF_PREFIX "' are supported");
+	    || memcmp(name.chars, REF_PREFIX, REF_PREFIX_LEN)) {
+		codegen_error(codegen,
+		    "only refs beginning with '" REF_PREFIX "' are supported");
+		return NULL;
+	}
 
 	name.chars += REF_PREFIX_LEN;
 	name.len -= REF_PREFIX_LEN;
@@ -849,15 +867,20 @@ static struct definition *find_def(struct codegen *codegen,
 			return def;
 	}
 
-	die("unknown definition '%.*s'", (int)name.len, name.chars);
+	codegen_error(codegen, "unknown definition \"%.*s\"",
+		      (int)name.len, name.chars);
+	return NULL;
 }
 
 static struct type_info *resolve_ref(struct codegen *codegen,
 				     struct eu_value ref)
 {
 	struct definition *def = find_def(codegen, ref);
-	assert(def->state == DEF_TYPE || def->state == DEF_SCHEMA_TYPE);
-	return def->u.type;
+	if (def)
+		return def->u.type;
+	else
+		return NULL;
+
 }
 
 static int is_empty_schema(struct eu_value schema)
@@ -896,8 +919,11 @@ static struct type_info *alloc_type(struct codegen *codegen,
 		return codegen->bool_type;
 	else if (eu_string_ref_equal(type_str, eu_cstr("object")))
 		return alloc_struct(schema, codegen);
-	else
-		die("unknown type \"%.*s\"", (int)type_str.len, type_str.chars);
+	else {
+		codegen_error(codegen, "unknown type \"%.*s\"",
+			      (int)type_str.len, type_str.chars);
+		return NULL;
+	}
 }
 
 static struct type_info *resolve_type(struct codegen *codegen,
@@ -915,8 +941,16 @@ static struct type_info *resolve_type(struct codegen *codegen,
 	}
 
 	ti = alloc_type(codegen, schema);
-	fill_type(ti, codegen, schema);
+	if (ti)
+		fill_type(ti, codegen, schema);
+
 	return ti;
+}
+
+static void definition_set_error(struct definition *def)
+{
+	def->state = DEF_ERROR;
+	def->u.type = NULL;
 }
 
 static struct type_info *alloc_definition(struct codegen *codegen,
@@ -930,15 +964,20 @@ static struct type_info *alloc_definition(struct codegen *codegen,
 
 	case DEF_REF:
 		def->state = DEF_RESOLVING;
-		def->u.type = alloc_definition(codegen, def->u.ref);
-		def->state = DEF_TYPE;
+		if ((def->u.type = alloc_definition(codegen, def->u.ref)))
+			def->state = DEF_TYPE;
+		else
+			definition_set_error(def);
+
 		break;
 
 	case DEF_RESOLVING:
-		die("circular reference");
+		codegen_error(codegen, "circular reference");
+		return NULL;
 
 	case DEF_SCHEMA_TYPE:
 	case DEF_TYPE:
+	case DEF_ERROR:
 		break;
 
 	default:
@@ -988,7 +1027,8 @@ static void codegen_process_definitions(struct codegen *codegen,
 		else {
 			assert(eu_object_size(di.value) == 1);
 			def->state = DEF_REF;
-			def->u.ref = find_def(codegen, ref);
+			if (!(def->u.ref = find_def(codegen, ref)))
+			    definition_set_error(def);
 		}
 	}
 
