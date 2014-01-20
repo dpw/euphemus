@@ -90,6 +90,7 @@ struct definition {
 
 struct codegen {
 	int inline_funcs;
+	int error_count;
 
 	const char *source_path;
 	char *c_out_path;
@@ -341,6 +342,7 @@ static void codegen_init(struct codegen *codegen, const char *source_path)
 	char *basename;
 
 	codegen->inline_funcs = 1;
+	codegen->error_count = 0;
 
 	codegen->source_path = source_path;
 	basename = remove_extension(source_path);
@@ -387,27 +389,36 @@ static void codegen_fini(struct codegen *codegen)
 		fclose(codegen->h_out);
 }
 
-static int codegen_open_output_files(struct codegen *codegen)
-{
-	int ok = 0;
+static void codegen_error(struct codegen *codegen, const char *fmt, ...)
+	__attribute__ ((format (printf, 2, 3)));
 
+static void codegen_error(struct codegen *codegen, const char *fmt, ...)
+{
+	va_list ap;
+
+	fprintf(stderr, "%s: ", codegen->source_path);
+	va_start(ap, fmt);
+	vfprintf(stderr, fmt, ap);
+	va_end(ap);
+	fputc('\n', stderr);
+	codegen->error_count++;
+}
+
+static void codegen_open_output_files(struct codegen *codegen)
+{
 	codegen->c_out = fopen(codegen->c_out_path, "w");
 	if (!codegen->c_out) {
-		error("%s: error opening \"%s\": %s", codegen->source_path,
-		      codegen->c_out_path, strerror(errno));
-		goto out;
+		codegen_error(codegen, "error opening \"%s\": %s",
+			      codegen->c_out_path, strerror(errno));
+		return;
 	}
 
 	codegen->h_out = fopen(codegen->h_out_path, "w");
 	if (!codegen->h_out) {
-		error("%s: error opening \"%s\": %s", codegen->source_path,
-		      codegen->h_out_path, strerror(errno));
-		goto out;
+		codegen_error(codegen, "error opening \"%s\": %s",
+			      codegen->h_out_path, strerror(errno));
+		return;
 	}
-
-	ok = 1;
- out:
-	return ok;
 }
 
 static void codegen_delete_output_files(struct codegen *codegen)
@@ -937,8 +948,8 @@ static struct type_info *alloc_definition(struct codegen *codegen,
 	return def->u.type;
 }
 
-static void codegen_definitions(struct codegen *codegen,
-				struct eu_value definitions)
+static void codegen_process_definitions(struct codegen *codegen,
+					struct eu_value definitions)
 {
 	struct eu_object_iter di;
 	size_t i;
@@ -995,8 +1006,13 @@ static void codegen_definitions(struct codegen *codegen,
 		if (def->state == DEF_SCHEMA_TYPE)
 			fill_type(def->u.type, codegen, di.value);
 	}
+}
 
-	/* And finally, actually codegen the non-ref schemas */
+/* Produce definitions for definitions */
+static void codegen_define_definitions(struct codegen *codegen)
+{
+	size_t i;
+
 	for (i = 0; i < codegen->n_defs; i++) {
 		struct definition *def = &codegen->defs[i];
 		if (def->state == DEF_SCHEMA_TYPE)
@@ -1022,30 +1038,35 @@ static void codegen_prolog(struct codegen *codegen)
 static int codegen(const char *path, struct eu_value schema)
 {
 	struct codegen codegen;
-	int ok = 0;
+	struct type_info *main_type;
 
 	codegen_init(&codegen, path);
 
-	if (!codegen_open_output_files(&codegen))
+	/* Process type definitions */
+	assert(eu_value_type(schema) == EU_JSON_OBJECT);
+	codegen_process_definitions(&codegen,
+				    eu_value_get_cstr(schema, "definitions"));
+	main_type = resolve_type(&codegen, schema);
+	if (codegen.error_count)
+		goto out;
+
+	/* Prepare to generate code. */
+	codegen_open_output_files(&codegen);
+	if (codegen.error_count)
 		goto out;
 
 	codegen_prolog(&codegen);
 
-	/* Generate code for definitions */
-	assert(eu_value_type(schema) == EU_JSON_OBJECT);
-	codegen_definitions(&codegen,
-			    eu_value_get_cstr(schema, "definitions"));
+	/* Actually generate code */
+	define_type(main_type, &codegen);
+	codegen_define_definitions(&codegen);
 
-	/* Generate code for the main schema */
-	define_type(resolve_type(&codegen, schema), &codegen);
-
-	ok = 1;
  out:
-	if (!ok)
+	if (codegen.error_count)
 		codegen_delete_output_files(&codegen);
 
 	codegen_fini(&codegen);
-	return ok;
+	return codegen.error_count == 0;
 }
 
 static int parse_schema_file(const char *path, struct eu_variant *var)
