@@ -7,19 +7,6 @@
 
 #include <euphemus.h>
 
-static void error(const char *fmt, ...)
-	__attribute__ ((format (printf, 1, 2)));
-
-static void error(const char *fmt, ...)
-{
-	va_list ap;
-
-	va_start(ap, fmt);
-	vfprintf(stderr, fmt, ap);
-	va_end(ap);
-	fputc('\n', stderr);
-}
-
 static void die(const char *fmt, ...)
 	__attribute__ ((noreturn,format (printf, 1, 2)));
 
@@ -1075,49 +1062,38 @@ static void codegen_prolog(struct codegen *codegen)
 		codegen->source_path, codegen->h_out_path);
 }
 
-static int codegen(const char *path, struct eu_value schema)
+static void do_codegen(struct codegen *codegen, struct eu_value schema)
 {
-	struct codegen codegen;
 	struct type_info *main_type;
-
-	codegen_init(&codegen, path);
 
 	/* Process type definitions */
 	assert(eu_value_type(schema) == EU_JSON_OBJECT);
-	codegen_process_definitions(&codegen,
+	codegen_process_definitions(codegen,
 				    eu_value_get_cstr(schema, "definitions"));
-	main_type = resolve_type(&codegen, schema);
-	if (codegen.error_count)
-		goto out;
+	main_type = resolve_type(codegen, schema);
+	if (codegen->error_count)
+		return;
 
 	/* Prepare to generate code. */
-	codegen_open_output_files(&codegen);
-	if (codegen.error_count)
-		goto out;
+	codegen_open_output_files(codegen);
+	if (codegen->error_count)
+		return;
 
-	codegen_prolog(&codegen);
+	codegen_prolog(codegen);
 
 	/* Actually generate code */
-	define_type(main_type, &codegen);
-	codegen_define_definitions(&codegen);
-
- out:
-	if (codegen.error_count)
-		codegen_delete_output_files(&codegen);
-
-	codegen_fini(&codegen);
-	return codegen.error_count == 0;
+	define_type(main_type, codegen);
+	codegen_define_definitions(codegen);
 }
 
-static int parse_schema_file(const char *path, struct eu_variant *var)
+static void parse_schema_file(struct codegen *codegen, struct eu_variant *var)
 {
 	struct eu_parse parse;
-	FILE *fp = fopen(path, "r");
-	int ok = 0;
+	FILE *fp = fopen(codegen->source_path, "r");
 
 	if (!fp) {
-		error("%s: %s", path, strerror(errno));
-		return 0;
+		codegen_error(codegen, "%s",strerror(errno));
+		return;
 	}
 
 	eu_parse_init(&parse, eu_variant_value(var));
@@ -1127,45 +1103,46 @@ static int parse_schema_file(const char *path, struct eu_variant *var)
 		size_t got = fread(buf, 1, 1000, fp);
 
 		if (got < 1000 && ferror(fp)) {
-			error("%s: %s", path, strerror(errno));
+			codegen_error(codegen, "%s",strerror(errno));
 			goto out;
 		}
 
 		if (!eu_parse(&parse, buf, got)) {
-			error("%s: parse error", path);
+			codegen_error(codegen, "parse error");
 			goto out;
 		}
 	}
 
-	if (!eu_parse_finish(&parse)) {
-		error("%s: parse error", path);
-		goto out;
-	}
-
-	ok = 1;
+	if (!eu_parse_finish(&parse))
+		codegen_error(codegen, "parse error");
 
  out:
 	fclose(fp);
 	eu_parse_fini(&parse);
-	return ok;
 }
 
 int main(int argc, char **argv)
 {
 	int i;
 	struct eu_variant var;
+	struct codegen codegen;
 	int all_ok = 1;
 
 	for (i = 1; i < argc; i++) {
-		if (!parse_schema_file(argv[i], &var)) {
-			all_ok = 0;
-			continue;
+		codegen_init(&codegen, argv[i]);
+
+		parse_schema_file(&codegen, &var);
+		if (!codegen.error_count) {
+			do_codegen(&codegen, eu_variant_value(&var));
+			eu_variant_fini(&var);
 		}
 
-		if (!codegen(argv[i], eu_variant_value(&var)))
+		if (codegen.error_count) {
+			codegen_delete_output_files(&codegen);
 			all_ok = 0;
+		}
 
-		eu_variant_fini(&var);
+		codegen_fini(&codegen);
 	}
 
 	return !all_ok;
