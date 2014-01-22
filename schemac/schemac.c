@@ -891,8 +891,12 @@ static struct type_info *alloc_type(struct codegen *codegen,
 
 	type = eu_value_get_cstr(schema, "type");
 	if (!eu_value_ok(type)) {
-		assert(is_empty_schema(schema));
-		return codegen->variant_type;
+		if (is_empty_schema(schema))
+			return codegen->variant_type;
+
+		codegen_error(codegen,
+			  "schema lacks a \"type\" but is not an empty schema");
+		return NULL;
 	}
 
 	assert(eu_value_type(type) == EU_JSON_STRING);
@@ -923,8 +927,12 @@ static struct type_info *resolve_type(struct codegen *codegen,
 
 	ref = eu_value_get_cstr(schema, "$ref");
 	if (eu_value_ok(ref)) {
-		assert(eu_object_size(schema) == 1);
-		return resolve_ref(codegen, ref);
+		if (eu_object_size(schema) == 1)
+			return resolve_ref(codegen, ref);
+
+		codegen_error(codegen,
+			      "\"$ref\" object contains other members");
+		return NULL;
 	}
 
 	ti = alloc_type(codegen, schema);
@@ -1011,11 +1019,15 @@ static void codegen_process_definitions(struct codegen *codegen,
 			def->state = DEF_SCHEMA;
 			def->u.schema = di.value;
 		}
-		else {
-			assert(eu_object_size(di.value) == 1);
+		else if (eu_object_size(di.value) == 1) {
 			def->state = DEF_REF;
 			if (!(def->u.ref = find_def(codegen, ref)))
-			    definition_set_error(def);
+				definition_set_error(def);
+		}
+		else {
+			codegen_error(codegen,
+				      "\"$ref\" object contains other members");
+			definition_set_error(def);
 		}
 	}
 
