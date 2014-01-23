@@ -888,6 +888,7 @@ static struct type_info *alloc_type(struct codegen *codegen,
 {
 	struct eu_value type;
 	struct eu_string_ref type_str;
+	struct type_info *res;
 
 	type = eu_value_get_cstr(schema, "type");
 	if (!eu_value_ok(type)) {
@@ -902,19 +903,29 @@ static struct type_info *alloc_type(struct codegen *codegen,
 	assert(eu_value_type(type) == EU_JSON_STRING);
 	type_str = eu_value_to_string_ref(type);
 
-	if (eu_string_ref_equal(type_str, eu_cstr("string")))
-		return codegen->string_type;
-	else if (eu_string_ref_equal(type_str, eu_cstr("number")))
-		return codegen->number_type;
-	else if (eu_string_ref_equal(type_str, eu_cstr("boolean")))
-		return codegen->bool_type;
-	else if (eu_string_ref_equal(type_str, eu_cstr("object")))
+	if (eu_string_ref_equal(type_str, eu_cstr("object")))
 		return alloc_struct(schema, codegen);
+
+	if (eu_string_ref_equal(type_str, eu_cstr("string")))
+		res = codegen->string_type;
+	else if (eu_string_ref_equal(type_str, eu_cstr("number")))
+		res = codegen->number_type;
+	else if (eu_string_ref_equal(type_str, eu_cstr("boolean")))
+		res = codegen->bool_type;
 	else {
 		codegen_error(codegen, "unknown type \"%.*s\"",
 			      (int)type_str.len, type_str.chars);
 		return NULL;
 	}
+
+	if (eu_object_size(schema) != 1) {
+		codegen_error(codegen,
+			      "unexpected members in schema of type \"%.*s\"",
+			      (int)type_str.len, type_str.chars);
+		return NULL;
+	}
+
+	return res;
 }
 
 static struct type_info *resolve_type(struct codegen *codegen,
