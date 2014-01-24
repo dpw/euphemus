@@ -1072,17 +1072,21 @@ static void codegen_define_definitions(struct codegen *codegen)
 
 static void codegen_prolog(struct codegen *codegen)
 {
+	char *hp;
+
 	fprintf(codegen->h_out,
 		"/* Generated from \"%s\".  You probably shouldn't edit this file. */\n\n"
 		"#include <limits.h>\n"
 		"#include <euphemus.h>\n\n",
 		codegen->source_path);
 
+	hp = xstrdup(codegen->h_out_path);
 	fprintf(codegen->c_out,
 		"/* Generated from \"%s\".  You probably shouldn't edit this file. */\n\n"
 		"#include <stddef.h>\n\n"
 		"#include \"%s\"\n\n",
-		codegen->source_path, codegen->h_out_path);
+		codegen->source_path, basename(hp));
+	free(hp);
 }
 
 static void do_codegen(struct codegen *codegen, struct eu_value schema)

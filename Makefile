@@ -45,7 +45,7 @@ test/test_codegen.o: test/test_schema.h
 # Even with .DELETE_ON_ERROR, make will only delete one of the
 # targets, hence the 'rm' here.
 test/test_schema.c test/test_schema.h: test/test_schema.json schemac/schemac
-	(d=$$PWD ; cd $(<D) && $$d/schemac/schemac $(<F)) || (rm -f test/test_schema.c test/test_schema.h ; false)
+	schemac/schemac $< || (rm -f test/test_schema.c test/test_schema.h ; false)
 
 HDROBJS_$(ROOT)test/test_schema.h=test/test_schema.o
 
