@@ -13,7 +13,6 @@
         "definitions": {
                 "bar": {
                         "type": "object",
-	                "euphemusStructName": "bar",
                         "properties": {
                                 "bar": { "$ref": "#/definitions/baz" },
                                 "baz": { "$ref": "#/definitions/baz" },

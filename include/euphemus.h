@@ -37,6 +37,13 @@ static __inline__ struct eu_string_ref eu_string_ref(const char *chars,
 	return s;
 }
 
+static __inline__ int eu_string_ref_ok(struct eu_string_ref s)
+{
+	return !!s.chars;
+}
+
+static const struct eu_string_ref eu_string_ref_null = { NULL, 0 };
+
 static __inline__ struct eu_string_ref eu_cstr(const char *s)
 {
 	struct eu_string_ref f = {

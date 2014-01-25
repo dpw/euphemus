@@ -465,14 +465,26 @@ struct struct_type_info {
 static struct type_info_ops struct_type_info_ops;
 
 static struct type_info *alloc_struct(struct eu_value schema,
-				      struct codegen *codegen)
+				      struct codegen *codegen,
+				      struct eu_string_ref name)
 {
 	struct struct_type_info *sti = xalloc(sizeof *sti);
-	struct eu_value name = eu_value_get_cstr(schema, "euphemusStructName");
+	struct eu_value esn = eu_value_get_cstr(schema, "euphemusStructName");
 
-	assert(eu_value_ok(name) && eu_value_type(name) == EU_JSON_STRING);
+	if (eu_value_ok(esn)) {
+		assert(eu_value_type(esn) == EU_JSON_STRING);
+		sti->struct_name = eu_value_to_string_ref(esn);
+	}
+	else {
+		if (!eu_string_ref_ok(name)) {
+			codegen_error(codegen, "no implied struct name");
+			free(sti);
+			return NULL;
+		}
 
-	sti->struct_name = eu_value_to_string_ref(name);
+		sti->struct_name = name;
+	}
+
 	sti->ptr_metadata_name
 		= xsprintf("struct_%.*s_ptr_metadata",
 			   (int)sti->struct_name.len, sti->struct_name.chars);
@@ -884,7 +896,8 @@ static int is_empty_schema(struct eu_value schema)
 }
 
 static struct type_info *alloc_type(struct codegen *codegen,
-				    struct eu_value schema)
+				    struct eu_value schema,
+				    struct eu_string_ref name)
 {
 	struct eu_value type;
 	struct eu_string_ref type_str;
@@ -904,7 +917,7 @@ static struct type_info *alloc_type(struct codegen *codegen,
 	type_str = eu_value_to_string_ref(type);
 
 	if (eu_string_ref_equal(type_str, eu_cstr("object")))
-		return alloc_struct(schema, codegen);
+		return alloc_struct(schema, codegen, name);
 
 	if (eu_string_ref_equal(type_str, eu_cstr("string")))
 		res = codegen->string_type;
@@ -946,7 +959,7 @@ static struct type_info *resolve_type(struct codegen *codegen,
 		return NULL;
 	}
 
-	ti = alloc_type(codegen, schema);
+	ti = alloc_type(codegen, schema, eu_string_ref_null);
 	if (ti)
 		fill_type(ti, codegen, schema);
 
@@ -964,7 +977,7 @@ static struct type_info *alloc_definition(struct codegen *codegen,
 {
 	switch (def->state) {
 	case DEF_SCHEMA:
-		def->u.type = alloc_type(codegen, def->u.schema);
+		def->u.type = alloc_type(codegen, def->u.schema, def->name);
 		def->state = DEF_SCHEMA_TYPE;
 		break;
 
