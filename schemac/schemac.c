@@ -212,7 +212,8 @@ static void define_members_struct(struct type_info *ti, struct codegen *codegen)
 }
 
 static struct type_info *resolve_type(struct codegen *codegen,
-				      struct eu_value schema);
+				      struct eu_value schema,
+				      struct eu_string_ref name_hint);
 
 static void type_info_init(struct type_info *ti,
 			   struct codegen *codegen,
@@ -341,16 +342,16 @@ static char *remove_extension(const char *path)
 
 static void codegen_init(struct codegen *codegen, const char *source_path)
 {
-	char *basename;
+	char *base_path;
 
 	codegen->inline_funcs = 1;
 	codegen->error_count = 0;
 
 	codegen->source_path = source_path;
-	basename = remove_extension(source_path);
-	codegen->c_out_path = xsprintf("%s.c", basename);
-	codegen->h_out_path = xsprintf("%s.h", basename);
-	free(basename);
+	base_path = remove_extension(source_path);
+	codegen->c_out_path = xsprintf("%s.c", base_path);
+	codegen->h_out_path = xsprintf("%s.h", base_path);
+	free(base_path);
 
 	codegen->c_out = codegen->h_out = NULL;
 	codegen->type_infos_to_destroy = NULL;
@@ -545,7 +546,8 @@ static void struct_fill(struct type_info *ti, struct codegen *codegen,
 
 			mi->json_name = pi.name;
 			mi->c_name = sanitize_name(mi->json_name);
-			mi->type = resolve_type(codegen, pi.value);
+			mi->type = resolve_type(codegen, pi.value,
+						eu_string_ref_null);
 		}
 	}
 
@@ -553,7 +555,8 @@ static void struct_fill(struct type_info *ti, struct codegen *codegen,
 		= eu_value_get_cstr(schema, "additionalProperties");
 	if (eu_value_ok(additional_props)) {
 		assert(eu_value_type(additional_props) == EU_JSON_OBJECT);
-		sti->extras_type = resolve_type(codegen, additional_props);
+		sti->extras_type = resolve_type(codegen, additional_props,
+						eu_string_ref_null);
 	}
 }
 
@@ -942,7 +945,8 @@ static struct type_info *alloc_type(struct codegen *codegen,
 }
 
 static struct type_info *resolve_type(struct codegen *codegen,
-				      struct eu_value schema)
+				      struct eu_value schema,
+				      struct eu_string_ref name_hint)
 {
 	struct eu_value ref;
 	struct type_info *ti;
@@ -959,7 +963,7 @@ static struct type_info *resolve_type(struct codegen *codegen,
 		return NULL;
 	}
 
-	ti = alloc_type(codegen, schema, eu_string_ref_null);
+	ti = alloc_type(codegen, schema, name_hint);
 	if (ti)
 		fill_type(ti, codegen, schema);
 
@@ -1105,12 +1109,17 @@ static void codegen_prolog(struct codegen *codegen)
 static void do_codegen(struct codegen *codegen, struct eu_value schema)
 {
 	struct type_info *main_type;
+	char *tmp, *schema_name;
+
+	tmp = xstrdup(codegen->source_path);
+	schema_name = remove_extension(basename(tmp));
+	free(tmp);
 
 	/* Process type definitions */
 	assert(eu_value_type(schema) == EU_JSON_OBJECT);
 	codegen_process_definitions(codegen,
 				    eu_value_get_cstr(schema, "definitions"));
-	main_type = resolve_type(codegen, schema);
+	main_type = resolve_type(codegen, schema, eu_cstr(schema_name));
 	if (codegen->error_count)
 		return;
 
@@ -1124,6 +1133,8 @@ static void do_codegen(struct codegen *codegen, struct eu_value schema)
 	/* Actually generate code */
 	define_type(main_type, codegen);
 	codegen_define_definitions(codegen);
+
+	free(schema_name);
 }
 
 static void parse_schema_file(struct codegen *codegen, struct eu_variant *var)

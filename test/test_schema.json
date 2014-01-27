@@ -1,7 +1,6 @@
 {
 	"title": "Example Schema",
 	"type": "object",
-	"euphemusStructName": "foo",
 	"properties": {
 		"str": { "type": "string" },
 		"num": { "type": "number" },

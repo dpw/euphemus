@@ -6,45 +6,46 @@
 #include "test_schema.h"
 #include "test_parse.h"
 
-static void check_foo(struct foo *foo)
+static void check_test_schema(struct test_schema *test_schema)
 {
-	assert(eu_string_ref_equal(eu_string_to_ref(&foo->str), eu_cstr("x")));
-	assert(foo->num == 42);
-	assert(foo->bool);
-	assert(eu_value_type(eu_variant_value(&foo->any)) == EU_JSON_NULL);
-	assert(foo->bar);
+	assert(eu_string_ref_equal(eu_string_to_ref(&test_schema->str),
+				   eu_cstr("x")));
+	assert(test_schema->num == 42);
+	assert(test_schema->bool);
+	assert(eu_value_type(eu_variant_value(&test_schema->any)) == EU_JSON_NULL);
+	assert(test_schema->bar);
 }
 
 static void test_struct_ptr(void)
 {
 	TEST_PARSE("{\"str\":\"x\",\"any\":null,\"bar\":{},\"num\":42,\"bool\":true}",
-		   struct foo *,
-		   foo_ptr_to_eu_value,
-		   check_foo(result),
-		   foo_destroy(result));
+		   struct test_schema *,
+		   test_schema_ptr_to_eu_value,
+		   check_test_schema(result),
+		   test_schema_destroy(result));
 }
 
 static void test_inline_struct(void)
 {
 	TEST_PARSE("{\"str\":\"x\",\"any\":null,\"bar\":{},\"num\":42,\"bool\":true}",
-		   struct foo,
-		   foo_to_eu_value,
-		   check_foo(&result),
-		   foo_fini(&result));
+		   struct test_schema,
+		   test_schema_to_eu_value,
+		   check_test_schema(&result),
+		   test_schema_fini(&result));
 }
 
 static void test_nested(void)
 {
 	TEST_PARSE("{\"bar\":{\"bar\":{\"bar\":{\"bar\":{}}}}}",
-		   struct foo *,
-		   foo_ptr_to_eu_value,
+		   struct test_schema *,
+		   test_schema_ptr_to_eu_value,
 		   assert(result->bar->bar->bar->bar),
-		   foo_destroy(result));
+		   test_schema_destroy(result));
 }
 
-static void check_extras(struct foo *foo)
+static void check_extras(struct test_schema *test_schema)
 {
-	struct eu_value val = eu_value_get_cstr(foo_to_eu_value(foo), "quux");
+	struct eu_value val = eu_value_get_cstr(test_schema_to_eu_value(test_schema), "quux");
 	assert(eu_string_ref_equal(eu_value_to_string_ref(val),
 				   eu_cstr("foo")));
 }
@@ -52,25 +53,25 @@ static void check_extras(struct foo *foo)
 static void test_extras(void)
 {
 	TEST_PARSE("{\"quux\":\"foo\"}",
-		   struct foo,
-		   foo_to_eu_value,
+		   struct test_schema,
+		   test_schema_to_eu_value,
 		   check_extras(&result),
-		   foo_fini(&result));
+		   test_schema_fini(&result));
 }
 
 static void test_path(void)
 {
-	struct foo foo;
+	struct test_schema test_schema;
 	struct eu_parse ep;
 	const char *json = "{\"bar\":{\"bar\":{\"bar\":{\"hello\":\"world\"}}}}";
 	struct eu_value val;
 
-	eu_parse_init(&ep, foo_to_eu_value(&foo));
+	eu_parse_init(&ep, test_schema_to_eu_value(&test_schema));
 	assert(eu_parse(&ep, json, strlen(json)));
 	assert(eu_parse_finish(&ep));
 	eu_parse_fini(&ep);
 
-	val = foo_to_eu_value(&foo);
+	val = test_schema_to_eu_value(&test_schema);
 	assert(!eu_value_ok(eu_get_path(val, eu_cstr("/baz"))));
 	val = eu_get_path(val, eu_cstr("/bar/bar/bar/hello"));
 	assert(eu_value_ok(val));
@@ -78,7 +79,7 @@ static void test_path(void)
 	assert(eu_string_ref_equal(eu_value_to_string_ref(val),
 				   eu_cstr("world")));
 
-	foo_fini(&foo);
+	test_schema_fini(&test_schema);
 }
 
 static void test_path_extras(void)
