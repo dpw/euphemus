@@ -1,3 +1,5 @@
+#include <limits.h>
+
 #include <euphemus.h>
 #include "euphemus_int.h"
 
@@ -34,22 +36,8 @@ enum char_type {
 	CHAR_TYPE_MAX
 };
 
-static struct char_type_slot char_type_slots[CHAR_TYPE_MAX] = {
-	[CHAR_TYPE_INVALID] = { invalid, NULL },
-	[CHAR_TYPE_WS] = { whitespace, &eu_variant_metadata },
-	[CHAR_TYPE_DQUOTES] = { eu_variant_string, &eu_string_metadata },
-	[CHAR_TYPE_BRACE] = { eu_variant_object,
-			      &eu_object_metadata.base },
-	[CHAR_TYPE_BRACKET] = { eu_variant_array,
-				&eu_variant_array_metadata.base },
-	[CHAR_TYPE_NUMBER] = { eu_variant_number, &eu_number_metadata },
-	[CHAR_TYPE_T] = { eu_variant_bool, &eu_bool_true },
-	[CHAR_TYPE_F] = { eu_variant_bool, &eu_bool_false },
-	[CHAR_TYPE_N] = { eu_variant_n, &eu_null_metadata },
-};
-
 /* Mapping from characters to character types. */
-static unsigned char char_types[256] = {
+static unsigned char char_types[UCHAR_MAX] CACHE_ALIGN = {
 	[' '] = CHAR_TYPE_WS,
 	['\t'] = CHAR_TYPE_WS,
 	['\n'] = CHAR_TYPE_WS,
@@ -75,6 +63,20 @@ static unsigned char char_types[256] = {
 	['f'] = CHAR_TYPE_F,
 
 	['n'] = CHAR_TYPE_N,
+};
+
+static struct char_type_slot char_type_slots[CHAR_TYPE_MAX] = {
+	[CHAR_TYPE_INVALID] = { invalid, NULL },
+	[CHAR_TYPE_WS] = { whitespace, &eu_variant_metadata },
+	[CHAR_TYPE_DQUOTES] = { eu_variant_string, &eu_string_metadata },
+	[CHAR_TYPE_BRACE] = { eu_variant_object,
+			      &eu_object_metadata.base },
+	[CHAR_TYPE_BRACKET] = { eu_variant_array,
+				&eu_variant_array_metadata.base },
+	[CHAR_TYPE_NUMBER] = { eu_variant_number, &eu_number_metadata },
+	[CHAR_TYPE_T] = { eu_variant_bool, &eu_bool_true },
+	[CHAR_TYPE_F] = { eu_variant_bool, &eu_bool_false },
+	[CHAR_TYPE_N] = { eu_variant_n, &eu_null_metadata },
 };
 
 static enum eu_parse_result variant_parse(struct eu_metadata *metadata,

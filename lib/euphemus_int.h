@@ -7,9 +7,11 @@
 #ifdef __GNUC__
 #define likely(x) __builtin_expect(!!(x), 1)
 #define unlikely(x) __builtin_expect(!!(x), 0)
+#define CACHE_ALIGN __attribute__ ((aligned (64)))
 #else
 #define likely(x) (x)
 #define unlikely(x) (x)
+#define CACHE_ALIGN
 #endif
 
 void eu_parse_insert_cont(struct eu_parse *ep, struct eu_parse_cont *c);
