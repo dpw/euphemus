@@ -27,8 +27,10 @@ do {                                                                  \
                                                                       \
 	/* Test parsing with the json broken into individual bytes */ \
 	eu_parse_init(&ep, to_value(&result));                        \
-	for (i = 0; i < len; i++)                                     \
+	for (i = 0; i < len; i++) {                                   \
 		assert(eu_parse(&ep, json + i, 1));                   \
+		assert(eu_parse(&ep, json + i, 0));                   \
+	}                                                             \
                                                                       \
 	assert(eu_parse_finish(&ep));                                 \
 	eu_parse_fini(&ep);                                           \

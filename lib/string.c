@@ -254,8 +254,10 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 		if (!complete_unescape(ep, &cont->unescape, &unescaped_char))
 			return EU_PARSE_ERROR;
 
-		if (cont->unescape)
+		if (cont->unescape) {
+			eu_parse_insert_cont(ep, &cont->base);
 			return EU_PARSE_PAUSED;
+		}
 
 		unescaped = 1;
 	}
