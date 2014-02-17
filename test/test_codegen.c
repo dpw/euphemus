@@ -62,14 +62,14 @@ static void test_extras(void)
 static void test_path(void)
 {
 	struct test_schema test_schema;
-	struct eu_parse ep;
+	struct eu_parse *parse;
 	const char *json = "{\"bar\":{\"bar\":{\"bar\":{\"hello\":\"world\"}}}}";
 	struct eu_value val;
 
-	eu_parse_init(&ep, test_schema_to_eu_value(&test_schema));
-	assert(eu_parse(&ep, json, strlen(json)));
-	assert(eu_parse_finish(&ep));
-	eu_parse_fini(&ep);
+	parse = eu_parse_create(test_schema_to_eu_value(&test_schema));
+	assert(eu_parse(parse, json, strlen(json)));
+	assert(eu_parse_finish(parse));
+	eu_parse_destroy(parse);
 
 	val = test_schema_to_eu_value(&test_schema);
 	assert(!eu_value_ok(eu_get_path(val, eu_cstr("/baz"))));
@@ -85,14 +85,14 @@ static void test_path(void)
 static void test_path_extras(void)
 {
 	struct bar bar;
-	struct eu_parse ep;
+	struct eu_parse *parse;
 	const char *json = "{\"x\":\"y\"}";
 	struct eu_value val;
 
-	eu_parse_init(&ep, bar_to_eu_value(&bar));
-	assert(eu_parse(&ep, json, strlen(json)));
-	assert(eu_parse_finish(&ep));
-	eu_parse_fini(&ep);
+	parse = eu_parse_create(bar_to_eu_value(&bar));
+	assert(eu_parse(parse, json, strlen(json)));
+	assert(eu_parse_finish(parse));
+	eu_parse_destroy(parse);
 
 	val = bar_to_eu_value(&bar);
 	val = eu_get_path(val, eu_cstr("/x"));
@@ -106,12 +106,12 @@ static void test_path_extras(void)
 static void check_size(const char *json, size_t size)
 {
 	struct bar bar;
-	struct eu_parse ep;
+	struct eu_parse *parse;
 
-	eu_parse_init(&ep, bar_to_eu_value(&bar));
-	assert(eu_parse(&ep, json, strlen(json)));
-	assert(eu_parse_finish(&ep));
-	eu_parse_fini(&ep);
+	parse = eu_parse_create(bar_to_eu_value(&bar));
+	assert(eu_parse(parse, json, strlen(json)));
+	assert(eu_parse_finish(parse));
+	eu_parse_destroy(parse);
 
 	assert(eu_object_size(bar_to_eu_value(&bar)) == size);
 

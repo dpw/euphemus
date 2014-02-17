@@ -1139,7 +1139,7 @@ static void do_codegen(struct codegen *codegen, struct eu_value schema)
 
 static void parse_schema_file(struct codegen *codegen, struct eu_variant *var)
 {
-	struct eu_parse parse;
+	struct eu_parse *parse;
 	FILE *fp = fopen(codegen->source_path, "r");
 
 	if (!fp) {
@@ -1147,7 +1147,7 @@ static void parse_schema_file(struct codegen *codegen, struct eu_variant *var)
 		return;
 	}
 
-	eu_parse_init(&parse, eu_variant_value(var));
+	parse = eu_parse_create(eu_variant_value(var));
 
 	while (!feof(fp)) {
 		char buf[1000];
@@ -1158,18 +1158,18 @@ static void parse_schema_file(struct codegen *codegen, struct eu_variant *var)
 			goto out;
 		}
 
-		if (!eu_parse(&parse, buf, got)) {
+		if (!eu_parse(parse, buf, got)) {
 			codegen_error(codegen, "parse error");
 			goto out;
 		}
 	}
 
-	if (!eu_parse_finish(&parse))
+	if (!eu_parse_finish(parse))
 		codegen_error(codegen, "parse error");
 
  out:
 	fclose(fp);
-	eu_parse_fini(&parse);
+	eu_parse_destroy(parse);
 }
 
 int main(int argc, char **argv)

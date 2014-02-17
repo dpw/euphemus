@@ -141,12 +141,12 @@ static void test_parse_variant(void)
 
 static void parse_variant(const char *json, struct eu_variant *var)
 {
-	struct eu_parse ep;
+	struct eu_parse *parse;
 
-	eu_parse_init(&ep, eu_variant_value(var));
-	assert(eu_parse(&ep, json, strlen(json)));
-	assert(eu_parse_finish(&ep));
-	eu_parse_fini(&ep);
+	parse = eu_parse_create(eu_variant_value(var));
+	assert(eu_parse(parse, json, strlen(json)));
+	assert(eu_parse_finish(parse));
+	eu_parse_destroy(parse);
 }
 
 static void test_path(void)

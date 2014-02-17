@@ -71,17 +71,17 @@ int main(int argc, char **argv)
 
 #if 1
 	for (i = 0; i < 10000; i++) {
-		struct eu_parse parse;
+		struct eu_parse *parse;
 		struct eu_variant var;
 
-		eu_parse_init(&parse, eu_variant_value(&var));
-		if (!eu_parse(&parse, json, json_len))
+		parse = eu_parse_create(eu_variant_value(&var));
+		if (!eu_parse(parse, json, json_len))
 			goto error;
 
-		if (!eu_parse_finish(&parse))
+		if (!eu_parse_finish(parse))
 			goto error;
 
-		eu_parse_fini(&parse);
+		eu_parse_destroy(parse);
 		eu_variant_fini(&var);
 	}
 #else

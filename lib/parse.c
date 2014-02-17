@@ -32,20 +32,25 @@ struct eu_parse_cont initial_parse_cont = {
 	initial_parse_destroy
 };
 
-void eu_parse_init(struct eu_parse *ep, struct eu_value result)
+struct eu_parse *eu_parse_create(struct eu_value result)
 {
-	ep->outer_stack = &initial_parse_cont;
-	ep->stack_top = ep->stack_bottom = NULL;
-	ep->metadata = result.metadata;
-	ep->result = result.value;
-	ep->buf = NULL;
-	ep->buf_size = 0;
-	ep->error = 0;
+	struct eu_parse *ep = malloc(sizeof *ep);
+	if (ep) {
+		ep->outer_stack = &initial_parse_cont;
+		ep->stack_top = ep->stack_bottom = NULL;
+		ep->metadata = result.metadata;
+		ep->result = result.value;
+		ep->buf = NULL;
+		ep->buf_size = 0;
+		ep->error = 0;
+		memset(ep->result, 0, ep->metadata->size);
+		return ep;
+	}
 
-	memset(ep->result, 0, ep->metadata->size);
+	return NULL;
 }
 
-void eu_parse_fini(struct eu_parse *ep)
+void eu_parse_destroy(struct eu_parse *ep)
 {
 	struct eu_parse_cont *c, *next;
 
@@ -67,6 +72,7 @@ void eu_parse_fini(struct eu_parse *ep)
 		ep->metadata->fini(ep->metadata, ep->result);
 
 	free(ep->buf);
+	free(ep);
 }
 
 void eu_parse_insert_cont(struct eu_parse *ep, struct eu_parse_cont *c)

@@ -14,6 +14,32 @@
 #define CACHE_ALIGN
 #endif
 
+struct eu_parse {
+	struct eu_parse_cont *outer_stack;
+	struct eu_parse_cont *stack_top;
+	struct eu_parse_cont *stack_bottom;
+
+	struct eu_metadata *metadata;
+	void *result;
+
+	const char *input;
+	const char *input_end;
+
+	char *buf;
+	size_t buf_len;
+	size_t buf_size;
+
+	int error;
+};
+
+/* A continuation stack frame. */
+struct eu_parse_cont {
+	struct eu_parse_cont *next;
+	enum eu_parse_result (*resume)(struct eu_parse *p,
+				       struct eu_parse_cont *cont);
+	void (*destroy)(struct eu_parse *ep, struct eu_parse_cont *cont);
+};
+
 void eu_parse_insert_cont(struct eu_parse *ep, struct eu_parse_cont *c);
 int eu_parse_set_buffer(struct eu_parse *ep, const char *start,
 			const char *end);
