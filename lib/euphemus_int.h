@@ -156,7 +156,7 @@ struct expect {
 };
 
 #define EXPECT_INIT(l, lit, str) {                                    \
-	(l) < 4 ? ((uint32_t)1 << ((l)*8)) - 1 : 0xffffffff,          \
+	(l) < 4 ? ((uint32_t)1 << ((l & 3)*8)) - 1 : 0xffffffff,      \
 	__builtin_bswap32(lit) >> (4 - (l)) * 8,                      \
 	(l),                                                          \
 	str                                                           \

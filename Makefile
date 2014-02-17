@@ -9,7 +9,10 @@ endif
 MAKEFILE:=$(firstword $(MAKEFILE_LIST))
 
 # You can override this from the command line
-CFLAGS=-Wall -Wextra -ansi -g
+CFLAGS=-Wall -Wextra -Werror -ansi -g
+
+# clang doesn't like the use of '-ansi' when linking
+LD_CFLAGS=$(filter-out -ansi,$(CFLAGS))
 
 # ROOT is the path to the source tree.  If non-empty, then it includes
 # a trailing slash.
@@ -61,6 +64,9 @@ ALL_SRCS:=$(LIB_SRCS) $(SRCS)
 # Disable builtin rules
 .SUFFIXES:
 
+# Delete files produced by recipes that fail
+.DELETE_ON_ERROR:
+
 .PHONY: all
 all: $(ALL_EXECUTABLES)
 
@@ -101,7 +107,7 @@ define build_executable
 build_executable_objneeds:=$(call objneeds,$(or $(MAINOBJ_$(1)),$(2)$(1).o))
 ifeq "$$(filter undefined,$$(build_executable_objneeds))" ""
 $(1): $$(build_executable_objneeds)
-	$$(CC) $$(CFLAGS) $(PROJECT_CFLAGS) $$^ -o $$@
+	$$(CC) $$(LD_CFLAGS) $(PROJECT_CFLAGS) $$^ -o $$@
 else
 $(1):
 	@false
