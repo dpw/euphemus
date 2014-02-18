@@ -76,8 +76,6 @@ static enum eu_parse_result array_parse_resume(struct eu_parse *ep,
 	size_t len = result->len;
 	char *el = (char *)result->a + len * el_size;
 
-	free(cont);
-
 	switch (state) {
 #define RESUME
 #include "array_sm.c"
@@ -111,7 +109,6 @@ static void array_parse_cont_destroy(struct eu_parse *ep,
 
 	(void)ep;
 	array_fini(cont->el_metadata, cont->result);
-	free(cont);
 }
 
 void eu_array_fini(struct eu_metadata *gmetadata, void *value)

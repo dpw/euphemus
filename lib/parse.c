@@ -4,17 +4,18 @@
 #include <euphemus.h>
 #include "euphemus_int.h"
 
+static void initial_parse_destroy(struct eu_parse *ep,
+				  struct eu_parse_cont *cont);
+
 static enum eu_parse_result initial_parse_resume(struct eu_parse *ep,
 						 struct eu_parse_cont *cont)
 {
-	if (ep->input != ep->input_end) {
+	(void)cont;
+
+	if (ep->input != ep->input_end)
 		return ep->metadata->parse(ep->metadata, ep, ep->result);
-	}
-	else {
-		assert(!ep->outer_stack);
-		ep->outer_stack = cont;
-		return EU_PARSE_PAUSED;
-	}
+	else
+		return EU_PARSE_REINSTATE_PAUSED;
 }
 
 static void initial_parse_destroy(struct eu_parse *ep,
@@ -26,43 +27,60 @@ static void initial_parse_destroy(struct eu_parse *ep,
 	ep->result = NULL;
 }
 
-struct eu_parse_cont initial_parse_cont = {
-	NULL,
-	initial_parse_resume,
-	initial_parse_destroy
-};
-
 struct eu_parse *eu_parse_create(struct eu_value result)
 {
 	struct eu_parse *ep = malloc(sizeof *ep);
-	if (ep) {
-		ep->outer_stack = &initial_parse_cont;
-		ep->stack_top = ep->stack_bottom = NULL;
-		ep->metadata = result.metadata;
-		ep->result = result.value;
-		ep->buf = NULL;
-		ep->buf_size = 0;
-		ep->error = 0;
-		memset(ep->result, 0, ep->metadata->size);
-		return ep;
-	}
+	char *stack;
+	struct eu_parse_cont *cont;
 
+	if (!ep)
+		goto error;
+
+	ep->stack_area_size = 128;
+	stack = malloc(ep->stack_area_size);
+	if (!stack)
+		goto free_ep;
+
+	ep->stack = stack;
+	ep->old_stack_bottom
+		= ep->stack_area_size - sizeof(struct eu_parse_cont);
+
+	cont = (struct eu_parse_cont *)(stack + ep->old_stack_bottom);
+	cont->size = sizeof(struct eu_parse_cont);
+	cont->resume = initial_parse_resume;
+	cont->destroy = initial_parse_destroy;
+
+	ep->new_stack_top = ep->new_stack_bottom = 0;
+	ep->metadata = result.metadata;
+	ep->result = result.value;
+	ep->buf = NULL;
+	ep->buf_size = 0;
+	ep->error = 0;
+
+	memset(ep->result, 0, ep->metadata->size);
+	return ep;
+
+ free_ep:
+	free(ep);
+ error:
 	return NULL;
 }
 
 void eu_parse_destroy(struct eu_parse *ep)
 {
-	struct eu_parse_cont *c, *next;
+	struct eu_parse_cont *c;
 
 	/* If the parse was unfinished, there might be stack frames to
 	   clean up. */
-	for (c = ep->outer_stack; c; c = next) {
-		next = c->next;
+	while (ep->new_stack_bottom != ep->new_stack_top) {
+		c = (struct eu_parse_cont *)(ep->stack + ep->new_stack_bottom);
+		ep->new_stack_bottom += c->size;
 		c->destroy(ep, c);
 	}
 
-	for (c = ep->stack_top; c; c = next) {
-		next = c->next;
+	while (ep->old_stack_bottom != ep->stack_area_size) {
+		c = (struct eu_parse_cont *)(ep->stack + ep->old_stack_bottom);
+		ep->old_stack_bottom += c->size;
 		c->destroy(ep, c);
 	}
 
@@ -71,20 +89,9 @@ void eu_parse_destroy(struct eu_parse *ep)
 	if (ep->result)
 		ep->metadata->fini(ep->metadata, ep->result);
 
+	free(ep->stack);
 	free(ep->buf);
 	free(ep);
-}
-
-void eu_parse_insert_cont(struct eu_parse *ep, struct eu_parse_cont *c)
-{
-	c->next = NULL;
-	if (ep->stack_bottom) {
-		ep->stack_bottom->next = c;
-		ep->stack_bottom = c;
-	}
-	else {
-		ep->stack_top = ep->stack_bottom = c;
-	}
 }
 
 int eu_parse_set_buffer(struct eu_parse *ep, const char *start, const char *end)
@@ -137,40 +144,125 @@ int eu_parse_append_buffer_nul(struct eu_parse *ep, const char *start,
 	return 1;
 }
 
+void eu_parse_begin_pause(struct eu_parse *ep)
+{
+	if (ep->new_stack_top != ep->new_stack_bottom) {
+		/* There is a new stack from a previous pause.
+		   Consolidate it with the old stack. */
+		size_t new_stack_size
+			= ep->new_stack_top - ep->new_stack_bottom;
+		ep->old_stack_bottom -= new_stack_size;
+		memmove(ep->stack + ep->old_stack_bottom,
+			ep->stack + ep->new_stack_bottom,
+			new_stack_size);
+	}
+
+	ep->new_stack_bottom = ep->new_stack_top = 0;
+}
+
+void *eu_parse_alloc_cont(struct eu_parse *ep, size_t size)
+{
+	size_t new_stack_top;
+	struct eu_parse_cont *f;
+
+	/* Round size up to the pointer width; this should be
+	   sufficient to suitably align all stack frames. */
+	size = ((size - 1) & -sizeof(void *)) + sizeof(void *);
+
+	new_stack_top = ep->new_stack_top + size;
+
+	/* Do we have space for the new stack frame */
+	if (unlikely(new_stack_top > ep->old_stack_bottom)) {
+		/* Need to expand the stack area, creating a bigger
+		   gap between the new and old stack regions. */
+		size_t stack_area_size = ep->stack_area_size;
+		size_t old_stack_size = stack_area_size - ep->old_stack_bottom;
+		char *s;
+
+		do {
+			stack_area_size *= 2;
+		} while (stack_area_size - ep->stack_area_size
+				< new_stack_top - ep->old_stack_bottom);
+
+		s = malloc(stack_area_size);
+		if (s == NULL)
+			return NULL;
+
+		memcpy(s, ep->stack, ep->new_stack_top);
+		memcpy(s + stack_area_size - old_stack_size,
+		       ep->stack + ep->old_stack_bottom, old_stack_size);
+		free(ep->stack);
+
+		ep->stack = s;
+		ep->old_stack_bottom = stack_area_size - old_stack_size;
+		ep->stack_area_size = stack_area_size;
+	}
+
+	f = (struct eu_parse_cont *)(ep->stack + ep->new_stack_top);
+	f->size = size;
+	ep->new_stack_top = new_stack_top;
+	return f;
+}
+
+void *eu_parse_alloc_first_cont(struct eu_parse *ep, size_t size)
+{
+	eu_parse_begin_pause(ep);
+	return eu_parse_alloc_cont(ep, size);
+}
+
 int eu_parse(struct eu_parse *ep, const char *input, size_t len)
 {
-	enum eu_parse_result res;
+	struct eu_parse_cont *c;
 
 	if (ep->error)
 		return 0;
 
-	/* Need to concatenate the inner and outer stacks */
-	if (ep->stack_top) {
-		ep->stack_bottom->next = ep->outer_stack;
-		ep->outer_stack = ep->stack_top;
-		ep->stack_top = ep->stack_bottom = NULL;
-	}
-
 	ep->input = input;
 	ep->input_end = input + len;
 
-	for (;;) {
-		struct eu_parse_cont *s = ep->outer_stack;
-		if (!s)
+	/* Process stack frames from the new stack */
+	while (ep->new_stack_bottom != ep->new_stack_top) {
+		c = (struct eu_parse_cont *)(ep->stack + ep->new_stack_bottom);
+		ep->new_stack_bottom += c->size;
+
+		switch (c->resume(ep, c)) {
+		case EU_PARSE_OK:
 			break;
 
-		ep->outer_stack = s->next;
-		res = s->resume(ep, s);
-		if (res == EU_PARSE_OK)
-			continue;
+		case EU_PARSE_REINSTATE_PAUSED:
+			ep->new_stack_bottom -= c->size;
+			/* fall through */
 
-		if (res == EU_PARSE_PAUSED)
+		case EU_PARSE_PAUSED:
 			return 1;
-		else
-			goto error;
 
+		case EU_PARSE_ERROR:
+			goto error;
+		}
 	}
 
+	/* Process stack frames from the old stack */
+	while (ep->old_stack_bottom != ep->stack_area_size) {
+		c = (struct eu_parse_cont *)(ep->stack + ep->old_stack_bottom);
+		ep->old_stack_bottom += c->size;
+
+		switch (c->resume(ep, c)) {
+		case EU_PARSE_OK:
+			break;
+
+		case EU_PARSE_REINSTATE_PAUSED:
+			ep->old_stack_bottom -= c->size;
+			/* fall through */
+
+		case EU_PARSE_PAUSED:
+			return 1;
+
+		case EU_PARSE_ERROR:
+			goto error;
+		}
+	}
+
+	/* Done parsing.  Check for trailing input. */
 	ep->input = skip_whitespace(ep->input, ep->input_end);
 	if (ep->input == ep->input_end)
 		return 1;
@@ -182,12 +274,20 @@ int eu_parse(struct eu_parse *ep, const char *input, size_t len)
 
 int eu_parse_finish(struct eu_parse *ep)
 {
-	if (ep->error || ep->outer_stack || ep->stack_top)
+	if (ep->error
+	    || ep->new_stack_bottom != ep->new_stack_top
+	    || ep->old_stack_bottom != ep->stack_area_size)
 		return 0;
 
 	/* The client now has responsiblity for the result */
 	ep->result = NULL;
 	return 1;
+}
+
+void eu_parse_cont_noop_destroy(struct eu_parse *ep, struct eu_parse_cont *cont)
+{
+	(void)ep;
+	(void)cont;
 }
 
 struct consume_ws_cont {
@@ -198,22 +298,20 @@ struct consume_ws_cont {
 
 static enum eu_parse_result consume_ws_resume(struct eu_parse *ep,
 					      struct eu_parse_cont *gcont);
-static void consume_ws_destroy(struct eu_parse *ep,
-			       struct eu_parse_cont *cont);
 
-enum eu_parse_result eu_insert_whitespace_cont(struct eu_metadata *metadata,
-					       struct eu_parse *ep,
-					       void *result)
+enum eu_parse_result eu_consume_whitespace_pause(struct eu_metadata *metadata,
+						 struct eu_parse *ep,
+						 void *result)
 {
-	struct consume_ws_cont *cont = malloc(sizeof *cont);
+	struct consume_ws_cont *cont
+		= eu_parse_alloc_first_cont(ep, sizeof *cont);
 	if (!cont)
 		return EU_PARSE_ERROR;
 
 	cont->base.resume = consume_ws_resume;
-	cont->base.destroy = consume_ws_destroy;
+	cont->base.destroy = eu_parse_cont_noop_destroy;
 	cont->metadata = metadata;
 	cont->result = result;
-	eu_parse_insert_cont(ep, &cont->base);
 	return EU_PARSE_PAUSED;
 }
 
@@ -238,22 +336,11 @@ static enum eu_parse_result consume_ws_resume(struct eu_parse *ep,
 	const char *end = ep->input_end;
 
 	ep->input = p = skip_whitespace(p, end);
-	if (p != end) {
-		struct eu_metadata *metadata = cont->metadata;
-		void *result = cont->result;
-		free(cont);
-		return metadata->parse(metadata, ep, result);
-	}
-
-	eu_parse_insert_cont(ep, &cont->base);
-	return EU_PARSE_PAUSED;
-}
-
-static void consume_ws_destroy(struct eu_parse *ep,
-			       struct eu_parse_cont *cont)
-{
-	(void)ep;
-	free(cont);
+	if (p != end)
+		return cont->metadata->parse(cont->metadata, ep, cont->result);
+	else
+		return eu_consume_whitespace_pause(cont->metadata, ep,
+						   cont->result);
 }
 
 void eu_noop_fini(struct eu_metadata *metadata, void *value)
@@ -270,8 +357,6 @@ struct expect_parse_cont {
 
 static enum eu_parse_result expect_parse_resume(struct eu_parse *ep,
 						struct eu_parse_cont *gcont);
-static void expect_parse_cont_destroy(struct eu_parse *ep,
-				      struct eu_parse_cont *cont);
 
 enum eu_parse_result eu_parse_expect_slow(struct eu_parse *ep,
 					  const char *expect,
@@ -294,13 +379,12 @@ enum eu_parse_result eu_parse_expect_slow(struct eu_parse *ep,
 
 	ep->input += avail;
 
-	cont = malloc(sizeof *cont);
+	cont = eu_parse_alloc_first_cont(ep, sizeof *cont);
 	if (cont) {
 		cont->base.resume = expect_parse_resume;
-		cont->base.destroy = expect_parse_cont_destroy;
+		cont->base.destroy = eu_parse_cont_noop_destroy;
 		cont->expect = expect + avail;
 		cont->expect_len = expect_len - avail;
-		eu_parse_insert_cont(ep, &cont->base);
 		return EU_PARSE_PAUSED;
 	}
 
@@ -311,16 +395,5 @@ static enum eu_parse_result expect_parse_resume(struct eu_parse *ep,
 						struct eu_parse_cont *gcont)
 {
 	struct expect_parse_cont *cont = (struct expect_parse_cont *)gcont;
-	const char *expect = cont->expect;
-	unsigned int expect_len = cont->expect_len;
-
-	free(cont);
-	return eu_parse_expect_slow(ep, expect, expect_len);
-}
-
-static void expect_parse_cont_destroy(struct eu_parse *ep,
-				      struct eu_parse_cont *cont)
-{
-	(void)ep;
-	free(cont);
+	return eu_parse_expect_slow(ep, cont->expect, cont->expect_len);
 }

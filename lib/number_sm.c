@@ -179,17 +179,16 @@ RESUME_ONLY(case NUMBER_PARSE_E_DIGITS:)
 
 	ep->input = p;
 
-	cont = malloc(sizeof *cont);
+	cont = eu_parse_alloc_first_cont(ep, sizeof *cont);
 	if (!cont)
 		goto error;
 
 	cont->base.resume = number_parse_resume;
-	cont->base.destroy = number_parse_cont_destroy;
+	cont->base.destroy = eu_parse_cont_noop_destroy;
 	cont->state = state;
 	cont->negate = negate;
 	cont->int_value = int_value;
 	cont->result = result;
-	eu_parse_insert_cont(ep, &cont->base);
 	return EU_PARSE_PAUSED;
 
  error:

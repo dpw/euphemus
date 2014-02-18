@@ -105,8 +105,10 @@ RESUME_ONLY(case STRUCT_PARSE_COMMA:)
 
  pause:
 	ep->input = p;
- pause_input_set:
-	cont = malloc(sizeof *cont);
+	eu_parse_begin_pause(ep);
+
+pause_input_set:
+	cont = eu_parse_alloc_cont(ep, sizeof *cont);
 	if (!cont)
 		goto alloc_error;
 
@@ -118,7 +120,6 @@ RESUME_ONLY(case STRUCT_PARSE_COMMA:)
 	cont->result_ptr = result_ptr;
 	cont->member_metadata = member_metadata;
 	cont->member_value = member_value;
-	eu_parse_insert_cont(ep, &cont->base);
 	return EU_PARSE_PAUSED;
 
  alloc_error:

@@ -253,8 +253,6 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 	const char *p = ep->input;
 	const char *end = ep->input_end;
 
-	free(cont);
-
 #define RESUME_ONLY(x) x
 	switch (state) {
 #include "struct_sm.c"
@@ -323,8 +321,6 @@ static void struct_parse_cont_destroy(struct eu_parse *ep,
 		free(cont->result);
 		*cont->result_ptr = NULL;
 	}
-
-	free(cont);
 }
 
 struct eu_struct_metadata eu_object_metadata = {

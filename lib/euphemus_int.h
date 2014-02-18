@@ -14,10 +14,19 @@
 #define CACHE_ALIGN
 #endif
 
+enum eu_parse_result {
+	EU_PARSE_OK,
+	EU_PARSE_PAUSED,
+	EU_PARSE_ERROR,
+	EU_PARSE_REINSTATE_PAUSED
+};
+
 struct eu_parse {
-	struct eu_parse_cont *outer_stack;
-	struct eu_parse_cont *stack_top;
-	struct eu_parse_cont *stack_bottom;
+	char *stack;
+	size_t new_stack_bottom;
+	size_t new_stack_top;
+	size_t old_stack_bottom;
+	size_t stack_area_size;
 
 	struct eu_metadata *metadata;
 	void *result;
@@ -34,13 +43,17 @@ struct eu_parse {
 
 /* A continuation stack frame. */
 struct eu_parse_cont {
-	struct eu_parse_cont *next;
+	size_t size;
 	enum eu_parse_result (*resume)(struct eu_parse *p,
 				       struct eu_parse_cont *cont);
 	void (*destroy)(struct eu_parse *ep, struct eu_parse_cont *cont);
 };
 
-void eu_parse_insert_cont(struct eu_parse *ep, struct eu_parse_cont *c);
+void eu_parse_begin_pause(struct eu_parse *ep);
+void *eu_parse_alloc_cont(struct eu_parse *ep, size_t size);
+void *eu_parse_alloc_first_cont(struct eu_parse *ep, size_t size);
+void eu_parse_cont_noop_destroy(struct eu_parse *ep, struct eu_parse_cont *cont);
+
 int eu_parse_set_buffer(struct eu_parse *ep, const char *start,
 			const char *end);
 int eu_parse_append_buffer(struct eu_parse *ep, const char *start,
@@ -94,9 +107,9 @@ static __inline__ const char *skip_whitespace(const char *p, const char *end)
 	return p;
 }
 
-enum eu_parse_result eu_insert_whitespace_cont(struct eu_metadata *metadata,
-					       struct eu_parse *ep,
-					       void *result);
+enum eu_parse_result eu_consume_whitespace_pause(struct eu_metadata *metadata,
+						 struct eu_parse *ep,
+						 void *result);
 
 static __inline__ enum eu_parse_result eu_consume_whitespace(
 						struct eu_metadata *metadata,
@@ -108,7 +121,7 @@ static __inline__ enum eu_parse_result eu_consume_whitespace(
 	if (ep->input != end)
 		return EU_PARSE_OK;
 	else
-		return eu_insert_whitespace_cont(metadata, ep, result);
+		return eu_consume_whitespace_pause(metadata, ep, result);
 }
 
 enum eu_parse_result eu_consume_ws_until_slow(struct eu_metadata *metadata,

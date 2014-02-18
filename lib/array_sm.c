@@ -30,7 +30,7 @@
 			break;
 
 		case EU_PARSE_PAUSED:
-			goto pause;
+			goto pause_in_element;
 
 		default:
 			goto error;
@@ -84,7 +84,10 @@ RESUME_ONLY(case ARRAY_PARSE_ELEMENT:)
 	return EU_PARSE_OK;
 
  pause:
-	cont = malloc(sizeof *cont);
+	eu_parse_begin_pause(ep);
+
+ pause_in_element:
+	cont = eu_parse_alloc_cont(ep, sizeof *cont);
 	if (cont) {
 		cont->base.resume = array_parse_resume;
 		cont->base.destroy = array_parse_cont_destroy;
@@ -93,7 +96,6 @@ RESUME_ONLY(case ARRAY_PARSE_ELEMENT:)
 		cont->result = result;
 		cont->capacity = capacity;
 		result->len = len;
-		eu_parse_insert_cont(ep, &cont->base);
 		return EU_PARSE_PAUSED;
 	}
 

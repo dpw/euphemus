@@ -117,7 +117,8 @@ static void string_parse_cont_destroy(struct eu_parse *ep,
 static struct string_parse_cont *alloc_cont(struct eu_parse *ep, const char *p,
 					    struct eu_string *result)
 {
-	struct string_parse_cont *cont = malloc(sizeof *cont);
+	struct string_parse_cont *cont
+		= eu_parse_alloc_first_cont(ep, sizeof *cont);
 
 	if (cont) {
 		cont->base.resume = string_parse_resume;
@@ -129,8 +130,6 @@ static struct string_parse_cont *alloc_cont(struct eu_parse *ep, const char *p,
 		cont->buf = malloc(cont->capacity);
 		if (cont->buf)
 			return cont;
-
-		free(cont);
 	}
 
 	return NULL;
@@ -182,7 +181,6 @@ static enum eu_parse_result string_parse_common(struct eu_metadata *metadata,
 		goto alloc_error;
 
 	memcpy(cont->buf, ep->input, cont->len);
-	eu_parse_insert_cont(ep, &cont->base);
 	ep->input = p;
 	return EU_PARSE_PAUSED;
 
@@ -230,7 +228,6 @@ static enum eu_parse_result string_parse_common(struct eu_metadata *metadata,
 		return EU_PARSE_ERROR;
 
 	cont->len = end - cont->buf;
-	eu_parse_insert_cont(ep, &cont->base);
 	ep->input = p;
 	return EU_PARSE_PAUSED;
 
@@ -254,10 +251,8 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 		if (!complete_unescape(ep, &cont->unescape, &unescaped_char))
 			return EU_PARSE_ERROR;
 
-		if (cont->unescape) {
-			eu_parse_insert_cont(ep, &cont->base);
-			return EU_PARSE_PAUSED;
-		}
+		if (cont->unescape)
+			return EU_PARSE_REINSTATE_PAUSED;
 
 		unescaped = 1;
 	}
@@ -300,7 +295,6 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 		goto alloc_error;
 
 	ep->input = p + 1;
-	free(cont);
 	return EU_PARSE_OK;
 
  pause:
@@ -324,8 +318,7 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 	memcpy(buf + cont->len, ep->input, len);
 	cont->len = total_len;
 	ep->input = p;
-	eu_parse_insert_cont(ep, &cont->base);
-	return EU_PARSE_PAUSED;
+	return EU_PARSE_REINSTATE_PAUSED;
 
  unescape:
 	/* Skip the backslash, and scan forward to find the end of the
@@ -366,7 +359,6 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 		goto alloc_error;
 
 	ep->input = p + 1;
-	free(cont);
 	return EU_PARSE_OK;
 
  pause_unescape:
@@ -390,12 +382,10 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 	end = unescape(ep, p, buf + cont->len, &cont->unescape);
 	cont->len = end - buf;
 	ep->input = p;
-	eu_parse_insert_cont(ep, &cont->base);
-	return EU_PARSE_PAUSED;
+	return EU_PARSE_REINSTATE_PAUSED;
 
  alloc_error:
 	free(cont->buf);
-	free(cont);
 	return EU_PARSE_ERROR;
 }
 
@@ -407,7 +397,6 @@ static void string_parse_cont_destroy(struct eu_parse *ep,
 	(void)ep;
 
 	free(cont->buf);
-	free(cont);
 }
 
 enum eu_parse_result eu_variant_string(void *string_metadata,

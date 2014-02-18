@@ -30,8 +30,6 @@ struct number_parse_cont {
 
 static enum eu_parse_result number_parse_resume(struct eu_parse *ep,
 						struct eu_parse_cont *gcont);
-static void number_parse_cont_destroy(struct eu_parse *ep,
-				      struct eu_parse_cont *cont);
 
 static enum eu_parse_result number_parse(struct eu_metadata *metadata,
 					 struct eu_parse *ep,
@@ -101,8 +99,6 @@ static enum eu_parse_result number_parse_resume(struct eu_parse *ep,
 	const char *p = ep->input;
 	const char *end = ep->input_end;
 
-	free(cont);
-
 #define RESUME
 #define eu_parse_set_buffer eu_parse_append_buffer
 	switch (state) {
@@ -129,13 +125,6 @@ static enum eu_parse_result number_parse_resume(struct eu_parse *ep,
 	/* Without -O, gcc incorrectly reports that control can reach
 	   here. */
 	abort();
-}
-
-static void number_parse_cont_destroy(struct eu_parse *ep,
-				      struct eu_parse_cont *cont)
-{
-	(void)ep;
-	free(cont);
 }
 
 struct eu_metadata eu_number_metadata = {

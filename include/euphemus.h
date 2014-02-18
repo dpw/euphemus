@@ -16,12 +16,6 @@ enum eu_json_type {
 	EU_JSON_MAX
 };
 
-enum eu_parse_result {
-	EU_PARSE_OK,
-	EU_PARSE_PAUSED,
-	EU_PARSE_ERROR
-};
-
 struct eu_parse;
 
 struct eu_string_ref {
