@@ -126,6 +126,7 @@ static void check_variant(struct eu_variant *var)
 	assert(eu_value_type(val) == EU_JSON_ARRAY);
 	assert(eu_value_to_array(val)->len == 2);
 }
+
 static void test_parse_variant(void)
 {
 	TEST_PARSE("  {  \"str\":  \"hello, world!\","
@@ -137,6 +138,60 @@ static void test_parse_variant(void)
 		   eu_variant_value,
 		   check_variant(&result),
 		   eu_variant_fini(&result));
+}
+
+static void test_parse_deep(void)
+{
+	int depth = 100;
+
+	char open[] = "  [  {  \"ab\"  :";
+	char mid[] = "  100  ";
+	char close[] = "}  ]  ";
+
+	size_t open_len = strlen(open);
+	size_t mid_len = strlen(mid);
+	size_t close_len = strlen(close);
+	size_t len = (open_len + close_len) * depth + mid_len;
+
+	char *s = malloc(len);
+	char *p = s;
+
+	int i;
+	size_t j;
+	struct eu_parse *parse;
+	struct eu_variant var;
+	struct eu_value val;
+
+	/* construct the test JSON string */
+	for (i = 0; i < depth; i++, p += open_len)
+		memcpy(p, open, open_len);
+
+	memcpy(p, mid, mid_len);
+	p += mid_len;
+
+	for (i = 0; i < depth; i++, p += close_len)
+		memcpy(p, close, close_len);
+
+	/* parse it in 1-byte chunks */
+	parse = eu_parse_create(eu_variant_value(&var));
+	for (j = 0; j < len; j++)
+		assert(eu_parse(parse, s + j, 1));
+	assert(eu_parse_finish(parse));
+	eu_parse_destroy(parse);
+
+	/* check the result */
+	val = eu_variant_value(&var);
+	for (i = 0; i < depth; i++) {
+		struct eu_variant_array *a
+			= (struct eu_variant_array *)eu_value_to_array(val);
+		assert(a->len == 1);
+		val = eu_variant_value(&a->a[0]);
+		assert(eu_value_ok(val = eu_value_get_cstr(val, "ab")));
+	}
+
+	assert(*eu_value_to_number(val) == 100);
+	eu_variant_fini(&var);
+	free(s);
 }
 
 static void parse_variant(const char *json, struct eu_variant *var)
@@ -196,6 +251,7 @@ int main(void)
 	test_parse_bool();
 	test_parse_array();
 	test_parse_variant();
+	test_parse_deep();
 
 	test_path();
 	test_size();

@@ -230,6 +230,14 @@ struct eu_variant_array {
 	size_t len;
 };
 
+extern struct eu_array_metadata eu_variant_array_metadata;
+
+static __inline__ struct eu_value eu_variant_array_value(
+						     struct eu_variant_array *a)
+{
+	return eu_value(a, &eu_variant_array_metadata.base);
+}
+
 struct eu_variant {
 	struct eu_metadata *metadata;
 	union {
