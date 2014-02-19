@@ -36,7 +36,10 @@ struct eu_parse *eu_parse_create(struct eu_value result)
 	if (!ep)
 		goto error;
 
-	ep->stack_area_size = 128;
+	/* Make the stack area just big enough for the
+	   initial_parse_resume frame. Having some slack doesn't seem
+	   to save much work. */
+	ep->stack_area_size = sizeof(struct eu_parse_cont);
 	stack = malloc(ep->stack_area_size);
 	if (!stack)
 		goto free_ep;
