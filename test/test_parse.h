@@ -28,8 +28,9 @@ do {                                                                  \
 	/* Test parsing with the json broken into individual bytes */ \
 	parse = eu_parse_create(to_value(&result));                   \
 	for (i = 0; i < len; i++) {                                   \
-		assert(eu_parse(parse, json + i, 1));                 \
-		assert(eu_parse(parse, json + i, 0));                 \
+		char c = json[i];                                     \
+		assert(eu_parse(parse, &c, 1));                       \
+		assert(eu_parse(parse, &c, 0));                       \
 	}                                                             \
                                                                       \
 	assert(eu_parse_finish(parse));                               \

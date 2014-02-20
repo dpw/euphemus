@@ -55,6 +55,10 @@ RESUME_ONLY(case ARRAY_PARSE_ELEMENT:)
 		}
 
 		ep->input++;
+		state = ARRAY_PARSE_COMMA;
+RESUME_ONLY(case ARRAY_PARSE_COMMA:)
+		if (ep->input == ep->input_end)
+			goto pause;
 
 		if (len == capacity) {
 			size_t sz = capacity * el_size;

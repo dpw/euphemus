@@ -3,7 +3,8 @@
 
 enum array_parse_state {
 	ARRAY_PARSE_OPEN,
-	ARRAY_PARSE_ELEMENT
+	ARRAY_PARSE_ELEMENT,
+	ARRAY_PARSE_COMMA
 };
 
 struct array_parse_cont {
