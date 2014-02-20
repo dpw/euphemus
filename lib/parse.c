@@ -53,11 +53,9 @@ struct eu_parse *eu_parse_create(struct eu_value result)
 	cont->resume = initial_parse_resume;
 	cont->destroy = initial_parse_destroy;
 
-	ep->new_stack_top = ep->new_stack_bottom = 0;
+	ep->scratch_size = ep->new_stack_top = ep->new_stack_bottom = 0;
 	ep->metadata = result.metadata;
 	ep->result = result.value;
-	ep->buf = NULL;
-	ep->buf_size = 0;
 	ep->error = 0;
 
 	memset(ep->result, 0, ep->metadata->size);
@@ -93,59 +91,14 @@ void eu_parse_destroy(struct eu_parse *ep)
 		ep->metadata->fini(ep->metadata, ep->result);
 
 	free(ep->stack);
-	free(ep->buf);
 	free(ep);
 }
 
-int eu_parse_set_buffer(struct eu_parse *ep, const char *start, const char *end)
-{
-	size_t len = end - start;
+STATIC_ASSERT((sizeof(void *) & (sizeof(void *) - 1)) == 0);
 
-	if (len > ep->buf_size) {
-		free(ep->buf);
-		if (!(ep->buf = malloc(len)))
-			return 0;
-
-		ep->buf_size = len;
-	}
-
-	memcpy(ep->buf, start, len);
-	ep->buf_len = len;
-	return 1;
-}
-
-int eu_parse_append_buffer(struct eu_parse *ep, const char *start,
-			   const char *end)
-{
-	size_t len = end - start;
-	size_t total_len = ep->buf_len + len + 1;
-
-	if (total_len > ep->buf_size) {
-		char *buf = malloc(total_len);
-		if (!buf)
-			return 0;
-
-		ep->buf_size = total_len;
-		memcpy(buf, ep->buf, ep->buf_len);
-		free(ep->buf);
-		ep->buf = buf;
-	}
-
-	memcpy(ep->buf + ep->buf_len, start, len);
-	ep->buf_len = total_len - 1;
-	return 1;
-}
-
-/* Like eu_parse_append_buffer, but ensure the buffer is NUL terminated. */
-int eu_parse_append_buffer_nul(struct eu_parse *ep, const char *start,
-			       const char *end)
-{
-	if (!eu_parse_append_buffer(ep, start, end))
-		return 0;
-
-	ep->buf[ep->buf_len] = 0;
-	return 1;
-}
+/* Round up to a multiple of sizeof(void *).  This ought to be
+ * sufficient to suitably align all stack frames. */
+#define ROUND_UP(n) ((((n) - 1) & -sizeof(void *)) + sizeof(void *))
 
 void eu_parse_begin_pause(struct eu_parse *ep)
 {
@@ -160,7 +113,7 @@ void eu_parse_begin_pause(struct eu_parse *ep)
 			new_stack_size);
 	}
 
-	ep->new_stack_bottom = ep->new_stack_top = 0;
+	ep->new_stack_bottom = ep->new_stack_top = ROUND_UP(ep->scratch_size);
 }
 
 void *eu_parse_alloc_cont(struct eu_parse *ep, size_t size)
@@ -168,37 +121,32 @@ void *eu_parse_alloc_cont(struct eu_parse *ep, size_t size)
 	size_t new_stack_top;
 	struct eu_parse_cont *f;
 
-	/* Round size up to the pointer width; this should be
-	   sufficient to suitably align all stack frames. */
-	size = ((size - 1) & -sizeof(void *)) + sizeof(void *);
-
+	size = ROUND_UP(size);
 	new_stack_top = ep->new_stack_top + size;
 
 	/* Do we have space for the new stack frame */
 	if (unlikely(new_stack_top > ep->old_stack_bottom)) {
 		/* Need to expand the stack area, creating a bigger
 		   gap between the new and old stack regions. */
-		size_t stack_area_size = ep->stack_area_size;
-		size_t old_stack_size = stack_area_size - ep->old_stack_bottom;
-		char *s;
+		size_t old_stack_size
+			= ep->stack_area_size - ep->old_stack_bottom;
+		char *stack;
 
 		do {
-			stack_area_size *= 2;
-		} while (stack_area_size - ep->stack_area_size
-				< new_stack_top - ep->old_stack_bottom);
+			ep->stack_area_size *= 2;
+		} while (ep->stack_area_size < new_stack_top + old_stack_size);
 
-		s = malloc(stack_area_size);
-		if (s == NULL)
+		stack = malloc(ep->stack_area_size);
+		if (stack == NULL)
 			return NULL;
 
-		memcpy(s, ep->stack, ep->new_stack_top);
-		memcpy(s + stack_area_size - old_stack_size,
+		memcpy(stack, ep->stack, ep->new_stack_top);
+		memcpy(stack + ep->stack_area_size - old_stack_size,
 		       ep->stack + ep->old_stack_bottom, old_stack_size);
 		free(ep->stack);
 
-		ep->stack = s;
-		ep->old_stack_bottom = stack_area_size - old_stack_size;
-		ep->stack_area_size = stack_area_size;
+		ep->stack = stack;
+		ep->old_stack_bottom = ep->stack_area_size - old_stack_size;
 	}
 
 	f = (struct eu_parse_cont *)(ep->stack + ep->new_stack_top);
@@ -285,6 +233,110 @@ int eu_parse_finish(struct eu_parse *ep)
 	/* The client now has responsiblity for the result */
 	ep->result = NULL;
 	return 1;
+}
+
+int eu_parse_reserve_scratch(struct eu_parse *ep, size_t s)
+{
+	size_t new_stack_size, old_stack_size, min_size;
+	char *stack;
+
+	if (ep->new_stack_bottom != ep->new_stack_top) {
+		/* There is a new stack region */
+		if (s <= ep->new_stack_bottom) {
+			ep->scratch_size = s;
+			return 1;
+		}
+
+		/* Can we make space by consolidating the new stack
+		   with the old_stack? */
+		new_stack_size = ep->new_stack_top - ep->new_stack_bottom;
+		if (s <= ep->old_stack_bottom - new_stack_size) {
+			eu_parse_begin_pause(ep);
+			ep->scratch_size = s;
+			return 1;
+		}
+	}
+	else {
+		if (s <= ep->old_stack_bottom) {
+			ep->scratch_size = s;
+			return 1;
+		}
+
+		new_stack_size = 0;
+	}
+
+	/* Need to grow the stack area */
+	old_stack_size = ep->stack_area_size - ep->old_stack_bottom;
+	min_size = ROUND_UP(s) + new_stack_size + old_stack_size;
+
+	do {
+		ep->stack_area_size *= 2;
+	} while (ep->stack_area_size < min_size);
+
+	stack = malloc(ep->stack_area_size);
+	if (stack == NULL)
+		return 0;
+
+	memcpy(stack, ep->stack, ep->scratch_size);
+	ep->scratch_size = s;
+
+	memcpy(stack + ep->stack_area_size - old_stack_size,
+	       ep->stack + ep->old_stack_bottom,
+	       old_stack_size);
+	ep->old_stack_bottom = ep->stack_area_size - old_stack_size;
+
+	memcpy(stack + ep->old_stack_bottom - new_stack_size,
+	       ep->stack + ep->new_stack_bottom, new_stack_size);
+	ep->new_stack_top = ep->old_stack_bottom;
+	ep->new_stack_bottom = ep->new_stack_top - new_stack_size;
+
+	free(ep->stack);
+	ep->stack = stack;
+	return 1;
+}
+
+void eu_parse_reset_scratch(struct eu_parse *ep)
+{
+	ep->scratch_size = 0;
+}
+
+int eu_parse_copy_to_scratch(struct eu_parse *ep, const char *start,
+			     const char *end)
+{
+	if (eu_parse_reserve_scratch(ep, end - start)) {
+		memcpy(ep->stack, start, end - start);
+		return 1;
+	}
+	else {
+		return 0;
+	}
+}
+
+int eu_parse_append_to_scratch(struct eu_parse *ep, const char *start,
+			       const char *end)
+{
+	size_t scratch_size = ep->scratch_size;
+	if (eu_parse_reserve_scratch(ep, scratch_size + (end - start))) {
+		memcpy(ep->stack + scratch_size, start, end - start);
+		return 1;
+	}
+	else {
+		return 0;
+	}
+}
+
+int eu_parse_append_to_scratch_with_nul(struct eu_parse *ep, const char *start,
+					const char *end)
+{
+	size_t scratch_size = ep->scratch_size;
+	if (eu_parse_reserve_scratch(ep, scratch_size + (end - start) + 1)) {
+		memcpy(ep->stack + scratch_size, start, end - start);
+		*(ep->stack + scratch_size + (end - start)) = 0;
+		return 1;
+	}
+	else {
+		return 0;
+	}
 }
 
 void eu_parse_cont_noop_destroy(struct eu_parse *ep, struct eu_parse_cont *cont)

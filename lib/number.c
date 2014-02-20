@@ -100,21 +100,22 @@ static enum eu_parse_result number_parse_resume(struct eu_parse *ep,
 	const char *end = ep->input_end;
 
 #define RESUME
-#define eu_parse_set_buffer eu_parse_append_buffer
 	switch (state) {
 #include "number_sm.c"
-#undef eu_parse_set_buffer
 
 	convert:
 		{
 			char *strtod_end;
 
-			if (!eu_parse_append_buffer_nul(ep, ep->input, p))
+			if (!eu_parse_append_to_scratch_with_nul(ep, ep->input,
+								 p))
 				goto error;
 
-			*result = strtod(ep->buf, &strtod_end);
-			if (strtod_end != ep->buf + ep->buf_len)
+			*result = strtod(ep->stack, &strtod_end);
+			if (strtod_end != ep->stack + ep->scratch_size - 1)
 				abort();
+
+			eu_parse_reset_scratch(ep);
 		}
 
 	done:

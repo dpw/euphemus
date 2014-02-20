@@ -8,11 +8,18 @@
 #define likely(x) __builtin_expect(!!(x), 1)
 #define unlikely(x) __builtin_expect(!!(x), 0)
 #define CACHE_ALIGN __attribute__ ((aligned (64)))
+#define UNUSED __attribute__ ((unused))
 #else
 #define likely(x) (x)
 #define unlikely(x) (x)
 #define CACHE_ALIGN
+#define UNUSED
 #endif
+
+#define PASTE(a,b) PASTE_AUX(a,b)
+#define PASTE_AUX(a,b) a##b
+
+#define STATIC_ASSERT(e) typedef char PASTE(_static_assert_,__LINE__)[1-2*!(e)] UNUSED
 
 enum eu_parse_result {
 	EU_PARSE_OK,
@@ -23,6 +30,7 @@ enum eu_parse_result {
 
 struct eu_parse {
 	char *stack;
+	size_t scratch_size;
 	size_t new_stack_bottom;
 	size_t new_stack_top;
 	size_t old_stack_bottom;
@@ -33,10 +41,6 @@ struct eu_parse {
 
 	const char *input;
 	const char *input_end;
-
-	char *buf;
-	size_t buf_len;
-	size_t buf_size;
 
 	int error;
 };
@@ -54,12 +58,13 @@ void *eu_parse_alloc_cont(struct eu_parse *ep, size_t size);
 void *eu_parse_alloc_first_cont(struct eu_parse *ep, size_t size);
 void eu_parse_cont_noop_destroy(struct eu_parse *ep, struct eu_parse_cont *cont);
 
-int eu_parse_set_buffer(struct eu_parse *ep, const char *start,
-			const char *end);
-int eu_parse_append_buffer(struct eu_parse *ep, const char *start,
-			   const char *end);
-int eu_parse_append_buffer_nul(struct eu_parse *ep, const char *start,
+void eu_parse_reset_scratch(struct eu_parse *ep);
+int eu_parse_copy_to_scratch(struct eu_parse *ep, const char *start,
+			     const char *end);
+int eu_parse_append_to_scratch(struct eu_parse *ep, const char *start,
 			       const char *end);
+int eu_parse_append_to_scratch_with_nul(struct eu_parse *ep, const char *start,
+					const char *end);
 
 void eu_noop_fini(struct eu_metadata *metadata, void *value);
 struct eu_value eu_get_fail(struct eu_value val, struct eu_string_ref name);

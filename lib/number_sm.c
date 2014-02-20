@@ -174,7 +174,11 @@ RESUME_ONLY(case NUMBER_PARSE_E_DIGITS:)
 	}
 
  pause:
-	if (!eu_parse_set_buffer(ep, ep->input, p))
+#ifndef RESUME
+	if (!eu_parse_copy_to_scratch(ep, ep->input, p))
+#else
+	if (!eu_parse_append_to_scratch(ep, ep->input, p))
+#endif
 		goto error;
 
 	ep->input = p;

@@ -262,7 +262,8 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 		   resume in this case. */
 		for (;; p++) {
 			if (p == end) {
-				if (!eu_parse_append_buffer(ep, ep->input, p))
+				if (!eu_parse_append_to_scratch(ep, ep->input,
+								p))
 					goto alloc_error;
 
 				goto pause;
@@ -273,8 +274,9 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 		}
 
 		member_metadata = lookup_member_2(metadata, result,
-						  ep->buf, ep->buf_len,
+						  ep->stack, ep->scratch_size,
 						  ep->input, p, &member_value);
+		eu_parse_reset_scratch(ep);
 		goto looked_up_member;
 
 	default:
