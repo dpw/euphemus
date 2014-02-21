@@ -26,13 +26,17 @@ RESUME_ONLY(case STRUCT_PARSE_OPEN:)
 			if (p == end)
 				goto pause_in_member_name;
 
-			if (*p == '\"')
-				break;
+			switch (*p) {
+			case '\"': goto member_name_done;
+			case '\\': goto unescape_member_name;
+			default: break;
+			}
 		}
 
+	member_name_done:
 		member_metadata = lookup_member(metadata, result, ep->input,
 						p, &member_value);
-RESUME_ONLY(looked_up_member:)
+	looked_up_member:
 		if (!member_metadata)
 			goto error;
 
@@ -107,7 +111,7 @@ RESUME_ONLY(case STRUCT_PARSE_COMMA:)
 	ep->input = p;
 	eu_parse_begin_pause(ep);
 
-pause_input_set:
+ pause_input_set:
 	cont = eu_parse_alloc_cont(ep, sizeof *cont);
 	if (!cont)
 		goto alloc_error;
@@ -120,7 +124,47 @@ pause_input_set:
 	cont->result_ptr = result_ptr;
 	cont->member_metadata = member_metadata;
 	cont->member_value = member_value;
+	cont->unescape = unescape;
 	return EU_PARSE_PAUSED;
+
+ unescape_member_name:
+	/* Skip the backslash, and scan forward to find the end of the
+	   member name */
+	do {
+		if (++p == end)
+			goto pause_unescape_member_name;
+	} while (*p != '\"' || quotes_escaped(p));
+
+	if (!eu_parse_reserve_scratch(ep, p - ep->input))
+		goto error_input_set;
+
+	{
+		char *unescaped_end = eu_unescape(ep, p, ep->stack, &unescape);
+		if (!unescaped_end)
+			goto error_input_set;
+
+		assert(!unescape);
+		member_metadata = lookup_member(metadata, result, ep->stack,
+						unescaped_end, &member_value);
+		eu_parse_reset_scratch(ep);
+	}
+
+	goto looked_up_member;
+
+pause_unescape_member_name:
+	if (!eu_parse_reserve_scratch(ep, p - ep->input))
+		goto error_input_set;
+
+        {
+		char *unescaped_end = eu_unescape(ep, p, ep->stack, &unescape);
+		if (!unescaped_end)
+			goto error_input_set;
+
+		ep->scratch_size = unescaped_end - ep->stack;
+	}
+
+	state = STRUCT_PARSE_IN_MEMBER_NAME;
+	goto pause;
 
  alloc_error:
  error:

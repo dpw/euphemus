@@ -1,5 +1,7 @@
+#include <assert.h>
 #include <euphemus.h>
 #include "euphemus_int.h"
+#include "unescape.h"
 
 struct eu_generic_members {
 	void *members;
@@ -168,6 +170,7 @@ struct struct_parse_cont {
 	void **result_ptr;
 	struct eu_metadata *member_metadata;
 	void *member_value;
+	eu_unescape_state_t unescape;
 };
 
 static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
@@ -232,6 +235,7 @@ static enum eu_parse_result struct_parse(struct eu_metadata *gmetadata,
 	enum struct_parse_state state;
 	struct eu_metadata *member_metadata;
 	void *member_value;
+	eu_unescape_state_t unescape = 0;
 	const char *p = ep->input + 1;
 	const char *end = ep->input_end;
 
@@ -250,34 +254,108 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 	void **result_ptr = cont->result_ptr;
 	struct eu_metadata *member_metadata = cont->member_metadata;
 	void *member_value = cont->member_value;
-	const char *p = ep->input;
-	const char *end = ep->input_end;
+	eu_unescape_state_t unescape = cont->unescape;
+	const char *p, *end;
+
+	if (unlikely(unescape)) {
+		if (!eu_parse_reserve_scratch(ep, ep->scratch_size + 1))
+			return EU_PARSE_ERROR;
+
+		if (!eu_finish_unescape(ep, &unescape,
+					&ep->stack[ep->scratch_size]))
+			return EU_PARSE_ERROR;
+
+		if (unescape)
+			/* We can't simply return
+			   EU_PARSE_REINSTATE_PAUSED here because
+			   reserve_sratch may have fiddled with the
+			   stack. */
+			goto pause_input_set;
+
+		ep->scratch_size++;
+	}
+
+	p = ep->input;
+	end = ep->input_end;
 
 #define RESUME_ONLY(x) x
 	switch (state) {
 #include "struct_sm.c"
 
 	case STRUCT_PARSE_IN_MEMBER_NAME:
-		/* The member name was split, so we can't simply
-		   resume in this case. */
+		/* The member name was split, so we need to accumulate
+		   the compplete member name rather than simply
+		   picking up where we left off. */
 		for (;; p++) {
-			if (p == end) {
+			if (p != end) {
+				switch (*p) {
+				case '\"': goto resume_member_name_done;
+				case '\\': goto resume_unescape_member_name;
+				default: break;
+				}
+			}
+			else {
 				if (!eu_parse_append_to_scratch(ep, ep->input,
 								p))
 					goto alloc_error;
 
 				goto pause;
 			}
-
-			if (*p == '\"')
-				break;
 		}
 
+	resume_member_name_done:
 		member_metadata = lookup_member_2(metadata, result,
 						  ep->stack, ep->scratch_size,
 						  ep->input, p, &member_value);
 		eu_parse_reset_scratch(ep);
 		goto looked_up_member;
+
+	resume_unescape_member_name:
+		/* Skip the backslash, and scan forward to find the end of the
+		   member name */
+		do {
+			if (++p == end)
+				goto pause_resume_unescape_member_name;
+		} while (*p != '\"' || quotes_escaped_bounded(p, ep->input));
+
+		if (!eu_parse_reserve_scratch(ep,
+					    ep->scratch_size + (p - ep->input)))
+			goto error_input_set;
+
+		{
+			char *unescaped_end
+				= eu_unescape(ep, p,
+					      ep->stack + ep->scratch_size,
+					      &unescape);
+			if (!unescaped_end)
+				goto error_input_set;
+
+			assert(!unescape);
+			member_metadata = lookup_member(metadata, result,
+						  ep->stack,
+						  unescaped_end, &member_value);
+			eu_parse_reset_scratch(ep);
+		}
+
+		goto looked_up_member;
+
+	pause_resume_unescape_member_name:
+		if (!eu_parse_reserve_scratch(ep,
+					    ep->scratch_size + (p - ep->input)))
+			goto error_input_set;
+
+		{
+			char *unescaped_end
+				= eu_unescape(ep, p,
+					      ep->stack + ep->scratch_size,
+					      &unescape);
+			if (!unescaped_end)
+				goto error_input_set;
+
+			ep->scratch_size = unescaped_end - ep->stack;
+		}
+
+		goto pause;
 
 	default:
 		goto error;

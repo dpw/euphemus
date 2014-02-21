@@ -242,25 +242,20 @@ int eu_parse_reserve_scratch(struct eu_parse *ep, size_t s)
 
 	if (ep->new_stack_bottom != ep->new_stack_top) {
 		/* There is a new stack region */
-		if (s <= ep->new_stack_bottom) {
-			ep->scratch_size = s;
+		if (s <= ep->new_stack_bottom)
 			return 1;
-		}
 
 		/* Can we make space by consolidating the new stack
 		   with the old_stack? */
 		new_stack_size = ep->new_stack_top - ep->new_stack_bottom;
 		if (s <= ep->old_stack_bottom - new_stack_size) {
 			eu_parse_begin_pause(ep);
-			ep->scratch_size = s;
 			return 1;
 		}
 	}
 	else {
-		if (s <= ep->old_stack_bottom) {
-			ep->scratch_size = s;
+		if (s <= ep->old_stack_bottom)
 			return 1;
-		}
 
 		new_stack_size = 0;
 	}
@@ -278,7 +273,6 @@ int eu_parse_reserve_scratch(struct eu_parse *ep, size_t s)
 		return 0;
 
 	memcpy(stack, ep->stack, ep->scratch_size);
-	ep->scratch_size = s;
 
 	memcpy(stack + ep->stack_area_size - old_stack_size,
 	       ep->stack + ep->old_stack_bottom,
@@ -303,8 +297,11 @@ void eu_parse_reset_scratch(struct eu_parse *ep)
 int eu_parse_copy_to_scratch(struct eu_parse *ep, const char *start,
 			     const char *end)
 {
-	if (eu_parse_reserve_scratch(ep, end - start)) {
-		memcpy(ep->stack, start, end - start);
+	size_t len = end - start;
+
+	if (eu_parse_reserve_scratch(ep, len)) {
+		memcpy(ep->stack, start, len);
+		ep->scratch_size = len;
 		return 1;
 	}
 	else {
@@ -315,9 +312,11 @@ int eu_parse_copy_to_scratch(struct eu_parse *ep, const char *start,
 int eu_parse_append_to_scratch(struct eu_parse *ep, const char *start,
 			       const char *end)
 {
-	size_t scratch_size = ep->scratch_size;
-	if (eu_parse_reserve_scratch(ep, scratch_size + (end - start))) {
-		memcpy(ep->stack + scratch_size, start, end - start);
+	size_t len = end - start;
+
+	if (eu_parse_reserve_scratch(ep, ep->scratch_size + len)) {
+		memcpy(ep->stack + ep->scratch_size, start, len);
+		ep->scratch_size += len;
 		return 1;
 	}
 	else {
@@ -328,10 +327,12 @@ int eu_parse_append_to_scratch(struct eu_parse *ep, const char *start,
 int eu_parse_append_to_scratch_with_nul(struct eu_parse *ep, const char *start,
 					const char *end)
 {
-	size_t scratch_size = ep->scratch_size;
-	if (eu_parse_reserve_scratch(ep, scratch_size + (end - start) + 1)) {
-		memcpy(ep->stack + scratch_size, start, end - start);
-		*(ep->stack + scratch_size + (end - start)) = 0;
+	size_t len = end - start;
+
+	if (eu_parse_reserve_scratch(ep, ep->scratch_size + len + 1)) {
+		memcpy(ep->stack + ep->scratch_size, start, len);
+		ep->scratch_size += len;
+		ep->stack[ep->scratch_size++] = 0;
 		return 1;
 	}
 	else {

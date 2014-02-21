@@ -26,7 +26,7 @@ VPATH=$(ROOT)
 PROJECT_CFLAGS=-I$(ROOT)include -D_GNU_SOURCE -Wno-multichar -Wpointer-arith
 
 # The euphemus library source files
-LIB_SRCS=$(foreach S,parse.c path.c struct.c array.c string.c variant.c number.c bool.c null.c,lib/$(S))
+LIB_SRCS=$(foreach S,parse.c path.c struct.c array.c string.c variant.c number.c bool.c null.c unescape.c,lib/$(S))
 
 # Other source files
 SRCS=schemac/schemac.c
@@ -40,6 +40,7 @@ TEST_EXECUTABLES=test/test test/test_codegen
 
 HDROBJS_$(ROOT)include/euphemus.h=$(LIB_SRCS:%.c=%.o)
 HDROBJS_$(ROOT)lib/euphemus_int.h=$(LIB_SRCS:%.c=%.o)
+HDROBJS_$(ROOT)lib/unescape.h=lib/unescape.o
 HDROBJS_/usr/include/json/json.h=-ljson
 HDROBJS_$(ROOT)test_parse.h=
 

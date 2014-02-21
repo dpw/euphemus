@@ -104,7 +104,7 @@ static void check_variant(struct eu_variant *var)
 
 	assert(eu_value_type(var_val) == EU_JSON_OBJECT);
 
-	assert(eu_value_ok(val = eu_value_get_cstr(var_val, "str")));
+	assert(eu_value_ok(val = eu_value_get_cstr(var_val, "str\\\"")));
 	assert(eu_value_type(val) == EU_JSON_STRING);
 	assert(eu_string_ref_equal(eu_value_to_string_ref(val),
 				   eu_cstr("hello, world!")));
@@ -129,7 +129,7 @@ static void check_variant(struct eu_variant *var)
 
 static void test_parse_variant(void)
 {
-	TEST_PARSE("  {  \"str\":  \"hello, world!\","
+	TEST_PARSE("  {  \"str\\\\\\\"\":  \"hello, world!\","
 		   "  \"obj\"  :  {  \"num\"  :  42  },"
 		   "  \"bool\"  :  true  ,"
 		   "  \"null\"  :  null  ,"

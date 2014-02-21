@@ -58,6 +58,7 @@ void *eu_parse_alloc_cont(struct eu_parse *ep, size_t size);
 void *eu_parse_alloc_first_cont(struct eu_parse *ep, size_t size);
 void eu_parse_cont_noop_destroy(struct eu_parse *ep, struct eu_parse_cont *cont);
 
+int eu_parse_reserve_scratch(struct eu_parse *ep, size_t s);
 void eu_parse_reset_scratch(struct eu_parse *ep);
 int eu_parse_copy_to_scratch(struct eu_parse *ep, const char *start,
 			     const char *end);

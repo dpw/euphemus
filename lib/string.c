@@ -1,105 +1,7 @@
-#include <limits.h>
-
 #include <euphemus.h>
+
 #include "euphemus_int.h"
-
-typedef uint16_t eu_unescape_state_t;
-
-static char unescape_table[UCHAR_MAX] CACHE_ALIGN = {
-	['"'] = '\"',
-	['\\'] = '\\',
-	['/'] = '/',
-	['b'] = '\b',
-	['f'] = '\f',
-	['n'] = '\n',
-	['r'] = '\r',
-	['t'] = '\t'
-};
-
-/* Copy characters from ep->input to dest, unescaping any escape sequences
- * encountered.  If the input ends with an incomplete escape sequence,
- * the state information is placed in ues. Returns the end of the
- * output characters, or NULL on error. */
-static char *unescape(struct eu_parse *ep, const char *end, char *dest,
-		      eu_unescape_state_t *ues)
-{
-	const char *p = ep->input;
-
-	while (p != end) {
-		if (*p != '\\') {
-			*dest++ = *p++;
-			continue;
-		}
-
-		if (++p != end) {
-			char unescaped = unescape_table[(unsigned char)*p++];
-			if (unescaped)
-				*dest++ = unescaped;
-			else
-				/* bad escape sequence */
-				return NULL;
-		}
-		else {
-			*ues = 1;
-			return dest;
-		}
-	}
-
-	*ues = 0;
-	return dest;
-}
-
-static eu_bool_t complete_unescape(struct eu_parse *ep,
-				   eu_unescape_state_t *ues, char *out)
-{
-	if (ep->input != ep->input_end) {
-		char unescaped = unescape_table[(unsigned char)*ep->input];
-		if (!unescaped)
-			/* bad escape sequence */
-			return 0;
-
-		*out = unescaped;
-		*ues = 0;
-		ep->input++;
-	}
-	else {
-		*ues = 1;
-	}
-
-	return 1;
-}
-
-/* We've found a double-quotes character.  But was it escaped? Scan
-   backwards counting backslashes to find out.  This function is
-   always entered with a double-quotes character preceding the string
-   in the eu_parse input buffer, so we don't need to check for running
-   off the start of the buffer. */
-static eu_bool_t quotes_escaped(const char *p)
-{
-	size_t backslashes = 0;
-
-	while (*--p == '\\')
-		backslashes++;
-
-	/* The double-quotes is escaped if preceded by an odd number
-	   of backslashes. */
-	return (backslashes & 1);
-}
-
-/* We've found a double-quotes character.  But was it escaped? Scan
-   backwards counting backslashes to find out, stopping at 'start'.
-   'start' should not be inside an esape sequence. */
-static eu_bool_t quotes_escaped_bounded(const char *p, const char *start)
-{
-	size_t backslashes = 0;
-
-	while (p != start && *--p == '\\')
-		backslashes++;
-
-	/* The double-quotes is escaped if preceded by an odd number
-	   of backslashes. */
-	return (backslashes & 1);
-}
+#include "unescape.h"
 
 static eu_bool_t assign_trimming(struct eu_string *result, char *buf,
 				 size_t len, size_t capacity)
@@ -214,7 +116,7 @@ static enum eu_parse_result string_parse_common(struct eu_metadata *metadata,
 
 	{
 		eu_unescape_state_t ues;
-		end = unescape(ep, p, buf, &ues);
+		end = eu_unescape(ep, p, buf, &ues);
 		if (!end || ues)
 			return EU_PARSE_ERROR;
 	}
@@ -233,7 +135,7 @@ static enum eu_parse_result string_parse_common(struct eu_metadata *metadata,
 	if (!cont)
 		goto alloc_error;
 
-	end = unescape(ep, p, cont->buf, &cont->unescape);
+	end = eu_unescape(ep, p, cont->buf, &cont->unescape);
 	if (!end)
 		return EU_PARSE_ERROR;
 
@@ -253,17 +155,17 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 	const char *p, *end;
 	char *buf;
 	size_t len, total_len;
-	eu_bool_t unescaped = 0;
+	eu_bool_t have_unescaped_char = 0;
 	char unescaped_char;
 
 	if (unlikely(cont->unescape)) {
-		if (!complete_unescape(ep, &cont->unescape, &unescaped_char))
+		if (!eu_finish_unescape(ep, &cont->unescape, &unescaped_char))
 			return EU_PARSE_ERROR;
 
 		if (cont->unescape)
 			return EU_PARSE_REINSTATE_PAUSED;
 
-		unescaped = 1;
+		have_unescaped_char = 1;
 	}
 
 	p = ep->input;
@@ -282,7 +184,7 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 
  done:
 	len = p - ep->input;
-	total_len = cont->len + len + unescaped;
+	total_len = cont->len + len + have_unescaped_char;
 
 	buf = cont->buf;
 	if (total_len > cont->capacity) {
@@ -294,7 +196,7 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 		cont->capacity = total_len;
 	}
 
-	if (unlikely(unescaped))
+	if (unlikely(have_unescaped_char))
 		buf[cont->len++] = unescaped_char;
 
 	memcpy(buf + cont->len, ep->input, len);
@@ -308,7 +210,7 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 
  pause:
 	len = p - ep->input;
-	total_len = cont->len + len + unescaped;
+	total_len = cont->len + len + have_unescaped_char;
 
 	buf = cont->buf;
 	if (total_len > cont->capacity) {
@@ -321,7 +223,7 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 		cont->capacity = new_capacity;
 	}
 
-	if (unlikely(unescaped))
+	if (unlikely(have_unescaped_char))
 		buf[cont->len++] = unescaped_char;
 
 	memcpy(buf + cont->len, ep->input, len);
@@ -338,7 +240,7 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 	} while (*p != '\"' || quotes_escaped_bounded(p, ep->input));
 
 	len = p - ep->input;
-	total_len = cont->len + len + unescaped;
+	total_len = cont->len + len + have_unescaped_char;
 
 	buf = cont->buf;
 	if (total_len > cont->capacity) {
@@ -348,12 +250,12 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 			goto alloc_error;
 	}
 
-	if (unlikely(unescaped))
+	if (unlikely(have_unescaped_char))
 		buf[cont->len++] = unescaped_char;
 
 	{
 		eu_unescape_state_t ues;
-		end = unescape(ep, p, buf + cont->len, &ues);
+		end = eu_unescape(ep, p, buf + cont->len, &ues);
 		if (!end || ues)
 			return EU_PARSE_ERROR;
 	}
@@ -367,7 +269,7 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 
  pause_unescape:
 	len = p - ep->input;
-	total_len = cont->len + len + unescaped;
+	total_len = cont->len + len + have_unescaped_char;
 
 	buf = cont->buf;
 	if (total_len > cont->capacity) {
@@ -380,10 +282,10 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 		cont->capacity = new_capacity;
 	}
 
-	if (unlikely(unescaped))
+	if (unlikely(have_unescaped_char))
 		buf[cont->len++] = unescaped_char;
 
-	end = unescape(ep, p, buf + cont->len, &cont->unescape);
+	end = eu_unescape(ep, p, buf + cont->len, &cont->unescape);
 	cont->len = end - buf;
 	ep->input = p;
 	return EU_PARSE_REINSTATE_PAUSED;
