@@ -70,15 +70,30 @@ static eu_bool_t complete_unescape(struct eu_parse *ep,
 }
 
 /* We've found a double-quotes character.  But was it escaped? Scan
-   backwards counting backslashes to find out. This function is always
-   entered with a double-quotes character preceding the string in the
-   eu_parse input buffer, so we don't need to check for running off
-   the start of the buffer. */
+   backwards counting backslashes to find out.  This function is
+   always entered with a double-quotes character preceding the string
+   in the eu_parse input buffer, so we don't need to check for running
+   off the start of the buffer. */
 static eu_bool_t quotes_escaped(const char *p)
 {
 	size_t backslashes = 0;
 
 	while (*--p == '\\')
+		backslashes++;
+
+	/* The double-quotes is escaped if preceded by an odd number
+	   of backslashes. */
+	return (backslashes & 1);
+}
+
+/* We've found a double-quotes character.  But was it escaped? Scan
+   backwards counting backslashes to find out, stopping at 'start'.
+   'start' should not be inside an esape sequence. */
+static eu_bool_t quotes_escaped_bounded(const char *p, const char *start)
+{
+	size_t backslashes = 0;
+
+	while (p != start && *--p == '\\')
 		backslashes++;
 
 	/* The double-quotes is escaped if preceded by an odd number
@@ -188,14 +203,9 @@ static enum eu_parse_result string_parse_common(struct eu_metadata *metadata,
 	/* Skip the backslash, and scan forward to find the end of the
 	   string */
 	do {
-		for (;;) {
-			if (++p == end)
-				goto pause_unescape;
-
-			if (*p == '\"')
-				break;
-		}
-	} while (quotes_escaped(p));
+		if (++p == end)
+			goto pause_unescape;
+	} while (*p != '\"' || quotes_escaped(p));
 
 	len = p - ep->input;
 	buf = malloc(len);
@@ -247,7 +257,6 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 	char unescaped_char;
 
 	if (unlikely(cont->unescape)) {
-		/* Unescaping has outcomes: finish, unfinished, and error */
 		if (!complete_unescape(ep, &cont->unescape, &unescaped_char))
 			return EU_PARSE_ERROR;
 
@@ -324,14 +333,9 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 	/* Skip the backslash, and scan forward to find the end of the
 	   string */
 	do {
-		for (;;) {
-			if (++p == end)
-				goto pause_unescape;
-
-			if (*p == '\"')
-				break;
-		}
-	} while (quotes_escaped(p));
+		if (++p == end)
+			goto pause_unescape;
+	} while (*p != '\"' || quotes_escaped_bounded(p, ep->input));
 
 	len = p - ep->input;
 	total_len = cont->len + len + unescaped;

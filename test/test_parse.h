@@ -5,6 +5,7 @@ do {                                                                  \
 	result_type result;                                           \
 	size_t len = strlen(json);                                    \
 	size_t i;                                                     \
+	char *buf;                                                    \
                                                                       \
 	/* Test parsing in one go */                                  \
 	parse = eu_parse_create(to_value(&result));                   \
@@ -17,8 +18,17 @@ do {                                                                  \
 	/* Test parsing broken at each position within the json */    \
 	for (i = 0; i < len; i++) {                                   \
 		parse = eu_parse_create(to_value(&result));           \
-		assert(eu_parse(parse, json, i));                     \
-		assert(eu_parse(parse, json + i, len - i));           \
+                                                                      \
+		buf = malloc(i);                                      \
+		memcpy(buf, json, i);                                 \
+		assert(eu_parse(parse, buf, i));                      \
+		free(buf);                                            \
+                                                                      \
+		buf = malloc(len - i);                                \
+		memcpy(buf, json + i, len - i);                       \
+		assert(eu_parse(parse, buf, len - i));                \
+		free(buf);                                            \
+                                                                      \
 		assert(eu_parse_finish(parse));                       \
 		eu_parse_destroy(parse);                              \
 		check;                                                \

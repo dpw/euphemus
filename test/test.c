@@ -174,8 +174,12 @@ static void test_parse_deep(void)
 
 	/* parse it in 1-byte chunks */
 	parse = eu_parse_create(eu_variant_value(&var));
-	for (j = 0; j < len; j++)
-		assert(eu_parse(parse, s + j, 1));
+
+	for (j = 0; j < len; j++) {
+		char c = s[j];
+		assert(eu_parse(parse, &c, 1));
+	}
+
 	assert(eu_parse_finish(parse));
 	eu_parse_destroy(parse);
 
