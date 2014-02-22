@@ -155,8 +155,8 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 	const char *p, *end;
 	char *buf;
 	size_t len, total_len;
-	eu_bool_t have_unescaped_char = 0;
-	char unescaped_char;
+	int unescaped_char_len = 0;
+	eu_unicode_char_t unescaped_char;
 
 	if (unlikely(cont->unescape)) {
 		if (!eu_finish_unescape(ep, &cont->unescape, &unescaped_char))
@@ -165,7 +165,7 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 		if (cont->unescape)
 			return EU_PARSE_REINSTATE_PAUSED;
 
-		have_unescaped_char = 1;
+		unescaped_char_len = eu_unicode_utf8_length(unescaped_char);
 	}
 
 	p = ep->input;
@@ -184,7 +184,7 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 
  done:
 	len = p - ep->input;
-	total_len = cont->len + len + have_unescaped_char;
+	total_len = cont->len + len + unescaped_char_len;
 
 	buf = cont->buf;
 	if (total_len > cont->capacity) {
@@ -196,8 +196,10 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 		cont->capacity = total_len;
 	}
 
-	if (unlikely(have_unescaped_char))
-		buf[cont->len++] = unescaped_char;
+	if (unlikely(unescaped_char_len)) {
+		eu_unicode_to_utf8(unescaped_char, buf + cont->len);
+		cont->len += unescaped_char_len;
+	}
 
 	memcpy(buf + cont->len, ep->input, len);
 
@@ -210,7 +212,7 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 
  pause:
 	len = p - ep->input;
-	total_len = cont->len + len + have_unescaped_char;
+	total_len = cont->len + len + unescaped_char_len;
 
 	buf = cont->buf;
 	if (total_len > cont->capacity) {
@@ -223,8 +225,10 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 		cont->capacity = new_capacity;
 	}
 
-	if (unlikely(have_unescaped_char))
-		buf[cont->len++] = unescaped_char;
+	if (unlikely(unescaped_char_len)) {
+		eu_unicode_to_utf8(unescaped_char, buf + cont->len);
+		cont->len += unescaped_char_len;
+	}
 
 	memcpy(buf + cont->len, ep->input, len);
 	cont->len = total_len;
@@ -240,7 +244,7 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 	} while (*p != '\"' || quotes_escaped_bounded(p, ep->input));
 
 	len = p - ep->input;
-	total_len = cont->len + len + have_unescaped_char;
+	total_len = cont->len + len + unescaped_char_len;
 
 	buf = cont->buf;
 	if (total_len > cont->capacity) {
@@ -250,8 +254,10 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 			goto alloc_error;
 	}
 
-	if (unlikely(have_unescaped_char))
-		buf[cont->len++] = unescaped_char;
+	if (unlikely(unescaped_char_len)) {
+		eu_unicode_to_utf8(unescaped_char, buf + cont->len);
+		cont->len += unescaped_char_len;
+	}
 
 	{
 		eu_unescape_state_t ues;
@@ -269,7 +275,7 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 
  pause_unescape:
 	len = p - ep->input;
-	total_len = cont->len + len + have_unescaped_char;
+	total_len = cont->len + len + unescaped_char_len;
 
 	buf = cont->buf;
 	if (total_len > cont->capacity) {
@@ -282,8 +288,10 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 		cont->capacity = new_capacity;
 	}
 
-	if (unlikely(have_unescaped_char))
-		buf[cont->len++] = unescaped_char;
+	if (unlikely(unescaped_char_len)) {
+		eu_unicode_to_utf8(unescaped_char, buf + cont->len);
+		cont->len += unescaped_char_len;
+	}
 
 	end = eu_unescape(ep, p, buf + cont->len, &cont->unescape);
 	cont->len = end - buf;

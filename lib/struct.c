@@ -258,21 +258,24 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 	const char *p, *end;
 
 	if (unlikely(unescape)) {
-		if (!eu_parse_reserve_scratch(ep, ep->scratch_size + 1))
+		eu_unicode_char_t uc;
+
+		if (!eu_parse_reserve_scratch(ep,
+					      ep->scratch_size + UTF8_LONGEST))
 			return EU_PARSE_ERROR;
 
-		if (!eu_finish_unescape(ep, &unescape,
-					&ep->stack[ep->scratch_size]))
+		if (!eu_finish_unescape(ep, &unescape, &uc))
 			return EU_PARSE_ERROR;
 
 		if (unescape)
 			/* We can't simply return
 			   EU_PARSE_REINSTATE_PAUSED here because
-			   reserve_sratch may have fiddled with the
+			   reserve_scratch may have fiddled with the
 			   stack. */
 			goto pause_input_set;
 
-		ep->scratch_size++;
+		ep->scratch_size = eu_unicode_to_utf8(uc,
+				     ep->stack + ep->scratch_size) - ep->stack;
 	}
 
 	p = ep->input;

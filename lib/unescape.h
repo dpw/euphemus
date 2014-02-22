@@ -1,11 +1,18 @@
 #ifndef EUPHEMUS_UNESCAPE_H
 #define EUPHEMUS_UNESCAPE_H
 
+typedef unsigned int eu_unicode_char_t;
 typedef uint16_t eu_unescape_state_t;
+
+/* Take the longest UTF8 sequence to be 4 bytes, as revised by RFC3629 */
+#define UTF8_LONGEST 4
+
 char *eu_unescape(struct eu_parse *ep, const char *end, char *dest,
 		  eu_unescape_state_t *ues);
 int eu_finish_unescape(struct eu_parse *ep, eu_unescape_state_t *ues,
-		       char *out);
+		       eu_unicode_char_t *out);
+char *eu_unicode_to_utf8(eu_unicode_char_t uc, char *dest);
+int eu_unicode_utf8_length(eu_unicode_char_t uc);
 
 /* Determine whether a double-quotes character was it escaped, by
    scanning backwards counting backslashes.  This function should be

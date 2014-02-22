@@ -33,11 +33,11 @@ static void test_parse_string(void)
 		   assert(eu_string_ref_equal(eu_string_to_ref(&result),
 					      eu_cstr("hello, world!"))),
 		   eu_string_fini(&result));
-	TEST_PARSE("  \"\\\" \\/ \\b \\f \\n \\r \\t \\\\\"  ",
+	TEST_PARSE("  \"\\\" \\/ \\b \\f \\n \\r \\t \\u0041 \\u03Bb \\u2f08 \\\\\"  ",
 		   struct eu_string,
 		   eu_string_value,
 		   assert(eu_string_ref_equal(eu_string_to_ref(&result),
-					    eu_cstr("\" / \b \f \n \r \t \\"))),
+		    eu_cstr("\" / \b \f \n \r \t A \316\273 \342\274\210 \\"))),
 		   eu_string_fini(&result));
 }
 
