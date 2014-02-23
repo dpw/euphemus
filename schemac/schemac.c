@@ -791,8 +791,10 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 	fprintf(codegen->c_out,
 		"void %.*s_destroy(struct %.*s *p)\n"
 		"{\n"
-		"\t%.*s_fini(p);\n"
-		"\tfree(p);\n"
+		"\tif (p) {\n"
+		"\t\t%.*s_fini(p);\n"
+		"\t\tfree(p);\n"
+		"\t}\n"
 		"}\n\n",
 		(int)sti->struct_name.len, sti->struct_name.chars,
 		(int)sti->struct_name.len, sti->struct_name.chars,

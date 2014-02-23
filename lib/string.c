@@ -118,13 +118,11 @@ static enum eu_parse_result string_parse_common(struct eu_metadata *metadata,
 		eu_unescape_state_t ues;
 		end = eu_unescape(ep, p, buf, &ues);
 		if (!end || ues)
-			return EU_PARSE_ERROR;
+			goto error;
 	}
 
-	if (unlikely(!assign_trimming(result, buf, end - buf, len))) {
-		free(buf);
-		return EU_PARSE_ERROR;
-	}
+	if (unlikely(!assign_trimming(result, buf, end - buf, len)))
+		goto error;
 
 	/* skip the final '"' */
 	ep->input = p + 1;
@@ -137,14 +135,17 @@ static enum eu_parse_result string_parse_common(struct eu_metadata *metadata,
 
 	end = eu_unescape(ep, p, cont->buf, &cont->unescape);
 	if (!end)
-		return EU_PARSE_ERROR;
+		goto error;
 
 	cont->len = end - cont->buf;
 	ep->input = p;
 	return EU_PARSE_PAUSED;
 
  alloc_error:
-	ep->input = p;
+	return EU_PARSE_ERROR;
+
+ error:
+	free(buf);
 	return EU_PARSE_ERROR;
 }
 
@@ -160,7 +161,7 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 
 	if (unlikely(cont->unescape)) {
 		if (!eu_finish_unescape(ep, &cont->unescape, &unescaped_char))
-			return EU_PARSE_ERROR;
+			goto error;
 
 		if (cont->unescape)
 			return EU_PARSE_REINSTATE_PAUSED;
@@ -252,6 +253,8 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 		buf = realloc(buf, total_len);
 		if (!buf)
 			goto alloc_error;
+
+		cont->buf = buf;
 	}
 
 	if (unlikely(unescaped_char_len)) {
@@ -263,7 +266,7 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 		eu_unescape_state_t ues;
 		end = eu_unescape(ep, p, buf + cont->len, &ues);
 		if (!end || ues)
-			return EU_PARSE_ERROR;
+			goto error;
 	}
 
 	if (unlikely(!assign_trimming(cont->result, buf, end - buf,
@@ -299,6 +302,7 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 	return EU_PARSE_REINSTATE_PAUSED;
 
  alloc_error:
+ error:
 	free(cont->buf);
 	return EU_PARSE_ERROR;
 }

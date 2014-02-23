@@ -169,7 +169,9 @@ pause_unescape_member_name:
  error:
 	ep->input = p;
  error_input_set:
-	if (result_ptr)
+	if (result_ptr) {
+		free(result);
 		*result_ptr = NULL;
+	}
 
 	return EU_PARSE_ERROR;

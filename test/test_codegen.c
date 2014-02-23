@@ -25,6 +25,33 @@ static void test_struct_ptr(void)
 		   test_schema_destroy(result));
 }
 
+static void test_bad_struct_ptr(void)
+{
+	struct test_schema *result;
+	struct eu_parse *parse
+		= eu_parse_create(test_schema_ptr_to_eu_value(&result));
+	char *json = "{\"str\":\"\\wrong\"}";
+	size_t len = strlen(json);
+	size_t i;
+
+	assert(!eu_parse(parse, json, len));
+	eu_parse_destroy(parse);
+	test_schema_destroy(result);
+
+	parse = eu_parse_create(test_schema_ptr_to_eu_value(&result));
+	for (i = 0;; i++) {
+		char c;
+
+		assert(i < len);
+		c = json[i];
+		if (!eu_parse(parse, &c, 1))
+			break;
+	}
+
+	eu_parse_destroy(parse);
+	test_schema_destroy(result);
+}
+
 static void test_inline_struct(void)
 {
 	TEST_PARSE("{\"str\":\"x\",\"any\":null,\"bar\":{},\"num\":42,\"bool\":true}",
@@ -130,6 +157,7 @@ static void test_size(void)
 int main(void)
 {
 	test_struct_ptr();
+	test_bad_struct_ptr();
 	test_inline_struct();
 	test_nested();
 	test_extras();
