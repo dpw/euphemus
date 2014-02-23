@@ -140,10 +140,9 @@ RESUME_ONLY(case STRUCT_PARSE_COMMA:)
 
 	{
 		char *unescaped_end = eu_unescape(ep, p, ep->stack, &unescape);
-		if (!unescaped_end)
+		if (!unescaped_end || unescape)
 			goto error_input_set;
 
-		assert(!unescape);
 		member_metadata = lookup_member(metadata, result, ep->stack,
 						unescaped_end, &member_value);
 		eu_parse_reset_scratch(ep);

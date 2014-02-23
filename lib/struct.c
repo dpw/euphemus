@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <euphemus.h>
 #include "euphemus_int.h"
 #include "unescape.h"
@@ -330,10 +329,9 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 				= eu_unescape(ep, p,
 					      ep->stack + ep->scratch_size,
 					      &unescape);
-			if (!unescaped_end)
+			if (!unescaped_end || unescape)
 				goto error_input_set;
 
-			assert(!unescape);
 			member_metadata = lookup_member(metadata, result,
 						  ep->stack,
 						  unescaped_end, &member_value);
