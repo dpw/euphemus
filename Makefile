@@ -44,7 +44,7 @@ HDROBJS_$(ROOT)lib/unescape.h=lib/unescape.o
 HDROBJS_/usr/include/json/json.h=-ljson
 HDROBJS_$(ROOT)test_parse.h=
 
-test/test_codegen.o: test/test_schema.h
+test/test_codegen.o test/test_codegen.c.dep: test/test_schema.h
 
 # Even with .DELETE_ON_ERROR, make will only delete one of the
 # targets, hence the 'rm' here.
