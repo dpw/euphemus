@@ -175,7 +175,7 @@ struct expect {
 static __inline__ enum eu_parse_result eu_parse_expect(struct eu_parse *ep,
 						       struct expect e)
 {
-	if (ep->input_end - ep->input >= e.len) {
+	if ((size_t)(ep->input_end - ep->input) >= e.len) {
 		if (likely(!memcmp(ep->input, e.str, e.len))) {
 			ep->input += e.len;
 			return EU_PARSE_OK;
