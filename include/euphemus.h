@@ -6,6 +6,7 @@
 #include <string.h>
 
 enum eu_json_type {
+	EU_JSON_INVALID,
 	EU_JSON_VARIANT,
 	EU_JSON_STRING,
 	EU_JSON_OBJECT,
@@ -53,6 +54,32 @@ static __inline__ int eu_string_ref_equal(struct eu_string_ref a,
 {
 	return a.len == b.len && !memcmp(a.chars, b.chars, a.len);
 }
+
+/* An eu_metadata is an opaque runtime representation of a type. These
+   get generated from eu_type_descriptor structures which are the
+   build-time representation.  This separation is intended to
+   facilitate binary compatibility while retaining flexibility in the
+   representations used. */
+struct eu_metadata;
+
+struct eu_type_descriptor {
+	struct eu_metadata **metadata;
+	enum {
+		EU_TDESC_DIRECT,
+		EU_TDESC_STRUCT_PTR,
+		EU_TDESC_STRUCT,
+	} kind;
+};
+
+/* eu_introduce gets or builds the eu_metadata instance for an
+   eu_type_descriptor. */
+struct eu_metadata *eu_introduce(const struct eu_type_descriptor *d);
+
+extern const struct eu_type_descriptor eu_string_descriptor;
+extern const struct eu_type_descriptor eu_number_descriptor;
+extern const struct eu_type_descriptor eu_bool_descriptor;
+extern const struct eu_type_descriptor eu_null_descriptor;
+extern const struct eu_type_descriptor eu_variant_descriptor;
 
 /* An eu_value pairs a pointer to some data representing a parsed JSON
    value with the metafata pointer allowing acces to it. */
@@ -315,6 +342,27 @@ struct eu_variant_member {
 };
 
 /* Structs */
+
+struct eu_struct_member_descriptor {
+	unsigned int offset;
+	unsigned short name_len;
+	signed char presence_offset;
+	unsigned char presence_bit;
+	const char *name;
+	const struct eu_type_descriptor *descriptor;
+};
+
+struct eu_struct_descriptor {
+	struct eu_type_descriptor struct_base;
+	struct eu_type_descriptor struct_ptr_base;
+	unsigned int struct_size;
+	unsigned int extras_offset;
+	unsigned int extra_member_size;
+	unsigned int extra_member_value_offset;
+	size_t n_members;
+	const struct eu_struct_member_descriptor *members;
+	const struct eu_type_descriptor *extra_value_descriptor;
+};
 
 struct eu_struct_member {
 	unsigned int offset;

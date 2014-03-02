@@ -2,6 +2,102 @@
 #include "euphemus_int.h"
 #include "unescape.h"
 
+static int introduce_struct(struct eu_struct_descriptor *d,
+			    struct eu_introduce_chain *chain)
+{
+	struct eu_introduce_chain struct_chain;
+	struct eu_introduce_chain struct_ptr_chain;
+
+	struct eu_struct_metadata *md = malloc(sizeof *md);
+	struct eu_struct_metadata *pmd = malloc(sizeof *md);
+	struct eu_struct_member *members
+		= malloc(d->n_members * sizeof *members);
+	size_t i;
+
+	if (unlikely(md == NULL || pmd == NULL || members == NULL))
+		goto error;
+
+	struct_chain.descriptor = &d->struct_base;
+	struct_chain.metadata = &md->base;
+	struct_chain.next = &struct_ptr_chain;
+
+	struct_ptr_chain.descriptor = &d->struct_ptr_base;
+	struct_ptr_chain.metadata = &pmd->base;
+	struct_ptr_chain.next = chain;
+
+	chain = &struct_chain;
+
+	md->base.json_type = pmd->base.json_type = EU_JSON_OBJECT;
+
+	md->base.size = d->struct_size;
+	md->base.parse = eu_struct_parse;
+	md->base.fini = eu_struct_fini;
+	md->base.get = eu_struct_get;
+	md->base.object_iter_init = eu_struct_iter_init;
+
+	pmd->base.size = sizeof(void *);
+	pmd->base.parse = eu_struct_ptr_parse;
+	pmd->base.fini = eu_struct_ptr_fini;
+	pmd->base.get = eu_struct_ptr_get;
+	pmd->base.object_iter_init = eu_struct_ptr_iter_init;
+
+	md->struct_size = pmd->struct_size = d->struct_size;
+	md->extras_offset = pmd->extras_offset = d->extras_offset;
+	md->extra_member_size = pmd->extra_member_size = d->extra_member_size;
+	md->extra_member_value_offset = pmd->extra_member_value_offset
+		= d->extra_member_value_offset;
+	md->n_members = pmd->n_members = d->n_members;
+	md->members = pmd->members = members;
+	md->extra_value_metadata = pmd->extra_value_metadata
+		= eu_introduce_aux(d->extra_value_descriptor, chain);
+	if (!md->extra_value_metadata)
+		goto error;
+
+	for (i = 0; i < d->n_members; i++) {
+		members[i].offset = d->members[i].offset;
+		members[i].name_len = d->members[i].name_len;
+		members[i].presence_offset = d->members[i].presence_offset;
+		members[i].presence_bit = d->members[i].presence_bit;
+		members[i].name = d->members[i].name;
+		members[i].metadata = eu_introduce_aux(d->members[i].descriptor,
+						       chain);
+		if (!members[i].metadata)
+			goto error;
+	}
+
+	*d->struct_base.metadata = &md->base;
+	*d->struct_ptr_base.metadata = &pmd->base;
+	return 1;
+
+ error:
+	free(md);
+	free(pmd);
+	free(members);
+	return 0;
+}
+
+struct eu_metadata *eu_introduce_struct(const struct eu_type_descriptor *d,
+					struct eu_introduce_chain *c)
+{
+	struct eu_struct_descriptor *sd
+		= container_of(d, struct eu_struct_descriptor, struct_base);
+	if (introduce_struct(sd, c))
+		return *d->metadata;
+	else
+		return NULL;
+}
+
+struct eu_metadata *eu_introduce_struct_ptr(const struct eu_type_descriptor *d,
+					    struct eu_introduce_chain *c)
+{
+	struct eu_struct_descriptor *sd
+		= container_of(d, struct eu_struct_descriptor, struct_ptr_base);
+	if (introduce_struct(sd, c))
+		return *d->metadata;
+	else
+		return NULL;
+}
+
 struct eu_generic_members {
 	void *members;
 	size_t len;
@@ -484,13 +580,6 @@ void eu_struct_ptr_iter_init(struct eu_value val, struct eu_object_iter *iter)
 {
 	val.value = *(void **)val.value;
 	eu_struct_iter_init(val, iter);
-}
-
-void eu_object_iter_init_fail(struct eu_value val, struct eu_object_iter *iter)
-{
-	(void)val;
-	(void)iter;
-	abort();
 }
 
 size_t eu_object_size(struct eu_value val)

@@ -1,6 +1,7 @@
 #ifndef EUPHEMUS_EUPHEMUS_INT_H
 #define EUPHEMUS_EUPHEMUS_INT_H
 
+#include <stddef.h>
 #include <string.h>
 #include <stdint.h>
 
@@ -20,6 +21,23 @@
 #define PASTE_AUX(a,b) a##b
 
 #define STATIC_ASSERT(e) typedef char PASTE(_static_assert_,__LINE__)[1-2*!(e)] UNUSED
+
+#define container_of(ptr, type, member) \
+        ({ const __typeof__(((type *)0)->member ) *__mptr = (ptr); \
+           ((type *)((char *)__mptr - offsetof(type,member))); })
+
+struct eu_introduce_chain {
+	const struct eu_type_descriptor *descriptor;
+	struct eu_metadata *metadata;
+	struct eu_introduce_chain *next;
+};
+
+struct eu_metadata *eu_introduce_aux(const struct eu_type_descriptor *d,
+				     struct eu_introduce_chain *chain_next);
+struct eu_metadata *eu_introduce_struct(const struct eu_type_descriptor *d,
+					struct eu_introduce_chain *c);
+struct eu_metadata *eu_introduce_struct_ptr(const struct eu_type_descriptor *d,
+					    struct eu_introduce_chain *c);
 
 enum eu_parse_result {
 	EU_PARSE_OK,
