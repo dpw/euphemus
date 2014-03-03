@@ -5,26 +5,6 @@
 
 #include "test_parse.h"
 
-struct eu_array_metadata eu_string_array_metadata
-	= EU_ARRAY_METADATA_INITIALIZER(&eu_string_metadata);
-
-struct eu_string_array {
-	struct eu_string *a;
-	size_t len;
-};
-
-struct eu_value eu_string_array_value(struct eu_string_array *a)
-{
-	return eu_value(a, &eu_string_array_metadata.base);
-}
-
-void eu_string_array_fini(struct eu_string_array *a)
-{
-	eu_array_fini(&eu_string_array_metadata.base, a);
-}
-
-
-
 static void test_parse_string(void)
 {
 	TEST_PARSE("  \"hello, world!\"  ",
@@ -75,25 +55,6 @@ static void test_parse_bool(void)
 		   assert(result),);
 	TEST_PARSE("  false  ", eu_bool_t, eu_bool_value,
 		   assert(!result),);
-}
-
-
-static void check_array(struct eu_string_array *a)
-{
-	assert(a->len == 2);
-	assert(eu_string_ref_equal(eu_string_to_ref(&a->a[0]),
-				   eu_cstr("foo")));
-	assert(eu_string_ref_equal(eu_string_to_ref(&a->a[1]),
-				   eu_cstr("bar")));
-}
-
-static void test_parse_array(void)
-{
-	TEST_PARSE("  [  \"foo\"  ,  \"bar\"  ]  ",
-		   struct eu_string_array,
-		   eu_string_array_value,
-		   check_array(&result),
-		   eu_string_array_fini(&result));
 }
 
 
@@ -253,7 +214,6 @@ int main(void)
 	test_parse_string();
 	test_parse_number();
 	test_parse_bool();
-	test_parse_array();
 	test_parse_variant();
 	test_parse_deep();
 
