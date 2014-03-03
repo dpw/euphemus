@@ -101,6 +101,12 @@ static enum eu_parse_result whitespace(void *variant_metadata,
 		return res;
 }
 
+void eu_variant_fini(struct eu_variant *variant)
+{
+	if (variant->metadata)
+		variant->metadata->fini(variant->metadata, &variant->u);
+}
+
 static void variant_fini(struct eu_metadata *metadata, void *value)
 {
 	struct eu_variant *var = value;

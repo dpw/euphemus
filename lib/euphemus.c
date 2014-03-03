@@ -86,3 +86,33 @@ DEFINE_DIRECT_DESCRIPTOR(number)
 DEFINE_DIRECT_DESCRIPTOR(bool)
 DEFINE_DIRECT_DESCRIPTOR(null)
 DEFINE_DIRECT_DESCRIPTOR(variant)
+
+struct eu_value eu_value_get(struct eu_value val, struct eu_string_ref name)
+{
+	return val.metadata->get(val, name);
+}
+
+enum eu_json_type eu_value_type(struct eu_value val)
+{
+	enum eu_json_type t = val.metadata->json_type;
+	if (t != EU_JSON_VARIANT)
+		return t;
+	else
+		return ((struct eu_variant *)val.value)->metadata->json_type;
+}
+
+void *eu_value_extract(struct eu_value val, enum eu_json_type type)
+{
+	enum eu_json_type t = val.metadata->json_type;
+
+	if (t == type)
+		return val.value;
+
+	if (t == EU_JSON_VARIANT) {
+		struct eu_variant *var = val.value;
+		if (var->metadata->json_type == type)
+			return &var->u;
+	}
+
+	abort();
+}

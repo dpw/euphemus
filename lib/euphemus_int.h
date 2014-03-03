@@ -26,6 +26,116 @@
         ({ const __typeof__(((type *)0)->member ) *__mptr = (ptr); \
            ((type *)((char *)__mptr - offsetof(type,member))); })
 
+/* A description of a type of data (including things like how to
+   allocate, release etc.) */
+struct eu_metadata {
+	/* The EU_JSON_ value for this type. */
+	unsigned char json_type;
+
+	/* Size in bytes occupied by values of this type */
+	unsigned int size;
+
+	/* A parse function expects that there is at least one
+	   character available in ep->input.  But it might be
+	   whitespace.
+
+	   The memory range allocated to the value is cleared before
+	   this is called. */
+	enum eu_parse_result (*parse)(struct eu_metadata *metadata,
+				      struct eu_parse *ep,
+				      void *result);
+
+	/* Release any resources associated with the value.*/
+	void (*fini)(struct eu_metadata *metadata, void *value);
+
+	/* Get a member of an object or array. */
+	struct eu_value (*get)(struct eu_value val, struct eu_string_ref name);
+
+	void (*object_iter_init)(struct eu_value val,
+				 struct eu_object_iter *iter);
+};
+
+
+struct eu_struct_member {
+	unsigned int offset;
+	unsigned short name_len;
+	signed char presence_offset;
+	unsigned char presence_bit;
+	const char *name;
+	struct eu_metadata *metadata;
+};
+
+struct eu_struct_metadata {
+	struct eu_metadata base;
+	unsigned int struct_size;
+	unsigned int extras_offset;
+	unsigned int extra_member_size;
+	unsigned int extra_member_value_offset;
+	size_t n_members;
+	struct eu_struct_member *members;
+	struct eu_metadata *extra_value_metadata;
+};
+
+#define EU_STRUCT_METADATA_INITIALIZER(struct_name, struct_members, extra_member_struct, extra_member_metadata) \
+	{                                                             \
+		{                                                     \
+			EU_JSON_OBJECT,                               \
+			sizeof(struct_name),                          \
+			eu_struct_parse,                              \
+			eu_struct_fini,                               \
+			eu_struct_get,                                \
+			eu_struct_iter_init                           \
+		},                                                    \
+		-1,                                                   \
+		offsetof(struct_name, extras),                        \
+		sizeof(extra_member_struct),                          \
+		offsetof(extra_member_struct, value),                 \
+		sizeof(struct_members) / sizeof(struct eu_struct_member), \
+		struct_members,                                       \
+		extra_member_metadata                                 \
+	}
+
+#define EU_STRUCT_PTR_METADATA_INITIALIZER(struct_name, struct_members, extra_member_struct, extra_member_metadata) \
+	{                                                             \
+		{                                                     \
+			EU_JSON_OBJECT,                               \
+			sizeof(struct_name *),                        \
+			eu_struct_ptr_parse,                          \
+			eu_struct_ptr_fini,                           \
+			eu_struct_ptr_get,                            \
+			eu_struct_ptr_iter_init                       \
+		},                                                    \
+		sizeof(struct_name),                                  \
+		offsetof(struct_name, extras),                        \
+		sizeof(extra_member_struct),                          \
+		offsetof(extra_member_struct, value),                 \
+		sizeof(struct_members) / sizeof(struct eu_struct_member), \
+		struct_members,                                       \
+		extra_member_metadata                                 \
+	}
+
+
+struct eu_array_metadata {
+	struct eu_metadata base;
+	struct eu_metadata *element_metadata;
+};
+
+#define EU_ARRAY_METADATA_INITIALIZER(el_metadata)                    \
+	{                                                             \
+		{                                                     \
+			EU_JSON_ARRAY,                                \
+			sizeof(struct eu_array),                      \
+			eu_array_parse,                               \
+			eu_array_fini,                                \
+			eu_array_get,                                 \
+			eu_object_iter_init_fail                      \
+                                                                      \
+		},                                                    \
+		el_metadata                                           \
+	}
+
+
+
 struct eu_introduce_chain {
 	const struct eu_type_descriptor *descriptor;
 	struct eu_metadata *metadata;

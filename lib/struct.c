@@ -518,6 +518,15 @@ struct eu_struct_metadata eu_object_metadata = {
 	&eu_variant_metadata
 };
 
+static __inline__ int struct_member_present(struct eu_struct_member *m,
+					    unsigned char *p)
+{
+	if (m->presence_offset >= 0)
+		return !!(p[m->presence_offset] & m->presence_bit);
+	else
+		return !!*(void **)(p + m->offset);
+}
+
 struct eu_value eu_struct_get(struct eu_value val, struct eu_string_ref name)
 {
 	struct eu_struct_metadata *md
@@ -531,7 +540,7 @@ struct eu_value eu_struct_get(struct eu_value val, struct eu_string_ref name)
 		struct eu_struct_member *m = &md->members[i];
 		if (m->name_len == name.len
 		    && !memcmp(m->name, name.chars, name.len)) {
-			if (eu_struct_member_present(m, s))
+			if (struct_member_present(m, s))
 				return eu_value(s + m->offset, m->metadata);
 			else
 				return eu_value_none;
@@ -580,6 +589,39 @@ void eu_struct_ptr_iter_init(struct eu_value val, struct eu_object_iter *iter)
 {
 	val.value = *(void **)val.value;
 	eu_struct_iter_init(val, iter);
+}
+
+void eu_object_iter_init(struct eu_object_iter *iter, struct eu_value val)
+{
+	val.metadata->object_iter_init(val, iter);
+}
+
+int eu_object_iter_next(struct eu_object_iter *iter)
+{
+	while (iter->priv.struct_i) {
+		struct eu_struct_member *m = iter->priv.m++;
+		iter->priv.struct_i--;
+
+		if (struct_member_present(m, iter->priv.struct_p)) {
+			iter->name = eu_string_ref(m->name, m->name_len);
+			iter->value = eu_value(iter->priv.struct_p + m->offset,
+					       m->metadata);
+			return 1;
+		}
+	}
+
+	if (iter->priv.extras_i) {
+		iter->name = *(struct eu_string_ref *)iter->priv.extras_p;
+		iter->value = eu_value(iter->priv.extras_p
+				       + iter->priv.extra_value_offset,
+				       iter->priv.extra_value_metadata);
+		iter->priv.extras_i--;
+		iter->priv.extras_p += iter->priv.extra_size;
+		return 1;
+	}
+	else {
+		return 0;
+	}
 }
 
 size_t eu_object_size(struct eu_value val)
