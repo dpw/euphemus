@@ -86,7 +86,7 @@ struct definition {
 		DEF_ERROR
 	} state;
 	union {
-		struct eu_value schema;
+		struct schema *schema;
 		struct definition *ref;
 		struct type_info *type;
 	} u;
@@ -136,7 +136,7 @@ struct type_info {
 
 struct type_info_ops {
 	void (*fill)(struct type_info *ti, struct codegen *codegen,
-		     struct eu_value schema);
+		     struct schema *schema);
 	void (*declare)(struct type_info *ti, FILE *out, const char *name);
 	void (*define)(struct type_info *ti, struct codegen *codegen);
 	void (*call_fini)(struct type_info *ti, FILE *out,
@@ -146,7 +146,7 @@ struct type_info_ops {
 
 /* Fill in sub-schema information. */
 static void fill_type(struct type_info *ti, struct codegen *codegen,
-		      struct eu_value schema)
+		      struct schema *schema)
 {
 	ti->ops->fill(ti, codegen, schema);
 }
@@ -217,7 +217,7 @@ static void define_members_struct(struct type_info *ti, struct codegen *codegen)
 }
 
 static struct type_info *resolve_type(struct codegen *codegen,
-				      struct eu_value schema,
+				      struct schema *schema,
 				      struct eu_string_ref name_hint);
 
 static void type_info_init(struct type_info *ti,
@@ -262,7 +262,7 @@ static void simple_type_declare(struct type_info *ti, FILE *out,
 }
 
 static void noop_fill(struct type_info *ti, struct codegen *codegen,
-		      struct eu_value schema)
+		      struct schema *schema)
 {
 	(void)ti;
 	(void)codegen;
@@ -476,16 +476,14 @@ struct struct_type_info {
 
 static struct type_info_ops struct_type_info_ops;
 
-static struct type_info *alloc_struct(struct eu_value schema,
+static struct type_info *alloc_struct(struct schema *schema,
 				      struct codegen *codegen,
 				      struct eu_string_ref name)
 {
 	struct struct_type_info *sti = xalloc(sizeof *sti);
-	struct eu_value esn = eu_value_get_cstr(schema, "euphemusStructName");
 
-	if (eu_value_ok(esn)) {
-		assert(eu_value_type(esn) == EU_JSON_STRING);
-		sti->struct_name = eu_value_to_string_ref(esn);
+	if (schema->euphemusStructName.chars) {
+		sti->struct_name = eu_string_to_ref(&schema->euphemusStructName);
 	}
 	else {
 		if (!eu_string_ref_ok(name)) {
@@ -540,42 +538,34 @@ static char *sanitize_name(struct eu_string_ref name)
 }
 
 static void struct_fill(struct type_info *ti, struct codegen *codegen,
-			struct eu_value schema)
+			struct schema *schema)
 {
 	struct struct_type_info *sti = (void *)ti;
-	struct eu_value props, additional_props;
 
-	props = eu_value_get_cstr(schema, "properties");
-	if (eu_value_ok(props)) {
-		struct eu_object_iter pi;
+	if (schema->properties) {
+		struct struct_schema_members *props
+			= &schema->properties->extras;
 		size_t i;
 
-		assert(eu_value_type(props) == EU_JSON_OBJECT);
-
 		assert(!sti->members);
-		sti->members_len = eu_object_size(props);
-		sti->members
-			= xalloc(sti->members_len * sizeof *sti->members);
+		sti->members_len = props->len;
+		sti->members = xalloc(sti->members_len * sizeof *sti->members);
 
-		for (eu_object_iter_init(&pi, props), i = 0;
-		     eu_object_iter_next(&pi);
-		     i++) {
+		for (i = 0; i < props->len; i++) {
 			struct member_info *mi = &sti->members[i];
+			struct struct_schema_member *p = &props->members[i];
 
-			mi->json_name = pi.name;
+			mi->json_name = p->name;
 			mi->c_name = sanitize_name(mi->json_name);
-			mi->type = resolve_type(codegen, pi.value,
+			mi->type = resolve_type(codegen, p->value,
 						eu_string_ref_null);
 		}
 	}
 
-	additional_props
-		= eu_value_get_cstr(schema, "additionalProperties");
-	if (eu_value_ok(additional_props)) {
-		assert(eu_value_type(additional_props) == EU_JSON_OBJECT);
-		sti->extras_type = resolve_type(codegen, additional_props,
+	if (schema->additionalProperties)
+		sti->extras_type = resolve_type(codegen,
+						schema->additionalProperties,
 						eu_string_ref_null);
-	}
 }
 
 
@@ -906,39 +896,34 @@ static struct type_info_ops struct_type_info_ops = {
 #define REF_PREFIX_LEN 14
 
 static struct definition *find_def(struct codegen *codegen,
-				   struct eu_value ref)
+				   struct eu_string_ref ref)
 {
 	size_t i;
-	struct eu_string_ref name;
 
-	assert(eu_value_type(ref) == EU_JSON_STRING);
-
-	name = eu_value_to_string_ref(ref);
-	if (name.len < REF_PREFIX_LEN
-	    || memcmp(name.chars, REF_PREFIX, REF_PREFIX_LEN)) {
+	if (ref.len < REF_PREFIX_LEN
+	    || memcmp(ref.chars, REF_PREFIX, REF_PREFIX_LEN)) {
 		codegen_error(codegen,
 		    "only refs beginning with '" REF_PREFIX "' are supported");
 		return NULL;
 	}
 
-	name.chars += REF_PREFIX_LEN;
-	name.len -= REF_PREFIX_LEN;
+	ref.chars += REF_PREFIX_LEN;
+	ref.len -= REF_PREFIX_LEN;
 
 	for (i = 0; i < codegen->n_defs; i++) {
 		struct definition *def = &codegen->defs[i];
 
-		if (def->name.len == name.len
-		    && !memcmp(def->name.chars, name.chars, name.len))
+		if (eu_string_ref_equal(def->name, ref))
 			return def;
 	}
 
 	codegen_error(codegen, "unknown definition \"%.*s\"",
-		      (int)name.len, name.chars);
+		      (int)ref.len, ref.chars);
 	return NULL;
 }
 
 static struct type_info *resolve_ref(struct codegen *codegen,
-				     struct eu_value ref)
+				     struct eu_string_ref ref)
 {
 	struct definition *def = find_def(codegen, ref);
 	if (def)
@@ -948,29 +933,23 @@ static struct type_info *resolve_ref(struct codegen *codegen,
 
 }
 
-static int is_empty_schema(struct eu_value schema)
+static int is_empty_schema(struct schema *schema)
 {
-	struct eu_object_iter i;
-
-	for (eu_object_iter_init(&i, schema); eu_object_iter_next(&i);) {
-		if (!eu_string_ref_equal(i.name, eu_cstr("definitions"))
-		    && !eu_string_ref_equal(i.name, eu_cstr("title")))
-			return 0;
-	}
-
-	return 1;
+	return !schema->ref.chars
+		&& !schema->type.chars
+		&& !schema->additionalProperties
+		&& !schema->euphemusStructName.chars
+		&& !schema->extras.len;
 }
 
 static struct type_info *alloc_type(struct codegen *codegen,
-				    struct eu_value schema,
+				    struct schema *schema,
 				    struct eu_string_ref name)
 {
-	struct eu_value type;
-	struct eu_string_ref type_str;
+	struct eu_string_ref type;
 	struct type_info *res;
 
-	type = eu_value_get_cstr(schema, "type");
-	if (!eu_value_ok(type)) {
+	if (!schema->type.chars) {
 		if (is_empty_schema(schema))
 			return codegen->variant_type;
 
@@ -979,28 +958,27 @@ static struct type_info *alloc_type(struct codegen *codegen,
 		return NULL;
 	}
 
-	assert(eu_value_type(type) == EU_JSON_STRING);
-	type_str = eu_value_to_string_ref(type);
+	type = eu_string_to_ref(&schema->type);
 
-	if (eu_string_ref_equal(type_str, eu_cstr("object")))
+	if (eu_string_ref_equal(type, eu_cstr("object")))
 		return alloc_struct(schema, codegen, name);
 
-	if (eu_string_ref_equal(type_str, eu_cstr("string")))
+	if (eu_string_ref_equal(type, eu_cstr("string")))
 		res = codegen->string_type;
-	else if (eu_string_ref_equal(type_str, eu_cstr("number")))
+	else if (eu_string_ref_equal(type, eu_cstr("number")))
 		res = codegen->number_type;
-	else if (eu_string_ref_equal(type_str, eu_cstr("boolean")))
+	else if (eu_string_ref_equal(type, eu_cstr("boolean")))
 		res = codegen->bool_type;
 	else {
 		codegen_error(codegen, "unknown type \"%.*s\"",
-			      (int)type_str.len, type_str.chars);
+			      (int)type.len, type.chars);
 		return NULL;
 	}
 
-	if (eu_object_size(schema) != 1) {
+	if (eu_object_size(schema_to_eu_value(schema)) != 1) {
 		codegen_error(codegen,
 			      "unexpected members in schema of type \"%.*s\"",
-			      (int)type_str.len, type_str.chars);
+			      (int)type.len, type.chars);
 		return NULL;
 	}
 
@@ -1008,18 +986,15 @@ static struct type_info *alloc_type(struct codegen *codegen,
 }
 
 static struct type_info *resolve_type(struct codegen *codegen,
-				      struct eu_value schema,
+				      struct schema *schema,
 				      struct eu_string_ref name_hint)
 {
-	struct eu_value ref;
 	struct type_info *ti;
 
-	assert(eu_value_type(schema) == EU_JSON_OBJECT);
-
-	ref = eu_value_get_cstr(schema, "$ref");
-	if (eu_value_ok(ref)) {
-		if (eu_object_size(schema) == 1)
-			return resolve_ref(codegen, ref);
+	if (schema->ref.chars) {
+		if (eu_object_size(schema_to_eu_value(schema)) == 1)
+			return resolve_ref(codegen,
+					   eu_string_to_ref(&schema->ref));
 
 		codegen_error(codegen,
 			      "\"$ref\" object contains other members");
@@ -1074,45 +1049,32 @@ static struct type_info *alloc_definition(struct codegen *codegen,
 }
 
 static void codegen_process_definitions(struct codegen *codegen,
-					struct eu_value definitions)
+					struct named_schemas *definitions)
 {
-	struct eu_object_iter di;
 	size_t i;
+	size_t n = definitions->extras.len;
 
-	if (!eu_value_ok(definitions))
-		return;
-
-	assert(eu_value_type(definitions) == EU_JSON_OBJECT);
-
-	codegen->n_defs = eu_object_size(definitions);
-	codegen->defs = xalloc(codegen->n_defs * sizeof *codegen->defs);
+	codegen->n_defs = n;
+	codegen->defs = xalloc(n * sizeof *codegen->defs);
 
 	/* Fill in name field of definitions so that find_def works. */
-	for (eu_object_iter_init(&di, definitions), i = 0;
-	     eu_object_iter_next(&di);
-	     i++) {
-		struct definition *cdef = &codegen->defs[i];
-		cdef->name = di.name;
-	}
+	for (i = 0; i < n; i++)
+		codegen->defs[i].name = definitions->extras.members[i].name;
 
 	/* Identify definitions which directly contain a reference,
 	   and the target definitions in such cases. */
-	for (eu_object_iter_init(&di, definitions), i = 0;
-	     eu_object_iter_next(&di);
-	     i++) {
+	for (i = 0; i < n; i++) {
 		struct definition *def = &codegen->defs[i];
-		struct eu_value ref;
+		struct schema *schema = definitions->extras.members[i].value;
 
-		assert(eu_value_type(di.value) == EU_JSON_OBJECT);
-
-		ref = eu_value_get_cstr(di.value, "$ref");
-		if (!eu_value_ok(ref)) {
+		if (!schema->ref.chars) {
 			def->state = DEF_SCHEMA;
-			def->u.schema = di.value;
+			def->u.schema = schema;
 		}
-		else if (eu_object_size(di.value) == 1) {
+		else if (eu_object_size(schema_to_eu_value(schema)) == 1) {
 			def->state = DEF_REF;
-			if (!(def->u.ref = find_def(codegen, ref)))
+			if (!(def->u.ref = find_def(codegen,
+					      eu_string_to_ref(&schema->ref))))
 				definition_set_error(def);
 		}
 		else {
@@ -1124,17 +1086,16 @@ static void codegen_process_definitions(struct codegen *codegen,
 
 	/* Allocate all definition schemas and resolve definitions
 	   which directly contain a reference. */
-	for (i = 0; i < codegen->n_defs; i++)
+	for (i = 0; i < n; i++)
 		alloc_definition(codegen, &codegen->defs[i]);
 
 	/* Fill any non-ref definition schemas */
-	for (eu_object_iter_init(&di, definitions), i = 0;
-	     eu_object_iter_next(&di);
-	     i++) {
+	for (i = 0; i < n; i++) {
 		struct definition *def = &codegen->defs[i];
 
 		if (def->state == DEF_SCHEMA_TYPE)
-			fill_type(def->u.type, codegen, di.value);
+			fill_type(def->u.type, codegen,
+				  definitions->extras.members[i].value);
 	}
 }
 
@@ -1169,7 +1130,7 @@ static void codegen_prolog(struct codegen *codegen)
 	free(hp);
 }
 
-static void do_codegen(struct codegen *codegen, struct eu_value schema)
+static void do_codegen(struct codegen *codegen, struct schema *schema)
 {
 	struct type_info *main_type;
 	char *tmp, *schema_name;
@@ -1179,9 +1140,7 @@ static void do_codegen(struct codegen *codegen, struct eu_value schema)
 	free(tmp);
 
 	/* Process type definitions */
-	assert(eu_value_type(schema) == EU_JSON_OBJECT);
-	codegen_process_definitions(codegen,
-				    eu_value_get_cstr(schema, "definitions"));
+	codegen_process_definitions(codegen, schema->definitions);
 	main_type = resolve_type(codegen, schema, eu_cstr(schema_name));
 	if (codegen->error_count)
 		return;
@@ -1243,13 +1202,12 @@ int main(int argc, char **argv)
 
 	for (i = 1; i < argc; i++) {
 		struct schema schema;
-		struct eu_value schema_val = schema_to_eu_value(&schema);
 
 		codegen_init(&codegen, argv[i]);
 
-		parse_schema_file(&codegen, schema_val);
+		parse_schema_file(&codegen, schema_to_eu_value(&schema));
 		if (!codegen.error_count) {
-			do_codegen(&codegen, schema_val);
+			do_codegen(&codegen, &schema);
 			schema_fini(&schema);
 		}
 
