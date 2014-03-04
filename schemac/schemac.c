@@ -707,7 +707,7 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 
 	/* Member metadata */
 	fprintf(codegen->c_out,
-		"static const struct eu_struct_member_descriptor %.*s_members[%d] = {\n",
+		"static const struct eu_struct_member_descriptor_v1 %.*s_members[%d] = {\n",
 		(int)sti->struct_name.len, sti->struct_name.chars,
 		(int)sti->members_len);
 
@@ -753,7 +753,7 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 	fprintf(codegen->h_out,
 		"extern struct eu_metadata *%s;\n"
 		"extern struct eu_metadata *%s;\n"
-		"extern const struct eu_struct_descriptor %s;\n\n",
+		"extern const struct eu_struct_descriptor_v1 %s;\n\n",
 		metadata_ptr_name,
 		ptr_metadata_ptr_name,
 		sti->descriptor_name);
@@ -765,14 +765,14 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 		ptr_metadata_ptr_name);
 
 	fprintf(codegen->c_out,
-		"const struct eu_struct_descriptor %s = {\n"
-		"\t{ &%s, EU_TDESC_STRUCT },\n"
-		"\t{ &%s, EU_TDESC_STRUCT_PTR },\n"
+		"const struct eu_struct_descriptor_v1 %s = {\n"
+		"\t{ &%s, EU_TDESC_STRUCT_V1 },\n"
+		"\t{ &%s, EU_TDESC_STRUCT_PTR_V1 },\n"
 		"\tsizeof(struct %.*s),\n"
 		"\toffsetof(struct %.*s, extras),\n"
 		"\tsizeof(struct %s),\n"
 		"\toffsetof(struct %s, value),\n"
-		"\tsizeof(%.*s_members) / sizeof(struct eu_struct_member_descriptor),\n"
+		"\tsizeof(%.*s_members) / sizeof(struct eu_struct_member_descriptor_v1),\n"
 		"\t%.*s_members,\n"
 		"\t%s\n"
 		"};\n\n",

@@ -66,9 +66,9 @@ struct eu_struct_metadata;
 struct eu_type_descriptor {
 	struct eu_metadata **metadata;
 	enum {
-		EU_TDESC_DIRECT,
-		EU_TDESC_STRUCT_PTR,
-		EU_TDESC_STRUCT,
+		EU_TDESC_SHIM,
+		EU_TDESC_STRUCT_PTR_V1,
+		EU_TDESC_STRUCT_V1,
 	} kind;
 };
 
@@ -256,7 +256,7 @@ struct eu_variant_member {
 
 /* Structs */
 
-struct eu_struct_member_descriptor {
+struct eu_struct_member_descriptor_v1 {
 	unsigned int offset;
 	unsigned short name_len;
 	signed char presence_offset;
@@ -265,7 +265,7 @@ struct eu_struct_member_descriptor {
 	const struct eu_type_descriptor *descriptor;
 };
 
-struct eu_struct_descriptor {
+struct eu_struct_descriptor_v1 {
 	struct eu_type_descriptor struct_base;
 	struct eu_type_descriptor struct_ptr_base;
 	unsigned int struct_size;
@@ -273,7 +273,7 @@ struct eu_struct_descriptor {
 	unsigned int extra_member_size;
 	unsigned int extra_member_value_offset;
 	size_t n_members;
-	const struct eu_struct_member_descriptor *members;
+	const struct eu_struct_member_descriptor_v1 *members;
 	const struct eu_type_descriptor *extra_value_descriptor;
 };
 

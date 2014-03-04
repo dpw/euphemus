@@ -62,10 +62,10 @@ struct eu_metadata *eu_introduce_aux(const struct eu_type_descriptor *d,
 			return c->metadata;
 
 	switch (d->kind) {
-	case EU_TDESC_STRUCT:
+	case EU_TDESC_STRUCT_V1:
 		return eu_introduce_struct(d, chain);
 
-	case EU_TDESC_STRUCT_PTR:
+	case EU_TDESC_STRUCT_PTR_V1:
 		return eu_introduce_struct_ptr(d, chain);
 
 	default:
@@ -73,19 +73,19 @@ struct eu_metadata *eu_introduce_aux(const struct eu_type_descriptor *d,
 	}
 }
 
-#define DEFINE_DIRECT_DESCRIPTOR(name)                                \
+#define DEFINE_SHIM_DESCRIPTOR(name)                                  \
 static struct eu_metadata *name##_metadata_ptr                        \
 	= &eu_##name##_metadata;                                      \
 const struct eu_type_descriptor eu_##name##_descriptor = {            \
 	&name##_metadata_ptr,                                         \
-	EU_TDESC_DIRECT                                               \
+	EU_TDESC_SHIM                                                 \
 };
 
-DEFINE_DIRECT_DESCRIPTOR(string)
-DEFINE_DIRECT_DESCRIPTOR(number)
-DEFINE_DIRECT_DESCRIPTOR(bool)
-DEFINE_DIRECT_DESCRIPTOR(null)
-DEFINE_DIRECT_DESCRIPTOR(variant)
+DEFINE_SHIM_DESCRIPTOR(string)
+DEFINE_SHIM_DESCRIPTOR(number)
+DEFINE_SHIM_DESCRIPTOR(bool)
+DEFINE_SHIM_DESCRIPTOR(null)
+DEFINE_SHIM_DESCRIPTOR(variant)
 
 struct eu_value eu_value_get(struct eu_value val, struct eu_string_ref name)
 {

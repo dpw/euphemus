@@ -2,7 +2,7 @@
 #include "euphemus_int.h"
 #include "unescape.h"
 
-static int introduce_struct(struct eu_struct_descriptor *d,
+static int introduce_struct(struct eu_struct_descriptor_v1 *d,
 			    struct eu_introduce_chain *chain)
 {
 	struct eu_introduce_chain struct_chain;
@@ -79,8 +79,8 @@ static int introduce_struct(struct eu_struct_descriptor *d,
 struct eu_metadata *eu_introduce_struct(const struct eu_type_descriptor *d,
 					struct eu_introduce_chain *c)
 {
-	struct eu_struct_descriptor *sd
-		= container_of(d, struct eu_struct_descriptor, struct_base);
+	struct eu_struct_descriptor_v1 *sd
+		= container_of(d, struct eu_struct_descriptor_v1, struct_base);
 	if (introduce_struct(sd, c))
 		return *d->metadata;
 	else
@@ -90,8 +90,8 @@ struct eu_metadata *eu_introduce_struct(const struct eu_type_descriptor *d,
 struct eu_metadata *eu_introduce_struct_ptr(const struct eu_type_descriptor *d,
 					    struct eu_introduce_chain *c)
 {
-	struct eu_struct_descriptor *sd
-		= container_of(d, struct eu_struct_descriptor, struct_ptr_base);
+	struct eu_struct_descriptor_v1 *sd
+	      = container_of(d, struct eu_struct_descriptor_v1, struct_ptr_base);
 	if (introduce_struct(sd, c))
 		return *d->metadata;
 	else
