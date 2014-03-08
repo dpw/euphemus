@@ -118,11 +118,11 @@ static enum eu_parse_result string_parse_common(struct eu_metadata *metadata,
 		eu_unescape_state_t ues;
 		end = eu_unescape(ep, p, buf, &ues);
 		if (!end || ues)
-			goto error;
+			goto error_free_buf;
 	}
 
 	if (unlikely(!assign_trimming(result, buf, end - buf, len)))
-		goto error;
+		goto error_free_buf;
 
 	/* skip the final '"' */
 	ep->input = p + 1;
@@ -144,8 +144,9 @@ static enum eu_parse_result string_parse_common(struct eu_metadata *metadata,
  alloc_error:
 	return EU_PARSE_ERROR;
 
- error:
+ error_free_buf:
 	free(buf);
+ error:
 	return EU_PARSE_ERROR;
 }
 
