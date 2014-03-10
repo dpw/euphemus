@@ -30,10 +30,17 @@ LIB_SRCS=$(foreach S,euphemus.c parse.c path.c struct.c array.c string.c variant
 
 # Other source files
 SRCS=schemac/schemac.c schemac/schema_schema.c
-SRCS+=$(foreach S,test.c test_codegen.c parse_perf.c test_schema.c,test/$(S))
+SRCS+=$(addprefix test/,test.c test_codegen.c test_schema.c)
 
 # Main exectuables that get built
-EXECUTABLES=schemac/schemac test/parse_perf
+EXECUTABLES=schemac/schemac
+
+# parse_perf requires json-c to
+ifneq "$(wildcard /usr/local/include/json/json.h)" ""
+SRCS+=test/parse_perf.c
+EXECUTABLES+=test/parse_perf
+HDROBJS_/usr/include/json/json.h=-ljson
+endif
 
 # Test executables that get built
 TEST_EXECUTABLES=test/test test/test_codegen
@@ -41,7 +48,6 @@ TEST_EXECUTABLES=test/test test/test_codegen
 HDROBJS_$(ROOT)include/euphemus.h=$(LIB_SRCS:%.c=%.o)
 HDROBJS_$(ROOT)lib/euphemus_int.h=$(LIB_SRCS:%.c=%.o)
 HDROBJS_$(ROOT)lib/unescape.h=lib/unescape.o
-HDROBJS_/usr/include/json/json.h=-ljson
 HDROBJS_$(ROOT)test_parse.h=
 HDROBJS_$(ROOT)schemac/schema_schema.h=schemac/schema_schema.o
 
@@ -120,9 +126,17 @@ endef
 $(foreach E,$(EXECUTABLES),$(eval $(call build_executable,$(E),)))
 $(foreach E,$(TEST_EXECUTABLES),$(eval $(call build_executable,$(E),)))
 
+# This trivial variable can be called to produce a recipe line in
+# contexts where that would otherwise be difficult, e.g. in a foreach
+# function.
+define recipe_line
+$(1)
+
+endef
+
 .PHONY: run_tests
 run_tests: $(TEST_EXECUTABLES)
-	$(foreach T,$(TEST_EXECUTABLES),./$(T) &&) :
+	$(foreach T,$(TEST_EXECUTABLES),$(call recipe_line,./$(T)))
 
 .PHONY: coverage
 coverage:
