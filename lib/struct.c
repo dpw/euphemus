@@ -2,101 +2,25 @@
 #include "euphemus_int.h"
 #include "unescape.h"
 
-static int introduce_struct(struct eu_struct_descriptor_v1 *d,
-			    struct eu_introduce_chain *chain)
-{
-	struct eu_introduce_chain struct_chain;
-	struct eu_introduce_chain struct_ptr_chain;
+struct eu_struct_member {
+	unsigned int offset;
+	unsigned short name_len;
+	signed char presence_offset;
+	unsigned char presence_bit;
+	const char *name;
+	struct eu_metadata *metadata;
+};
 
-	struct eu_struct_metadata *md = malloc(sizeof *md);
-	struct eu_struct_metadata *pmd = malloc(sizeof *md);
-	struct eu_struct_member *members
-		= malloc(d->n_members * sizeof *members);
-	size_t i;
-
-	if (unlikely(md == NULL || pmd == NULL || members == NULL))
-		goto error;
-
-	struct_chain.descriptor = &d->struct_base;
-	struct_chain.metadata = &md->base;
-	struct_chain.next = &struct_ptr_chain;
-
-	struct_ptr_chain.descriptor = &d->struct_ptr_base;
-	struct_ptr_chain.metadata = &pmd->base;
-	struct_ptr_chain.next = chain;
-
-	chain = &struct_chain;
-
-	md->base.json_type = pmd->base.json_type = EU_JSON_OBJECT;
-
-	md->base.size = d->struct_size;
-	md->base.parse = eu_struct_parse;
-	md->base.fini = eu_struct_fini;
-	md->base.get = eu_struct_get;
-	md->base.object_iter_init = eu_struct_iter_init;
-
-	pmd->base.size = sizeof(void *);
-	pmd->base.parse = eu_struct_ptr_parse;
-	pmd->base.fini = eu_struct_ptr_fini;
-	pmd->base.get = eu_struct_ptr_get;
-	pmd->base.object_iter_init = eu_struct_ptr_iter_init;
-
-	md->struct_size = pmd->struct_size = d->struct_size;
-	md->extras_offset = pmd->extras_offset = d->extras_offset;
-	md->extra_member_size = pmd->extra_member_size = d->extra_member_size;
-	md->extra_member_value_offset = pmd->extra_member_value_offset
-		= d->extra_member_value_offset;
-	md->n_members = pmd->n_members = d->n_members;
-	md->members = pmd->members = members;
-	md->extra_value_metadata = pmd->extra_value_metadata
-		= eu_introduce_aux(d->extra_value_descriptor, chain);
-	if (!md->extra_value_metadata)
-		goto error;
-
-	for (i = 0; i < d->n_members; i++) {
-		members[i].offset = d->members[i].offset;
-		members[i].name_len = d->members[i].name_len;
-		members[i].presence_offset = d->members[i].presence_offset;
-		members[i].presence_bit = d->members[i].presence_bit;
-		members[i].name = d->members[i].name;
-		members[i].metadata = eu_introduce_aux(d->members[i].descriptor,
-						       chain);
-		if (!members[i].metadata)
-			goto error;
-	}
-
-	*d->struct_base.metadata = &md->base;
-	*d->struct_ptr_base.metadata = &pmd->base;
-	return 1;
-
- error:
-	free(md);
-	free(pmd);
-	free(members);
-	return 0;
-}
-
-struct eu_metadata *eu_introduce_struct(const struct eu_type_descriptor *d,
-					struct eu_introduce_chain *c)
-{
-	struct eu_struct_descriptor_v1 *sd
-		= container_of(d, struct eu_struct_descriptor_v1, struct_base);
-	if (introduce_struct(sd, c))
-		return *d->metadata;
-	else
-		return NULL;
-}
-
-struct eu_metadata *eu_introduce_struct_ptr(const struct eu_type_descriptor *d,
-					    struct eu_introduce_chain *c)
-{
-	struct eu_struct_descriptor_v1 *sd
-	      = container_of(d, struct eu_struct_descriptor_v1, struct_ptr_base);
-	if (introduce_struct(sd, c))
-		return *d->metadata;
-	else
-		return NULL;
-}
+struct eu_struct_metadata {
+	struct eu_metadata base;
+	unsigned int struct_size;
+	unsigned int extras_offset;
+	unsigned int extra_member_size;
+	unsigned int extra_member_value_offset;
+	size_t n_members;
+	struct eu_struct_member *members;
+	struct eu_metadata *extra_value_metadata;
+};
 
 struct eu_generic_members {
 	void *members;
@@ -276,16 +200,8 @@ static enum eu_parse_result struct_parse(struct eu_metadata *gmetadata,
 					 struct eu_parse *ep, void *result,
 					 void **result_ptr);
 
-enum eu_parse_result eu_variant_object(void *object_metadata,
-				       struct eu_parse *ep,
-				       struct eu_variant *result)
-{
-	result->metadata = object_metadata;
-	return struct_parse(object_metadata, ep, &result->u.object, NULL);
-}
-
-enum eu_parse_result eu_struct_ptr_parse(struct eu_metadata *gmetadata,
-					 struct eu_parse *ep, void *result)
+static enum eu_parse_result struct_ptr_parse(struct eu_metadata *gmetadata,
+					     struct eu_parse *ep, void *result)
 {
 	struct eu_struct_metadata *metadata
 		= (struct eu_struct_metadata *)gmetadata;
@@ -308,8 +224,8 @@ enum eu_parse_result eu_struct_ptr_parse(struct eu_metadata *gmetadata,
 	}
 }
 
-enum eu_parse_result eu_struct_parse(struct eu_metadata *gmetadata,
-				     struct eu_parse *ep, void *result)
+static enum eu_parse_result inline_struct_parse(struct eu_metadata *gmetadata,
+					      struct eu_parse *ep, void *result)
 {
 	enum eu_parse_result res
 		= eu_consume_whitespace_until(gmetadata, ep, result, '{');
@@ -460,7 +376,7 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 #undef RESUME_ONLY
 }
 
-void eu_struct_fini(struct eu_metadata *gmetadata, void *s)
+static void inline_struct_fini(struct eu_metadata *gmetadata, void *s)
 {
 	struct eu_struct_metadata *metadata
 		= (struct eu_struct_metadata *)gmetadata;
@@ -475,12 +391,12 @@ void eu_struct_fini(struct eu_metadata *gmetadata, void *s)
 	eu_struct_extras_fini(metadata, (char *)s + metadata->extras_offset);
 }
 
-void eu_struct_ptr_fini(struct eu_metadata *gmetadata, void *value)
+static void struct_ptr_fini(struct eu_metadata *gmetadata, void *value)
 {
 	void *s = *(void **)value;
 
 	if (s) {
-		eu_struct_fini(gmetadata, s);
+		inline_struct_fini(gmetadata, s);
 		free(s);
 		*(void **)value = NULL;
 	}
@@ -493,30 +409,12 @@ static void struct_parse_cont_destroy(struct eu_parse *ep,
 
 	(void)ep;
 
-	eu_struct_fini(&cont->metadata->base, cont->result);
+	inline_struct_fini(&cont->metadata->base, cont->result);
 	if (cont->result_ptr) {
 		free(cont->result);
 		*cont->result_ptr = NULL;
 	}
 }
-
-struct eu_struct_metadata eu_object_metadata = {
-	{
-		EU_JSON_OBJECT,
-		sizeof(struct eu_object),
-		eu_struct_parse,
-		eu_struct_fini,
-		eu_struct_get,
-		eu_struct_iter_init
-	},
-	-1,
-	0,
-	sizeof(struct eu_variant_member),
-	offsetof(struct eu_variant_member, value),
-	0,
-	NULL,
-	&eu_variant_metadata
-};
 
 static __inline__ int struct_member_present(struct eu_struct_member *m,
 					    unsigned char *p)
@@ -527,7 +425,8 @@ static __inline__ int struct_member_present(struct eu_struct_member *m,
 		return !!*(void **)(p + m->offset);
 }
 
-struct eu_value eu_struct_get(struct eu_value val, struct eu_string_ref name)
+static struct eu_value inline_struct_get(struct eu_value val,
+					 struct eu_string_ref name)
 {
 	struct eu_struct_metadata *md
 		= (struct eu_struct_metadata *)val.metadata;
@@ -560,14 +459,15 @@ struct eu_value eu_struct_get(struct eu_value val, struct eu_string_ref name)
 	return eu_value_none;
 }
 
-struct eu_value eu_struct_ptr_get(struct eu_value val,
-				  struct eu_string_ref name)
+static struct eu_value struct_ptr_get(struct eu_value val,
+				      struct eu_string_ref name)
 {
 	val.value = *(void **)val.value;
-	return eu_struct_get(val, name);
+	return inline_struct_get(val, name);
 }
 
-void eu_struct_iter_init(struct eu_value val, struct eu_object_iter *iter)
+static void inline_struct_iter_init(struct eu_value val,
+				    struct eu_object_iter *iter)
 {
 	struct eu_struct_metadata *md
 		= (struct eu_struct_metadata *)val.metadata;
@@ -585,10 +485,11 @@ void eu_struct_iter_init(struct eu_value val, struct eu_object_iter *iter)
 	iter->priv.extra_value_metadata = md->extra_value_metadata;
 }
 
-void eu_struct_ptr_iter_init(struct eu_value val, struct eu_object_iter *iter)
+static void struct_ptr_iter_init(struct eu_value val,
+				 struct eu_object_iter *iter)
 {
 	val.value = *(void **)val.value;
-	eu_struct_iter_init(val, iter);
+	inline_struct_iter_init(val, iter);
 }
 
 void eu_object_iter_init(struct eu_object_iter *iter, struct eu_value val)
@@ -633,4 +534,128 @@ size_t eu_object_size(struct eu_value val)
 		n++;
 
 	return n;
+}
+
+struct eu_struct_metadata eu_object_metadata = {
+	{
+		EU_JSON_OBJECT,
+		sizeof(struct eu_object),
+		inline_struct_parse,
+		inline_struct_fini,
+		inline_struct_get,
+		inline_struct_iter_init
+	},
+	-1,
+	0,
+	sizeof(struct eu_variant_member),
+	offsetof(struct eu_variant_member, value),
+	0,
+	NULL,
+	&eu_variant_metadata
+};
+
+enum eu_parse_result eu_variant_object(void *unused_metadata,
+				       struct eu_parse *ep,
+				       struct eu_variant *result)
+{
+	(void)unused_metadata;
+	result->metadata = &eu_object_metadata.base;
+	return struct_parse(&eu_object_metadata.base, ep, &result->u.object,
+			    NULL);
+}
+
+static int introduce_struct(struct eu_struct_descriptor_v1 *d,
+			    struct eu_introduce_chain *chain)
+{
+	struct eu_introduce_chain struct_chain;
+	struct eu_introduce_chain struct_ptr_chain;
+
+	struct eu_struct_metadata *md = malloc(sizeof *md);
+	struct eu_struct_metadata *pmd = malloc(sizeof *md);
+	struct eu_struct_member *members
+		= malloc(d->n_members * sizeof *members);
+	size_t i;
+
+	if (unlikely(md == NULL || pmd == NULL || members == NULL))
+		goto error;
+
+	struct_chain.descriptor = &d->struct_base;
+	struct_chain.metadata = &md->base;
+	struct_chain.next = &struct_ptr_chain;
+
+	struct_ptr_chain.descriptor = &d->struct_ptr_base;
+	struct_ptr_chain.metadata = &pmd->base;
+	struct_ptr_chain.next = chain;
+
+	chain = &struct_chain;
+
+	md->base.json_type = pmd->base.json_type = EU_JSON_OBJECT;
+
+	md->base.size = d->struct_size;
+	md->base.parse = inline_struct_parse;
+	md->base.fini = inline_struct_fini;
+	md->base.get = inline_struct_get;
+	md->base.object_iter_init = inline_struct_iter_init;
+
+	pmd->base.size = sizeof(void *);
+	pmd->base.parse = struct_ptr_parse;
+	pmd->base.fini = struct_ptr_fini;
+	pmd->base.get = struct_ptr_get;
+	pmd->base.object_iter_init = struct_ptr_iter_init;
+
+	md->struct_size = pmd->struct_size = d->struct_size;
+	md->extras_offset = pmd->extras_offset = d->extras_offset;
+	md->extra_member_size = pmd->extra_member_size = d->extra_member_size;
+	md->extra_member_value_offset = pmd->extra_member_value_offset
+		= d->extra_member_value_offset;
+	md->n_members = pmd->n_members = d->n_members;
+	md->members = pmd->members = members;
+	md->extra_value_metadata = pmd->extra_value_metadata
+		= eu_introduce_aux(d->extra_value_descriptor, chain);
+	if (!md->extra_value_metadata)
+		goto error;
+
+	for (i = 0; i < d->n_members; i++) {
+		members[i].offset = d->members[i].offset;
+		members[i].name_len = d->members[i].name_len;
+		members[i].presence_offset = d->members[i].presence_offset;
+		members[i].presence_bit = d->members[i].presence_bit;
+		members[i].name = d->members[i].name;
+		members[i].metadata = eu_introduce_aux(d->members[i].descriptor,
+						       chain);
+		if (!members[i].metadata)
+			goto error;
+	}
+
+	*d->struct_base.metadata = &md->base;
+	*d->struct_ptr_base.metadata = &pmd->base;
+	return 1;
+
+ error:
+	free(md);
+	free(pmd);
+	free(members);
+	return 0;
+}
+
+struct eu_metadata *eu_introduce_struct(const struct eu_type_descriptor *d,
+					struct eu_introduce_chain *c)
+{
+	struct eu_struct_descriptor_v1 *sd
+		= container_of(d, struct eu_struct_descriptor_v1, struct_base);
+	if (introduce_struct(sd, c))
+		return *d->metadata;
+	else
+		return NULL;
+}
+
+struct eu_metadata *eu_introduce_struct_ptr(const struct eu_type_descriptor *d,
+					    struct eu_introduce_chain *c)
+{
+	struct eu_struct_descriptor_v1 *sd
+	      = container_of(d, struct eu_struct_descriptor_v1, struct_ptr_base);
+	if (introduce_struct(sd, c))
+		return *d->metadata;
+	else
+		return NULL;
 }

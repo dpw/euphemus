@@ -277,21 +277,6 @@ struct eu_struct_descriptor_v1 {
 	const struct eu_type_descriptor *extra_value_descriptor;
 };
 
-enum eu_parse_result eu_struct_parse(struct eu_metadata *gmetadata,
-				     struct eu_parse *ep,
-				     void *result);
-void eu_struct_fini(struct eu_metadata *gmetadata, void *value);
-struct eu_value eu_struct_get(struct eu_value val, struct eu_string_ref name);
-void eu_struct_iter_init(struct eu_value val, struct eu_object_iter *iter);
-
-enum eu_parse_result eu_struct_ptr_parse(struct eu_metadata *gmetadata,
-					 struct eu_parse *ep,
-					 void *result);
-void eu_struct_ptr_fini(struct eu_metadata *gmetadata, void *value);
-struct eu_value eu_struct_ptr_get(struct eu_value val,
-				  struct eu_string_ref name);
-void eu_struct_ptr_iter_init(struct eu_value val, struct eu_object_iter *iter);
-
 void eu_struct_extras_fini(struct eu_struct_metadata *md, void *v_extras);
 size_t eu_object_size(struct eu_value val);
 

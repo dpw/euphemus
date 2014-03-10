@@ -56,65 +56,6 @@ struct eu_metadata {
 };
 
 
-struct eu_struct_member {
-	unsigned int offset;
-	unsigned short name_len;
-	signed char presence_offset;
-	unsigned char presence_bit;
-	const char *name;
-	struct eu_metadata *metadata;
-};
-
-struct eu_struct_metadata {
-	struct eu_metadata base;
-	unsigned int struct_size;
-	unsigned int extras_offset;
-	unsigned int extra_member_size;
-	unsigned int extra_member_value_offset;
-	size_t n_members;
-	struct eu_struct_member *members;
-	struct eu_metadata *extra_value_metadata;
-};
-
-#define EU_STRUCT_METADATA_INITIALIZER(struct_name, struct_members, extra_member_struct, extra_member_metadata) \
-	{                                                             \
-		{                                                     \
-			EU_JSON_OBJECT,                               \
-			sizeof(struct_name),                          \
-			eu_struct_parse,                              \
-			eu_struct_fini,                               \
-			eu_struct_get,                                \
-			eu_struct_iter_init                           \
-		},                                                    \
-		-1,                                                   \
-		offsetof(struct_name, extras),                        \
-		sizeof(extra_member_struct),                          \
-		offsetof(extra_member_struct, value),                 \
-		sizeof(struct_members) / sizeof(struct eu_struct_member), \
-		struct_members,                                       \
-		extra_member_metadata                                 \
-	}
-
-#define EU_STRUCT_PTR_METADATA_INITIALIZER(struct_name, struct_members, extra_member_struct, extra_member_metadata) \
-	{                                                             \
-		{                                                     \
-			EU_JSON_OBJECT,                               \
-			sizeof(struct_name *),                        \
-			eu_struct_ptr_parse,                          \
-			eu_struct_ptr_fini,                           \
-			eu_struct_ptr_get,                            \
-			eu_struct_ptr_iter_init                       \
-		},                                                    \
-		sizeof(struct_name),                                  \
-		offsetof(struct_name, extras),                        \
-		sizeof(extra_member_struct),                          \
-		offsetof(extra_member_struct, value),                 \
-		sizeof(struct_members) / sizeof(struct eu_struct_member), \
-		struct_members,                                       \
-		extra_member_metadata                                 \
-	}
-
-
 struct eu_array_metadata {
 	struct eu_metadata base;
 	struct eu_metadata *element_metadata;
@@ -198,7 +139,6 @@ int eu_parse_append_to_scratch_with_nul(struct eu_parse *ep, const char *start,
 void eu_noop_fini(struct eu_metadata *metadata, void *value);
 struct eu_value eu_get_fail(struct eu_value val, struct eu_string_ref name);
 
-extern struct eu_struct_metadata eu_object_metadata;
 extern struct eu_array_metadata eu_variant_array_metadata;
 extern struct eu_metadata eu_null_metadata;
 extern struct eu_bool_misc eu_bool_true;
