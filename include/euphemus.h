@@ -64,7 +64,7 @@ struct eu_metadata;
 struct eu_struct_metadata;
 
 struct eu_type_descriptor {
-	struct eu_metadata **metadata;
+	const struct eu_metadata **metadata;
 	enum {
 		EU_TDESC_SHIM,
 		EU_TDESC_STRUCT_PTR_V1,
@@ -74,7 +74,7 @@ struct eu_type_descriptor {
 
 /* eu_introduce gets or builds the eu_metadata instance for an
    eu_type_descriptor. */
-struct eu_metadata *eu_introduce(const struct eu_type_descriptor *d);
+const struct eu_metadata *eu_introduce(const struct eu_type_descriptor *d);
 
 extern const struct eu_type_descriptor eu_string_descriptor;
 extern const struct eu_type_descriptor eu_number_descriptor;
@@ -86,13 +86,13 @@ extern const struct eu_type_descriptor eu_variant_descriptor;
    value with the metafata pointer allowing acces to it. */
 struct eu_value {
 	void *value;
-	struct eu_metadata *metadata;
+	const struct eu_metadata *metadata;
 };
 
 struct eu_object_iter;
 
 static __inline__ struct eu_value eu_value(void *value,
-					   struct eu_metadata *metadata)
+					   const struct eu_metadata *metadata)
 {
 	struct eu_value v = { value, metadata };
 	return v;
@@ -161,7 +161,7 @@ static __inline__ void eu_string_fini(struct eu_string *string)
 	string->chars = NULL;
 }
 
-extern struct eu_metadata eu_string_metadata;
+extern const struct eu_metadata eu_string_metadata;
 
 static __inline__ struct eu_value eu_string_value(struct eu_string *string)
 {
@@ -175,15 +175,15 @@ struct eu_array {
 	size_t len;
 };
 
-enum eu_parse_result eu_array_parse(struct eu_metadata *gmetadata,
+enum eu_parse_result eu_array_parse(const struct eu_metadata *gmetadata,
 				    struct eu_parse *ep, void *result);
-void eu_array_fini(struct eu_metadata *gmetadata, void *value);
+void eu_array_fini(const struct eu_metadata *gmetadata, void *value);
 struct eu_value eu_array_get(struct eu_value val, struct eu_string_ref name);
 void eu_object_iter_init_fail(struct eu_value val, struct eu_object_iter *iter);
 
 /* Others */
 
-extern struct eu_metadata eu_number_metadata;
+extern const struct eu_metadata eu_number_metadata;
 
 static __inline__ struct eu_value eu_number_value(double *number)
 {
@@ -207,7 +207,7 @@ struct eu_variant_array {
 };
 
 struct eu_variant {
-	struct eu_metadata *metadata;
+	const struct eu_metadata *metadata;
 	union {
 		struct eu_string string;
 		struct eu_object object;
@@ -217,7 +217,7 @@ struct eu_variant {
 	} u;
 };
 
-extern struct eu_metadata eu_variant_metadata;
+extern const struct eu_metadata eu_variant_metadata;
 
 static __inline__ struct eu_value eu_variant_value(struct eu_variant *variant)
 {
@@ -277,7 +277,7 @@ struct eu_struct_descriptor_v1 {
 	const struct eu_type_descriptor *extra_value_descriptor;
 };
 
-void eu_struct_extras_fini(struct eu_struct_metadata *md, void *v_extras);
+void eu_struct_extras_fini(const struct eu_struct_metadata *md, void *v_extras);
 size_t eu_object_size(struct eu_value val);
 
 struct eu_object_iter {
@@ -287,13 +287,13 @@ struct eu_object_iter {
 	struct {
 		unsigned int struct_i;
 		unsigned char *struct_p;
-		struct eu_struct_member *m;
+		const struct eu_struct_member *m;
 
 		size_t extras_i;
 		char *extras_p;
 		unsigned int extra_size;
 		unsigned int extra_value_offset;
-		struct eu_metadata *extra_value_metadata;
+		const struct eu_metadata *extra_value_metadata;
 	} priv;
 };
 

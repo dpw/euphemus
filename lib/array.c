@@ -10,7 +10,7 @@ enum array_parse_state {
 struct array_parse_cont {
 	struct eu_parse_cont base;
 	enum array_parse_state state;
-	struct eu_metadata *el_metadata;
+	const struct eu_metadata *el_metadata;
 	struct eu_array *result;
 	size_t capacity;
 };
@@ -20,11 +20,11 @@ static enum eu_parse_result array_parse_resume(struct eu_parse *ep,
 static void array_parse_cont_destroy(struct eu_parse *ep,
 				     struct eu_parse_cont *cont);
 
-enum eu_parse_result array_parse(struct eu_metadata *gmetadata,
+enum eu_parse_result array_parse(const struct eu_metadata *gmetadata,
 				 struct eu_parse *ep,
 				 void *v_result);
 
-enum eu_parse_result eu_variant_array(void *array_metadata,
+enum eu_parse_result eu_variant_array(const void *array_metadata,
 				      struct eu_parse *ep,
 				      struct eu_variant *result)
 {
@@ -32,7 +32,7 @@ enum eu_parse_result eu_variant_array(void *array_metadata,
 	return array_parse(array_metadata, ep, &result->u.array);
 }
 
-enum eu_parse_result eu_array_parse(struct eu_metadata *gmetadata,
+enum eu_parse_result eu_array_parse(const struct eu_metadata *gmetadata,
 				    struct eu_parse *ep,
 				    void *result)
 {
@@ -45,15 +45,15 @@ enum eu_parse_result eu_array_parse(struct eu_metadata *gmetadata,
 		return res;
 }
 
-enum eu_parse_result array_parse(struct eu_metadata *gmetadata,
+enum eu_parse_result array_parse(const struct eu_metadata *gmetadata,
 				 struct eu_parse *ep,
 				 void *v_result)
 {
 	struct array_parse_cont *cont;
-	struct eu_array_metadata *metadata
-		= (struct eu_array_metadata *)gmetadata;
+	const struct eu_array_metadata *metadata
+		= (const struct eu_array_metadata *)gmetadata;
 	enum array_parse_state state;
-	struct eu_metadata *el_metadata = metadata->element_metadata;
+	const struct eu_metadata *el_metadata = metadata->element_metadata;
 	size_t el_size = el_metadata->size;
 	struct eu_array *result = v_result;
 	size_t len = 0;
@@ -70,7 +70,7 @@ static enum eu_parse_result array_parse_resume(struct eu_parse *ep,
 {
 	struct array_parse_cont *cont = (struct array_parse_cont *)gcont;
 	enum array_parse_state state = cont->state;
-	struct eu_metadata *el_metadata = cont->el_metadata;
+	const struct eu_metadata *el_metadata = cont->el_metadata;
 	size_t el_size = el_metadata->size;
 	struct eu_array *result = cont->result;
 	size_t capacity = cont->capacity;
@@ -88,7 +88,8 @@ static enum eu_parse_result array_parse_resume(struct eu_parse *ep,
 	abort();
 }
 
-static void array_fini(struct eu_metadata *el_metadata, struct eu_array *array)
+static void array_fini(const struct eu_metadata *el_metadata,
+		       struct eu_array *array)
 {
 	char *el = array->a;
 	size_t i;
@@ -112,7 +113,7 @@ static void array_parse_cont_destroy(struct eu_parse *ep,
 	array_fini(cont->el_metadata, cont->result);
 }
 
-void eu_array_fini(struct eu_metadata *gmetadata, void *value)
+void eu_array_fini(const struct eu_metadata *gmetadata, void *value)
 {
 	struct eu_array_metadata *metadata
 		= (struct eu_array_metadata *)gmetadata;
@@ -154,5 +155,5 @@ struct eu_value eu_array_get(struct eu_value val, struct eu_string_ref name)
 	return eu_value_none;
 }
 
-struct eu_array_metadata eu_variant_array_metadata
+const struct eu_array_metadata eu_variant_array_metadata
 	= EU_ARRAY_METADATA_INITIALIZER(&eu_variant_metadata);

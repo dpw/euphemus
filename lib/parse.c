@@ -348,16 +348,17 @@ void eu_parse_cont_noop_destroy(struct eu_parse *ep, struct eu_parse_cont *cont)
 
 struct consume_ws_cont {
 	struct eu_parse_cont base;
-	struct eu_metadata *metadata;
+	const struct eu_metadata *metadata;
 	void *result;
 };
 
 static enum eu_parse_result consume_ws_resume(struct eu_parse *ep,
 					      struct eu_parse_cont *gcont);
 
-enum eu_parse_result eu_consume_whitespace_pause(struct eu_metadata *metadata,
-						 struct eu_parse *ep,
-						 void *result)
+enum eu_parse_result eu_consume_whitespace_pause(
+					const struct eu_metadata *metadata,
+					struct eu_parse *ep,
+					void *result)
 {
 	struct consume_ws_cont *cont
 		= eu_parse_alloc_first_cont(ep, sizeof *cont);
@@ -371,7 +372,7 @@ enum eu_parse_result eu_consume_whitespace_pause(struct eu_metadata *metadata,
 	return EU_PARSE_PAUSED;
 }
 
-enum eu_parse_result eu_consume_ws_until_slow(struct eu_metadata *metadata,
+enum eu_parse_result eu_consume_ws_until_slow(const struct eu_metadata *metadata,
 					      struct eu_parse *ep,
 					      void *result,
 					      char c)
@@ -397,12 +398,6 @@ static enum eu_parse_result consume_ws_resume(struct eu_parse *ep,
 	else
 		return eu_consume_whitespace_pause(cont->metadata, ep,
 						   cont->result);
-}
-
-void eu_noop_fini(struct eu_metadata *metadata, void *value)
-{
-	(void)metadata;
-	(void)value;
 }
 
 struct expect_parse_cont {

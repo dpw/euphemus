@@ -744,16 +744,16 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 			      (int)sti->struct_name.len, sti->struct_name.chars);
 
 	fprintf(codegen->h_out,
-		"extern struct eu_metadata *%s;\n"
-		"extern struct eu_metadata *%s;\n"
+		"extern const struct eu_metadata *%s;\n"
+		"extern const struct eu_metadata *%s;\n"
 		"extern const struct eu_struct_descriptor_v1 %s;\n\n",
 		metadata_ptr_name,
 		ptr_metadata_ptr_name,
 		sti->descriptor_name);
 
 	fprintf(codegen->c_out,
-		"struct eu_metadata *%s;\n"
-		"struct eu_metadata *%s;\n\n",
+		"const struct eu_metadata *%s;\n"
+		"const struct eu_metadata *%s;\n\n",
 		metadata_ptr_name,
 		ptr_metadata_ptr_name);
 
@@ -781,7 +781,7 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 		extras_type->descriptor_ptr_expr);
 
 	fprintf(codegen->h_out,
-		"static __inline__ struct eu_metadata *%s(void)\n"
+		"static __inline__ const struct eu_metadata *%s(void)\n"
 		"{\n"
 		"\tif (%s)\n"
 		"\t\treturn %s;\n"
@@ -793,7 +793,7 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 		sti->descriptor_name);
 
 	fprintf(codegen->h_out,
-		"static __inline__ struct eu_metadata *%s(void)\n"
+		"static __inline__ const struct eu_metadata *%s(void)\n"
 		"{\n"
 		"\tif (%s)\n"
 		"\t\treturn %s;\n"

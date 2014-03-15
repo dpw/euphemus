@@ -1,7 +1,13 @@
 #include <euphemus.h>
 #include "euphemus_int.h"
 
-static enum eu_parse_result fail_parse(struct eu_metadata *metadata,
+void eu_noop_fini(const struct eu_metadata *metadata, void *value)
+{
+	(void)metadata;
+	(void)value;
+}
+
+static enum eu_parse_result fail_parse(const struct eu_metadata *metadata,
 				       struct eu_parse *ep,
 				       void *result)
 {
@@ -11,7 +17,7 @@ static enum eu_parse_result fail_parse(struct eu_metadata *metadata,
 	return EU_PARSE_ERROR;
 }
 
-static void fail_fini(struct eu_metadata *metadata, void *value)
+static void fail_fini(const struct eu_metadata *metadata, void *value)
 {
 	(void)metadata;
 	(void)value;
@@ -40,17 +46,17 @@ static struct eu_metadata fail_metadata = {
 	eu_object_iter_init_fail
 };
 
-struct eu_metadata *eu_introduce(const struct eu_type_descriptor *d)
+const struct eu_metadata *eu_introduce(const struct eu_type_descriptor *d)
 {
-	struct eu_metadata *res = eu_introduce_aux(d, NULL);
+	const struct eu_metadata *res = eu_introduce_aux(d, NULL);
 	return res != NULL ? res : &fail_metadata;
 }
 
-struct eu_metadata *eu_introduce_aux(const struct eu_type_descriptor *d,
-				     struct eu_introduce_chain *chain)
+const struct eu_metadata *eu_introduce_aux(const struct eu_type_descriptor *d,
+					   struct eu_introduce_chain *chain)
 {
 	struct eu_introduce_chain *c;
-	struct eu_metadata *md = *d->metadata;
+	const struct eu_metadata *md = *d->metadata;
 
 	if (md)
 		return md;
@@ -74,7 +80,7 @@ struct eu_metadata *eu_introduce_aux(const struct eu_type_descriptor *d,
 }
 
 #define DEFINE_SHIM_DESCRIPTOR(name)                                  \
-static struct eu_metadata *name##_metadata_ptr                        \
+static const struct eu_metadata *name##_metadata_ptr                  \
 	= &eu_##name##_metadata;                                      \
 const struct eu_type_descriptor eu_##name##_descriptor = {            \
 	&name##_metadata_ptr,                                         \

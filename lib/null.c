@@ -1,7 +1,7 @@
 #include <euphemus.h>
 #include "euphemus_int.h"
 
-static enum eu_parse_result null_parse(struct eu_metadata *metadata,
+static enum eu_parse_result null_parse(const struct eu_metadata *metadata,
 				       struct eu_parse *ep,
 				       void *result)
 {
@@ -28,7 +28,7 @@ static enum eu_parse_result null_parse(struct eu_metadata *metadata,
 	}
 }
 
-struct eu_metadata eu_null_metadata = {
+const struct eu_metadata eu_null_metadata = {
 	EU_JSON_NULL,
 	0,
 	null_parse,
@@ -37,7 +37,7 @@ struct eu_metadata eu_null_metadata = {
 	eu_object_iter_init_fail
 };
 
-enum eu_parse_result eu_variant_n(void *null_metadata, struct eu_parse *ep,
+enum eu_parse_result eu_variant_n(const void *null_metadata, struct eu_parse *ep,
 				  struct eu_variant *result)
 {
 	struct expect expect = EXPECT_INIT(3, 'ull', "ull");

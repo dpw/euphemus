@@ -8,7 +8,7 @@ struct eu_struct_member {
 	signed char presence_offset;
 	unsigned char presence_bit;
 	const char *name;
-	struct eu_metadata *metadata;
+	const struct eu_metadata *metadata;
 };
 
 struct eu_struct_metadata {
@@ -18,8 +18,8 @@ struct eu_struct_metadata {
 	unsigned int extra_member_size;
 	unsigned int extra_member_value_offset;
 	size_t n_members;
-	struct eu_struct_member *members;
-	struct eu_metadata *extra_value_metadata;
+	const struct eu_struct_member *members;
+	const struct eu_metadata *extra_value_metadata;
 };
 
 struct eu_generic_members {
@@ -31,9 +31,9 @@ struct eu_generic_members {
 	} priv;
 };
 
-static struct eu_metadata *add_extra(struct eu_struct_metadata *md, char *s,
-				     char *name, size_t name_len,
-				     void **value)
+static const struct eu_metadata *add_extra(const struct eu_struct_metadata *md,
+					   char *s, char *name, size_t name_len,
+					   void **value)
 {
 	struct eu_generic_members *extras = (void *)(s + md->extras_offset);
 	size_t capacity = extras->priv.capacity;
@@ -86,11 +86,11 @@ static struct eu_metadata *add_extra(struct eu_struct_metadata *md, char *s,
 	return NULL;
 }
 
-void eu_struct_extras_fini(struct eu_struct_metadata *md,
+void eu_struct_extras_fini(const struct eu_struct_metadata *md,
 			   void *v_extras)
 {
 	struct eu_generic_members *extras = v_extras;
-	struct eu_metadata *evmd = md->extra_value_metadata;
+	const struct eu_metadata *evmd = md->extra_value_metadata;
 	char *m = extras->members;
 	size_t i;
 
@@ -105,16 +105,17 @@ void eu_struct_extras_fini(struct eu_struct_metadata *md,
 	extras->len = 0;
 }
 
-static struct eu_metadata *lookup_member(struct eu_struct_metadata *md,
-					 char *s, const char *name,
-					 const char *name_end, void **value)
+static const struct eu_metadata *lookup_member(
+					const struct eu_struct_metadata *md,
+					char *s, const char *name,
+					const char *name_end, void **value)
 {
 	size_t name_len = name_end - name;
 	size_t i;
 	char *name_copy;
 
 	for (i = 0; i < md->n_members; i++) {
-		struct eu_struct_member *m = &md->members[i];
+		const struct eu_struct_member *m = &md->members[i];
 		if (m->name_len != name_len)
 			continue;
 
@@ -135,11 +136,12 @@ static struct eu_metadata *lookup_member(struct eu_struct_metadata *md,
 	return add_extra(md, s, name_copy, name_len, value);
 }
 
-static struct eu_metadata *lookup_member_2(struct eu_struct_metadata *md,
-					   char *s, const char *buf,
-					   size_t buf_len, const char *more,
-					   const char *more_end,
-					   void **value)
+static const struct eu_metadata *lookup_member_2(
+					const struct eu_struct_metadata *md,
+					char *s, const char *buf,
+					size_t buf_len, const char *more,
+					const char *more_end,
+					void **value)
 {
 	size_t more_len = more_end - more;
 	size_t name_len = buf_len + more_len;
@@ -147,7 +149,7 @@ static struct eu_metadata *lookup_member_2(struct eu_struct_metadata *md,
 	char *name_copy;
 
 	for (i = 0; i < md->n_members; i++) {
-		struct eu_struct_member *m = &md->members[i];
+		const struct eu_struct_member *m = &md->members[i];
 		if (m->name_len != name_len)
 			continue;
 
@@ -184,10 +186,10 @@ enum struct_parse_state {
 struct struct_parse_cont {
 	struct eu_parse_cont base;
 	enum struct_parse_state state;
-	struct eu_struct_metadata *metadata;
+	const struct eu_struct_metadata *metadata;
 	void *result;
 	void **result_ptr;
-	struct eu_metadata *member_metadata;
+	const struct eu_metadata *member_metadata;
 	void *member_value;
 	eu_unescape_state_t unescape;
 };
@@ -196,15 +198,15 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 						struct eu_parse_cont *gcont);
 static void struct_parse_cont_destroy(struct eu_parse *ep,
 				      struct eu_parse_cont *cont);
-static enum eu_parse_result struct_parse(struct eu_metadata *gmetadata,
+static enum eu_parse_result struct_parse(const struct eu_metadata *gmetadata,
 					 struct eu_parse *ep, void *result,
 					 void **result_ptr);
 
-static enum eu_parse_result struct_ptr_parse(struct eu_metadata *gmetadata,
+static enum eu_parse_result struct_ptr_parse(const struct eu_metadata *gmetadata,
 					     struct eu_parse *ep, void *result)
 {
-	struct eu_struct_metadata *metadata
-		= (struct eu_struct_metadata *)gmetadata;
+	const struct eu_struct_metadata *metadata
+		= (const struct eu_struct_metadata *)gmetadata;
 	void *s;
 	enum eu_parse_result res
 		= eu_consume_whitespace_until(gmetadata, ep, result, '{');
@@ -224,8 +226,9 @@ static enum eu_parse_result struct_ptr_parse(struct eu_metadata *gmetadata,
 	}
 }
 
-static enum eu_parse_result inline_struct_parse(struct eu_metadata *gmetadata,
-					      struct eu_parse *ep, void *result)
+static enum eu_parse_result inline_struct_parse(
+					const struct eu_metadata *gmetadata,
+					struct eu_parse *ep, void *result)
 {
 	enum eu_parse_result res
 		= eu_consume_whitespace_until(gmetadata, ep, result, '{');
@@ -236,15 +239,15 @@ static enum eu_parse_result inline_struct_parse(struct eu_metadata *gmetadata,
 	return struct_parse(gmetadata, ep, result, NULL);
 }
 
-static enum eu_parse_result struct_parse(struct eu_metadata *gmetadata,
+static enum eu_parse_result struct_parse(const struct eu_metadata *gmetadata,
 					 struct eu_parse *ep, void *result,
 					 void **result_ptr)
 {
 	struct struct_parse_cont *cont;
-	struct eu_struct_metadata *metadata
-		= (struct eu_struct_metadata *)gmetadata;
+	const struct eu_struct_metadata *metadata
+		= (const struct eu_struct_metadata *)gmetadata;
 	enum struct_parse_state state;
-	struct eu_metadata *member_metadata;
+	const struct eu_metadata *member_metadata;
 	void *member_value;
 	eu_unescape_state_t unescape = 0;
 	const char *p = ep->input + 1;
@@ -260,10 +263,10 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 {
 	struct struct_parse_cont *cont = (struct struct_parse_cont *)gcont;
 	enum struct_parse_state state = cont->state;
-	struct eu_struct_metadata *metadata = cont->metadata;
+	const struct eu_struct_metadata *metadata = cont->metadata;
 	void *result = cont->result;
 	void **result_ptr = cont->result_ptr;
-	struct eu_metadata *member_metadata = cont->member_metadata;
+	const struct eu_metadata *member_metadata = cont->member_metadata;
 	void *member_value = cont->member_value;
 	eu_unescape_state_t unescape = cont->unescape;
 	const char *p, *end;
@@ -376,14 +379,14 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 #undef RESUME_ONLY
 }
 
-static void inline_struct_fini(struct eu_metadata *gmetadata, void *s)
+static void inline_struct_fini(const struct eu_metadata *gmetadata, void *s)
 {
-	struct eu_struct_metadata *metadata
-		= (struct eu_struct_metadata *)gmetadata;
+	const struct eu_struct_metadata *metadata
+		= (const struct eu_struct_metadata *)gmetadata;
 	size_t i;
 
 	for (i = 0; i < metadata->n_members; i++) {
-		struct eu_struct_member *member = &metadata->members[i];
+		const struct eu_struct_member *member = &metadata->members[i];
 		member->metadata->fini(member->metadata,
 				       (char *)s + member->offset);
 	}
@@ -391,7 +394,7 @@ static void inline_struct_fini(struct eu_metadata *gmetadata, void *s)
 	eu_struct_extras_fini(metadata, (char *)s + metadata->extras_offset);
 }
 
-static void struct_ptr_fini(struct eu_metadata *gmetadata, void *value)
+static void struct_ptr_fini(const struct eu_metadata *gmetadata, void *value)
 {
 	void *s = *(void **)value;
 
@@ -416,7 +419,7 @@ static void struct_parse_cont_destroy(struct eu_parse *ep,
 	}
 }
 
-static __inline__ int struct_member_present(struct eu_struct_member *m,
+static __inline__ int struct_member_present(const struct eu_struct_member *m,
 					    unsigned char *p)
 {
 	if (m->presence_offset >= 0)
@@ -428,15 +431,15 @@ static __inline__ int struct_member_present(struct eu_struct_member *m,
 static struct eu_value inline_struct_get(struct eu_value val,
 					 struct eu_string_ref name)
 {
-	struct eu_struct_metadata *md
-		= (struct eu_struct_metadata *)val.metadata;
+	const struct eu_struct_metadata *md
+		= (const struct eu_struct_metadata *)val.metadata;
 	size_t i;
 	unsigned char *s = val.value;
 	struct eu_generic_members *extras;
 	char *em;
 
 	for (i = 0; i < md->n_members; i++) {
-		struct eu_struct_member *m = &md->members[i];
+		const struct eu_struct_member *m = &md->members[i];
 		if (m->name_len == name.len
 		    && !memcmp(m->name, name.chars, name.len)) {
 			if (struct_member_present(m, s))
@@ -469,8 +472,8 @@ static struct eu_value struct_ptr_get(struct eu_value val,
 static void inline_struct_iter_init(struct eu_value val,
 				    struct eu_object_iter *iter)
 {
-	struct eu_struct_metadata *md
-		= (struct eu_struct_metadata *)val.metadata;
+	const struct eu_struct_metadata *md
+		= (const struct eu_struct_metadata *)val.metadata;
 	struct eu_generic_members *extras;
 
 	iter->priv.struct_i = md->n_members;
@@ -500,7 +503,7 @@ void eu_object_iter_init(struct eu_object_iter *iter, struct eu_value val)
 int eu_object_iter_next(struct eu_object_iter *iter)
 {
 	while (iter->priv.struct_i) {
-		struct eu_struct_member *m = iter->priv.m++;
+		const struct eu_struct_member *m = iter->priv.m++;
 		iter->priv.struct_i--;
 
 		if (struct_member_present(m, iter->priv.struct_p)) {
@@ -536,7 +539,7 @@ size_t eu_object_size(struct eu_value val)
 	return n;
 }
 
-struct eu_struct_metadata eu_object_metadata = {
+const struct eu_struct_metadata eu_object_metadata = {
 	{
 		EU_JSON_OBJECT,
 		sizeof(struct eu_object),
@@ -554,7 +557,7 @@ struct eu_struct_metadata eu_object_metadata = {
 	&eu_variant_metadata
 };
 
-enum eu_parse_result eu_variant_object(void *unused_metadata,
+enum eu_parse_result eu_variant_object(const void *unused_metadata,
 				       struct eu_parse *ep,
 				       struct eu_variant *result)
 {
@@ -638,8 +641,8 @@ static int introduce_struct(struct eu_struct_descriptor_v1 *d,
 	return 0;
 }
 
-struct eu_metadata *eu_introduce_struct(const struct eu_type_descriptor *d,
-					struct eu_introduce_chain *c)
+const struct eu_metadata *eu_introduce_struct(const struct eu_type_descriptor *d,
+					      struct eu_introduce_chain *c)
 {
 	struct eu_struct_descriptor_v1 *sd
 		= container_of(d, struct eu_struct_descriptor_v1, struct_base);
@@ -649,8 +652,9 @@ struct eu_metadata *eu_introduce_struct(const struct eu_type_descriptor *d,
 		return NULL;
 }
 
-struct eu_metadata *eu_introduce_struct_ptr(const struct eu_type_descriptor *d,
-					    struct eu_introduce_chain *c)
+const struct eu_metadata *eu_introduce_struct_ptr(
+					const struct eu_type_descriptor *d,
+					struct eu_introduce_chain *c)
 {
 	struct eu_struct_descriptor_v1 *sd
 	      = container_of(d, struct eu_struct_descriptor_v1, struct_ptr_base);

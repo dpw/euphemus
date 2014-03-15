@@ -31,7 +31,7 @@ struct number_parse_cont {
 static enum eu_parse_result number_parse_resume(struct eu_parse *ep,
 						struct eu_parse_cont *gcont);
 
-static enum eu_parse_result number_parse(struct eu_metadata *metadata,
+static enum eu_parse_result number_parse(const struct eu_metadata *metadata,
 					 struct eu_parse *ep,
 					 void *v_result)
 {
@@ -128,7 +128,7 @@ static enum eu_parse_result number_parse_resume(struct eu_parse *ep,
 	abort();
 }
 
-struct eu_metadata eu_number_metadata = {
+const struct eu_metadata eu_number_metadata = {
 	EU_JSON_NUMBER,
 	sizeof(double),
 	number_parse,
@@ -137,7 +137,7 @@ struct eu_metadata eu_number_metadata = {
 	eu_object_iter_init_fail
 };
 
-enum eu_parse_result eu_variant_number(void *number_metadata,
+enum eu_parse_result eu_variant_number(const void *number_metadata,
 				       struct eu_parse *ep,
 				       struct eu_variant *result)
 {

@@ -23,11 +23,11 @@ struct named_schemas {
 	struct struct_schema_members extras;
 };
 
-extern struct eu_metadata *struct_named_schemas_metadata_ptr;
-extern struct eu_metadata *struct_named_schemas_ptr_metadata_ptr;
+extern const struct eu_metadata *struct_named_schemas_metadata_ptr;
+extern const struct eu_metadata *struct_named_schemas_ptr_metadata_ptr;
 extern const struct eu_struct_descriptor_v1 struct_named_schemas_descriptor;
 
-static __inline__ struct eu_metadata *struct_named_schemas_metadata(void)
+static __inline__ const struct eu_metadata *struct_named_schemas_metadata(void)
 {
 	if (struct_named_schemas_metadata_ptr)
 		return struct_named_schemas_metadata_ptr;
@@ -35,7 +35,7 @@ static __inline__ struct eu_metadata *struct_named_schemas_metadata(void)
 		return eu_introduce(&struct_named_schemas_descriptor.struct_base);
 }
 
-static __inline__ struct eu_metadata *struct_named_schemas_ptr_metadata(void)
+static __inline__ const struct eu_metadata *struct_named_schemas_ptr_metadata(void)
 {
 	if (struct_named_schemas_ptr_metadata_ptr)
 		return struct_named_schemas_ptr_metadata_ptr;
@@ -84,11 +84,11 @@ struct schema {
 	struct eu_variant_members extras;
 };
 
-extern struct eu_metadata *struct_schema_metadata_ptr;
-extern struct eu_metadata *struct_schema_ptr_metadata_ptr;
+extern const struct eu_metadata *struct_schema_metadata_ptr;
+extern const struct eu_metadata *struct_schema_ptr_metadata_ptr;
 extern const struct eu_struct_descriptor_v1 struct_schema_descriptor;
 
-static __inline__ struct eu_metadata *struct_schema_metadata(void)
+static __inline__ const struct eu_metadata *struct_schema_metadata(void)
 {
 	if (struct_schema_metadata_ptr)
 		return struct_schema_metadata_ptr;
@@ -96,7 +96,7 @@ static __inline__ struct eu_metadata *struct_schema_metadata(void)
 		return eu_introduce(&struct_schema_descriptor.struct_base);
 }
 
-static __inline__ struct eu_metadata *struct_schema_ptr_metadata(void)
+static __inline__ const struct eu_metadata *struct_schema_ptr_metadata(void)
 {
 	if (struct_schema_ptr_metadata_ptr)
 		return struct_schema_ptr_metadata_ptr;

@@ -52,9 +52,10 @@ static struct string_parse_cont *alloc_cont(struct eu_parse *ep, const char *p,
 	return NULL;
 }
 
-static enum eu_parse_result string_parse_common(struct eu_metadata *metadata,
-						struct eu_parse *ep,
-						void *v_result)
+static enum eu_parse_result string_parse_common(
+					const struct eu_metadata *metadata,
+					struct eu_parse *ep,
+					void *v_result)
 {
 	const char *p = ep->input;
 	const char *end = ep->input_end;
@@ -318,7 +319,7 @@ static void string_parse_cont_destroy(struct eu_parse *ep,
 	free(cont->buf);
 }
 
-enum eu_parse_result eu_variant_string(void *string_metadata,
+enum eu_parse_result eu_variant_string(const void *string_metadata,
 				       struct eu_parse *ep,
 				       struct eu_variant *result)
 {
@@ -326,7 +327,7 @@ enum eu_parse_result eu_variant_string(void *string_metadata,
 	return string_parse_common(string_metadata, ep, &result->u.string);
 }
 
-static enum eu_parse_result string_parse(struct eu_metadata *metadata,
+static enum eu_parse_result string_parse(const struct eu_metadata *metadata,
 					 struct eu_parse *ep,
 					 void *result)
 {
@@ -339,7 +340,7 @@ static enum eu_parse_result string_parse(struct eu_metadata *metadata,
 		return res;
 }
 
-static void string_fini(struct eu_metadata *metadata, void *value)
+static void string_fini(const struct eu_metadata *metadata, void *value)
 {
 	struct eu_string *str = value;
 	(void)metadata;
@@ -347,7 +348,7 @@ static void string_fini(struct eu_metadata *metadata, void *value)
 	eu_string_fini(str);
 }
 
-struct eu_metadata eu_string_metadata = {
+const struct eu_metadata eu_string_metadata = {
 	EU_JSON_STRING,
 	sizeof(struct eu_string),
 	string_parse,

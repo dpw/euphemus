@@ -41,12 +41,12 @@ struct eu_metadata {
 
 	   The memory range allocated to the value is cleared before
 	   this is called. */
-	enum eu_parse_result (*parse)(struct eu_metadata *metadata,
+	enum eu_parse_result (*parse)(const struct eu_metadata *metadata,
 				      struct eu_parse *ep,
 				      void *result);
 
 	/* Release any resources associated with the value.*/
-	void (*fini)(struct eu_metadata *metadata, void *value);
+	void (*fini)(const struct eu_metadata *metadata, void *value);
 
 	/* Get a member of an object or array. */
 	struct eu_value (*get)(struct eu_value val, struct eu_string_ref name);
@@ -58,7 +58,7 @@ struct eu_metadata {
 
 struct eu_array_metadata {
 	struct eu_metadata base;
-	struct eu_metadata *element_metadata;
+	const struct eu_metadata *element_metadata;
 };
 
 #define EU_ARRAY_METADATA_INITIALIZER(el_metadata)                    \
@@ -83,12 +83,13 @@ struct eu_introduce_chain {
 	struct eu_introduce_chain *next;
 };
 
-struct eu_metadata *eu_introduce_aux(const struct eu_type_descriptor *d,
-				     struct eu_introduce_chain *chain_next);
-struct eu_metadata *eu_introduce_struct(const struct eu_type_descriptor *d,
-					struct eu_introduce_chain *c);
-struct eu_metadata *eu_introduce_struct_ptr(const struct eu_type_descriptor *d,
-					    struct eu_introduce_chain *c);
+const struct eu_metadata *eu_introduce_aux(const struct eu_type_descriptor *d,
+					 struct eu_introduce_chain *chain_next);
+const struct eu_metadata *eu_introduce_struct(const struct eu_type_descriptor *d,
+					      struct eu_introduce_chain *c);
+const struct eu_metadata *eu_introduce_struct_ptr(
+					      const struct eu_type_descriptor *d,
+					      struct eu_introduce_chain *c);
 
 enum eu_parse_result {
 	EU_PARSE_OK,
@@ -105,7 +106,7 @@ struct eu_parse {
 	size_t old_stack_bottom;
 	size_t stack_area_size;
 
-	struct eu_metadata *metadata;
+	const struct eu_metadata *metadata;
 	void *result;
 
 	const char *input;
@@ -136,29 +137,29 @@ int eu_parse_append_to_scratch(struct eu_parse *ep, const char *start,
 int eu_parse_append_to_scratch_with_nul(struct eu_parse *ep, const char *start,
 					const char *end);
 
-void eu_noop_fini(struct eu_metadata *metadata, void *value);
+void eu_noop_fini(const struct eu_metadata *metadata, void *value);
 struct eu_value eu_get_fail(struct eu_value val, struct eu_string_ref name);
 
-extern struct eu_array_metadata eu_variant_array_metadata;
-extern struct eu_metadata eu_null_metadata;
-extern struct eu_bool_misc eu_bool_true;
-extern struct eu_bool_misc eu_bool_false;
+extern const struct eu_array_metadata eu_variant_array_metadata;
+extern const struct eu_metadata eu_null_metadata;
+extern const struct eu_bool_misc eu_bool_true;
+extern const struct eu_bool_misc eu_bool_false;
 
-enum eu_parse_result eu_variant_string(void *string_metadata,
+enum eu_parse_result eu_variant_string(const void *string_metadata,
 				       struct eu_parse *ep,
 				       struct eu_variant *result);
-enum eu_parse_result eu_variant_object(void *object_metadata,
+enum eu_parse_result eu_variant_object(const void *object_metadata,
 				       struct eu_parse *ep,
 				       struct eu_variant *result);
-enum eu_parse_result eu_variant_array(void *array_metadata,
+enum eu_parse_result eu_variant_array(const void *array_metadata,
 				      struct eu_parse *ep,
 				      struct eu_variant *result);
-enum eu_parse_result eu_variant_number(void *number_metadata,
+enum eu_parse_result eu_variant_number(const void *number_metadata,
 				       struct eu_parse *ep,
 				       struct eu_variant *result);
-enum eu_parse_result eu_variant_bool(void *misc, struct eu_parse *ep,
+enum eu_parse_result eu_variant_bool(const void *misc, struct eu_parse *ep,
 				     struct eu_variant *result);
-enum eu_parse_result eu_variant_n(void *null_metadata, struct eu_parse *ep,
+enum eu_parse_result eu_variant_n(const void *null_metadata, struct eu_parse *ep,
 				  struct eu_variant *result);
 
 #define WHITESPACE_CASES ' ': case '\t': case '\n': case '\r'
@@ -181,14 +182,15 @@ static __inline__ const char *skip_whitespace(const char *p, const char *end)
 	return p;
 }
 
-enum eu_parse_result eu_consume_whitespace_pause(struct eu_metadata *metadata,
-						 struct eu_parse *ep,
-						 void *result);
+enum eu_parse_result eu_consume_whitespace_pause(
+					const struct eu_metadata *metadata,
+					struct eu_parse *ep,
+					void *result);
 
 static __inline__ enum eu_parse_result eu_consume_whitespace(
-						struct eu_metadata *metadata,
-						struct eu_parse *ep,
-						void *result)
+					const struct eu_metadata *metadata,
+					struct eu_parse *ep,
+					void *result)
 {
 	const char *end = ep->input_end;
 	ep->input = skip_whitespace(ep->input, end);
@@ -198,16 +200,16 @@ static __inline__ enum eu_parse_result eu_consume_whitespace(
 		return eu_consume_whitespace_pause(metadata, ep, result);
 }
 
-enum eu_parse_result eu_consume_ws_until_slow(struct eu_metadata *metadata,
+enum eu_parse_result eu_consume_ws_until_slow(const struct eu_metadata *metadata,
 					      struct eu_parse *ep,
 					      void *result,
 					      char c);
 
 static __inline__ enum eu_parse_result eu_consume_whitespace_until(
-						struct eu_metadata *metadata,
-						struct eu_parse *ep,
-						void *result,
-						char c)
+					const struct eu_metadata *metadata,
+					struct eu_parse *ep,
+					void *result,
+					char c)
 {
 	if (unlikely(*ep->input != c)) {
 		enum eu_parse_result res

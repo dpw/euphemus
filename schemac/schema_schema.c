@@ -7,8 +7,8 @@
 static const struct eu_struct_member_descriptor_v1 named_schemas_members[0] = {
 };
 
-struct eu_metadata *struct_named_schemas_metadata_ptr;
-struct eu_metadata *struct_named_schemas_ptr_metadata_ptr;
+const struct eu_metadata *struct_named_schemas_metadata_ptr;
+const struct eu_metadata *struct_named_schemas_ptr_metadata_ptr;
 
 const struct eu_struct_descriptor_v1 struct_named_schemas_descriptor = {
 	{ &struct_named_schemas_metadata_ptr, EU_TDESC_STRUCT_V1 },
@@ -88,8 +88,8 @@ static const struct eu_struct_member_descriptor_v1 schema_members[7] = {
 	},
 };
 
-struct eu_metadata *struct_schema_metadata_ptr;
-struct eu_metadata *struct_schema_ptr_metadata_ptr;
+const struct eu_metadata *struct_schema_metadata_ptr;
+const struct eu_metadata *struct_schema_ptr_metadata_ptr;
 
 const struct eu_struct_descriptor_v1 struct_schema_descriptor = {
 	{ &struct_schema_metadata_ptr, EU_TDESC_STRUCT_V1 },

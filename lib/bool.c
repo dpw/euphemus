@@ -1,7 +1,7 @@
 #include <euphemus.h>
 #include "euphemus_int.h"
 
-static enum eu_parse_result bool_parse(struct eu_metadata *metadata,
+static enum eu_parse_result bool_parse(const struct eu_metadata *metadata,
 				       struct eu_parse *ep,
 				       void *v_result)
 {
@@ -50,13 +50,13 @@ struct eu_bool_misc {
 	struct expect expect;
 };
 
-struct eu_bool_misc eu_bool_true = { 1, EXPECT_INIT(3, 'rue', "rue") };
-struct eu_bool_misc eu_bool_false = { 0, EXPECT_INIT(4, 'alse', "alse") };
+const struct eu_bool_misc eu_bool_true = { 1, EXPECT_INIT(3, 'rue', "rue") };
+const struct eu_bool_misc eu_bool_false = { 0, EXPECT_INIT(4, 'alse', "alse") };
 
-enum eu_parse_result eu_variant_bool(void *v_misc, struct eu_parse *ep,
+enum eu_parse_result eu_variant_bool(const void *v_misc, struct eu_parse *ep,
 				     struct eu_variant *result)
 {
-	struct eu_bool_misc *misc = v_misc;
+	const struct eu_bool_misc *misc = v_misc;
 
 	result->metadata = &eu_bool_metadata;
 	ep->input++;

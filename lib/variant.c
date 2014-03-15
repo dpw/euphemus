@@ -3,7 +3,7 @@
 #include <euphemus.h>
 #include "euphemus_int.h"
 
-static enum eu_parse_result invalid(void *misc, struct eu_parse *ep,
+static enum eu_parse_result invalid(const void *misc, struct eu_parse *ep,
 				    struct eu_variant *result)
 {
 	(void)misc;
@@ -12,14 +12,14 @@ static enum eu_parse_result invalid(void *misc, struct eu_parse *ep,
 	return EU_PARSE_ERROR;
 }
 
-static enum eu_parse_result whitespace(void *variant_metadata,
+static enum eu_parse_result whitespace(const void *variant_metadata,
 				       struct eu_parse *ep,
 				       struct eu_variant *result);
 
 struct char_type_slot {
-	enum eu_parse_result (*func)(void *misc, struct eu_parse *ep,
+	enum eu_parse_result (*func)(const void *misc, struct eu_parse *ep,
 				     struct eu_variant *result);
-	void *misc;
+	const void *misc;
 };
 
 
@@ -37,7 +37,7 @@ enum char_type {
 };
 
 /* Mapping from characters to character types. */
-static unsigned char char_types[UCHAR_MAX] CACHE_ALIGN = {
+static const unsigned char char_types[UCHAR_MAX] CACHE_ALIGN = {
 	[' '] = CHAR_TYPE_WS,
 	['\t'] = CHAR_TYPE_WS,
 	['\n'] = CHAR_TYPE_WS,
@@ -65,7 +65,7 @@ static unsigned char char_types[UCHAR_MAX] CACHE_ALIGN = {
 	['n'] = CHAR_TYPE_N,
 };
 
-static struct char_type_slot char_type_slots[CHAR_TYPE_MAX] = {
+static const struct char_type_slot char_type_slots[CHAR_TYPE_MAX] = {
 	[CHAR_TYPE_INVALID] = { invalid, NULL },
 	[CHAR_TYPE_WS] = { whitespace, &eu_variant_metadata },
 	[CHAR_TYPE_DQUOTES] = { eu_variant_string, &eu_string_metadata },
@@ -78,7 +78,7 @@ static struct char_type_slot char_type_slots[CHAR_TYPE_MAX] = {
 	[CHAR_TYPE_N] = { eu_variant_n, &eu_null_metadata },
 };
 
-static enum eu_parse_result variant_parse(struct eu_metadata *metadata,
+static enum eu_parse_result variant_parse(const struct eu_metadata *metadata,
 					 struct eu_parse *ep,
 					 void *result)
 {
@@ -88,7 +88,7 @@ static enum eu_parse_result variant_parse(struct eu_metadata *metadata,
 	return slot.func(slot.misc, ep, result);
 }
 
-static enum eu_parse_result whitespace(void *variant_metadata,
+static enum eu_parse_result whitespace(const void *variant_metadata,
 				       struct eu_parse *ep,
 				       struct eu_variant *result)
 {
@@ -106,7 +106,7 @@ void eu_variant_fini(struct eu_variant *variant)
 		variant->metadata->fini(variant->metadata, &variant->u);
 }
 
-static void variant_fini(struct eu_metadata *metadata, void *value)
+static void variant_fini(const struct eu_metadata *metadata, void *value)
 {
 	struct eu_variant *var = value;
 	(void)metadata;
@@ -136,7 +136,7 @@ static void variant_object_iter_init(struct eu_value val,
 	eu_object_iter_init(iter, eu_variant_peek(var));
 }
 
-struct eu_metadata eu_variant_metadata = {
+const struct eu_metadata eu_variant_metadata = {
 	EU_JSON_VARIANT,
 	sizeof(struct eu_variant),
 	variant_parse,
