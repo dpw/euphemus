@@ -469,8 +469,8 @@ static struct eu_value struct_ptr_get(struct eu_value val,
 	return inline_struct_get(val, name);
 }
 
-static void inline_struct_iter_init(struct eu_value val,
-				    struct eu_object_iter *iter)
+static int inline_struct_iter_init(struct eu_value val,
+				   struct eu_object_iter *iter)
 {
 	const struct eu_struct_metadata *md
 		= (const struct eu_struct_metadata *)val.metadata;
@@ -486,18 +486,19 @@ static void inline_struct_iter_init(struct eu_value val,
 	iter->priv.extra_size = md->extra_member_size;
 	iter->priv.extra_value_offset = md->extra_member_value_offset;
 	iter->priv.extra_value_metadata = md->extra_value_metadata;
+	return 1;
 }
 
-static void struct_ptr_iter_init(struct eu_value val,
-				 struct eu_object_iter *iter)
+static int struct_ptr_iter_init(struct eu_value val,
+				struct eu_object_iter *iter)
 {
 	val.value = *(void **)val.value;
-	inline_struct_iter_init(val, iter);
+	return inline_struct_iter_init(val, iter);
 }
 
-void eu_object_iter_init(struct eu_object_iter *iter, struct eu_value val)
+int eu_object_iter_init(struct eu_object_iter *iter, struct eu_value val)
 {
-	val.metadata->object_iter_init(val, iter);
+	return val.metadata->object_iter_init(val, iter);
 }
 
 int eu_object_iter_next(struct eu_object_iter *iter)

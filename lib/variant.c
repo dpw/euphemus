@@ -129,11 +129,11 @@ static struct eu_value variant_get(struct eu_value val,
 	return eu_value_get(eu_variant_peek(var), name);
 }
 
-static void variant_object_iter_init(struct eu_value val,
-				     struct eu_object_iter *iter)
+static int variant_object_iter_init(struct eu_value val,
+				    struct eu_object_iter *iter)
 {
 	struct eu_variant *var = val.value;
-	eu_object_iter_init(iter, eu_variant_peek(var));
+	return eu_object_iter_init(iter, eu_variant_peek(var));
 }
 
 const struct eu_metadata eu_variant_metadata = {

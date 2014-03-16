@@ -51,8 +51,8 @@ struct eu_metadata {
 	/* Get a member of an object or array. */
 	struct eu_value (*get)(struct eu_value val, struct eu_string_ref name);
 
-	void (*object_iter_init)(struct eu_value val,
-				 struct eu_object_iter *iter);
+	int (*object_iter_init)(struct eu_value val,
+				struct eu_object_iter *iter);
 };
 
 

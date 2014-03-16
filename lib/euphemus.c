@@ -30,11 +30,15 @@ struct eu_value eu_get_fail(struct eu_value val, struct eu_string_ref name)
 	return eu_value_none;
 }
 
-void eu_object_iter_init_fail(struct eu_value val, struct eu_object_iter *iter)
+int eu_object_iter_init_fail(struct eu_value val, struct eu_object_iter *iter)
 {
 	(void)val;
-	(void)iter;
-	abort();
+
+	/* Make eu_object_iter_next indicate empty results */
+	iter->priv.struct_i = 0;
+	iter->priv.extras_i = 0;
+
+	return 0;
 }
 
 static struct eu_metadata fail_metadata = {
