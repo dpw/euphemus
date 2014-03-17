@@ -469,23 +469,74 @@ static struct eu_value struct_ptr_get(struct eu_value val,
 	return inline_struct_get(val, name);
 }
 
+struct struct_iter_priv {
+	struct eu_object_iter_priv base;
+
+	unsigned int struct_i;
+	unsigned char *struct_p;
+	const struct eu_struct_member *m;
+
+	size_t extras_i;
+	char *extras_p;
+	unsigned int extra_size;
+	unsigned int extra_value_offset;
+	const struct eu_metadata *extra_value_metadata;
+};
+
+static int struct_iter_next(struct eu_object_iter *iter)
+{
+	struct struct_iter_priv *priv = (struct struct_iter_priv *)iter->priv;
+
+	while (priv->struct_i) {
+		const struct eu_struct_member *m = priv->m++;
+		priv->struct_i--;
+
+		if (struct_member_present(m, priv->struct_p)) {
+			iter->name = eu_string_ref(m->name, m->name_len);
+			iter->value = eu_value(priv->struct_p + m->offset,
+					       m->metadata);
+			return 1;
+		}
+	}
+
+	if (priv->extras_i) {
+		iter->name = *(struct eu_string_ref *)priv->extras_p;
+		iter->value = eu_value(priv->extras_p
+				       + priv->extra_value_offset,
+				       priv->extra_value_metadata);
+		priv->extras_i--;
+		priv->extras_p += priv->extra_size;
+		return 1;
+	}
+
+	return 0;
+}
+
 static int inline_struct_iter_init(struct eu_value val,
 				   struct eu_object_iter *iter)
 {
 	const struct eu_struct_metadata *md
 		= (const struct eu_struct_metadata *)val.metadata;
 	struct eu_generic_members *extras;
+	struct struct_iter_priv *priv = malloc(sizeof *priv);
 
-	iter->priv.struct_i = md->n_members;
-	iter->priv.struct_p = val.value;
-	iter->priv.m = md->members;
+	if (!priv)
+		return 0;
 
-	extras = (void *)(iter->priv.struct_p + md->extras_offset);
-	iter->priv.extras_i = extras->len;
-	iter->priv.extras_p = extras->members;
-	iter->priv.extra_size = md->extra_member_size;
-	iter->priv.extra_value_offset = md->extra_member_value_offset;
-	iter->priv.extra_value_metadata = md->extra_value_metadata;
+	priv->base.next = struct_iter_next;
+
+	priv->struct_i = md->n_members;
+	priv->struct_p = val.value;
+	priv->m = md->members;
+
+	extras = (void *)(priv->struct_p + md->extras_offset);
+	priv->extras_i = extras->len;
+	priv->extras_p = extras->members;
+	priv->extra_size = md->extra_member_size;
+	priv->extra_value_offset = md->extra_member_value_offset;
+	priv->extra_value_metadata = md->extra_value_metadata;
+
+	iter->priv = &priv->base;
 	return 1;
 }
 
@@ -498,35 +549,21 @@ static int struct_ptr_iter_init(struct eu_value val,
 
 int eu_object_iter_init(struct eu_object_iter *iter, struct eu_value val)
 {
+	iter->priv = NULL;
 	return val.metadata->object_iter_init(val, iter);
 }
 
 int eu_object_iter_next(struct eu_object_iter *iter)
 {
-	while (iter->priv.struct_i) {
-		const struct eu_struct_member *m = iter->priv.m++;
-		iter->priv.struct_i--;
-
-		if (struct_member_present(m, iter->priv.struct_p)) {
-			iter->name = eu_string_ref(m->name, m->name_len);
-			iter->value = eu_value(iter->priv.struct_p + m->offset,
-					       m->metadata);
-			return 1;
-		}
-	}
-
-	if (iter->priv.extras_i) {
-		iter->name = *(struct eu_string_ref *)iter->priv.extras_p;
-		iter->value = eu_value(iter->priv.extras_p
-				       + iter->priv.extra_value_offset,
-				       iter->priv.extra_value_metadata);
-		iter->priv.extras_i--;
-		iter->priv.extras_p += iter->priv.extra_size;
-		return 1;
-	}
-	else {
+	if (!iter->priv)
 		return 0;
-	}
+	else
+		return iter->priv->next(iter);
+}
+
+void eu_object_iter_fini(struct eu_object_iter *iter)
+{
+	free(iter->priv);
 }
 
 size_t eu_object_size(struct eu_value val)
@@ -537,6 +574,7 @@ size_t eu_object_size(struct eu_value val)
 	for (eu_object_iter_init(&i, val); eu_object_iter_next(&i);)
 		n++;
 
+	eu_object_iter_fini(&i);
 	return n;
 }
 

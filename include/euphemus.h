@@ -283,21 +283,11 @@ size_t eu_object_size(struct eu_value val);
 struct eu_object_iter {
 	struct eu_string_ref name;
 	struct eu_value value;
-
-	struct {
-		unsigned int struct_i;
-		unsigned char *struct_p;
-		const struct eu_struct_member *m;
-
-		size_t extras_i;
-		char *extras_p;
-		unsigned int extra_size;
-		unsigned int extra_value_offset;
-		const struct eu_metadata *extra_value_metadata;
-	} priv;
+	struct eu_object_iter_priv *priv;
 };
 
 int eu_object_iter_init(struct eu_object_iter *iter, struct eu_value val);
 int eu_object_iter_next(struct eu_object_iter *iter);
+void eu_object_iter_fini(struct eu_object_iter *iter);
 
 #endif

@@ -55,7 +55,6 @@ struct eu_metadata {
 				struct eu_object_iter *iter);
 };
 
-
 struct eu_array_metadata {
 	struct eu_metadata base;
 	const struct eu_metadata *element_metadata;
@@ -90,6 +89,13 @@ const struct eu_metadata *eu_introduce_struct(const struct eu_type_descriptor *d
 const struct eu_metadata *eu_introduce_struct_ptr(
 					      const struct eu_type_descriptor *d,
 					      struct eu_introduce_chain *c);
+
+struct eu_object_iter_priv {
+	int (*next)(struct eu_object_iter *iter);
+};
+
+
+/* Parsing */
 
 enum eu_parse_result {
 	EU_PARSE_OK,
