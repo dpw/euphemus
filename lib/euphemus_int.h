@@ -55,27 +55,6 @@ struct eu_metadata {
 				struct eu_object_iter *iter);
 };
 
-struct eu_array_metadata {
-	struct eu_metadata base;
-	const struct eu_metadata *element_metadata;
-};
-
-#define EU_ARRAY_METADATA_INITIALIZER(el_metadata)                    \
-	{                                                             \
-		{                                                     \
-			EU_JSON_ARRAY,                                \
-			sizeof(struct eu_array),                      \
-			eu_array_parse,                               \
-			eu_array_fini,                                \
-			eu_array_get,                                 \
-			eu_object_iter_init_fail                      \
-                                                                      \
-		},                                                    \
-		el_metadata                                           \
-	}
-
-
-
 struct eu_introduce_chain {
 	const struct eu_type_descriptor *descriptor;
 	struct eu_metadata *metadata;

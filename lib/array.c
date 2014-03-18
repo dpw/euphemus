@@ -1,6 +1,11 @@
 #include <euphemus.h>
 #include "euphemus_int.h"
 
+struct eu_array_metadata {
+	struct eu_metadata base;
+	const struct eu_metadata *element_metadata;
+};
+
 enum array_parse_state {
 	ARRAY_PARSE_OPEN,
 	ARRAY_PARSE_ELEMENT,
@@ -23,14 +28,6 @@ static void array_parse_cont_destroy(struct eu_parse *ep,
 enum eu_parse_result array_parse(const struct eu_metadata *gmetadata,
 				 struct eu_parse *ep,
 				 void *v_result);
-
-enum eu_parse_result eu_variant_array(const void *array_metadata,
-				      struct eu_parse *ep,
-				      struct eu_variant *result)
-{
-	result->metadata = array_metadata;
-	return array_parse(array_metadata, ep, &result->u.array);
-}
 
 enum eu_parse_result eu_array_parse(const struct eu_metadata *gmetadata,
 				    struct eu_parse *ep,
@@ -155,5 +152,25 @@ struct eu_value eu_array_get(struct eu_value val, struct eu_string_ref name)
 	return eu_value_none;
 }
 
-const struct eu_array_metadata eu_variant_array_metadata
-	= EU_ARRAY_METADATA_INITIALIZER(&eu_variant_metadata);
+const struct eu_array_metadata eu_variant_array_metadata = {
+	{
+		EU_JSON_ARRAY,
+		sizeof(struct eu_array),
+		eu_array_parse,
+		eu_array_fini,
+		eu_array_get,
+		eu_object_iter_init_fail
+	},
+	&eu_variant_metadata
+};
+
+enum eu_parse_result eu_variant_array(const void *unused_metadata,
+				      struct eu_parse *ep,
+				      struct eu_variant *result)
+{
+	(void)unused_metadata;
+	result->metadata = &eu_variant_array_metadata.base;
+	return array_parse(&eu_variant_array_metadata.base, ep,
+			   &result->u.array);
+}
+
