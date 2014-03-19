@@ -25,7 +25,7 @@ const struct eu_struct_descriptor_v1 struct_named_schemas_descriptor = {
 void named_schemas_fini(struct named_schemas *p)
 {
 	if (p->extras.len)
-		eu_struct_extras_fini((struct eu_struct_metadata *)struct_named_schemas_ptr_metadata(), &p->extras);
+		eu_struct_extras_fini(struct_named_schemas_metadata(), &p->extras);
 }
 
 void named_schemas_destroy(struct named_schemas *p)
@@ -113,7 +113,7 @@ void schema_fini(struct schema *p)
 	if (p->additionalProperties) schema_destroy(p->additionalProperties);
 	eu_string_fini(&p->euphemusStructName);
 	if (p->extras.len)
-		eu_struct_extras_fini((struct eu_struct_metadata *)struct_schema_ptr_metadata(), &p->extras);
+		eu_struct_extras_fini(struct_schema_metadata(), &p->extras);
 }
 
 void schema_destroy(struct schema *p)

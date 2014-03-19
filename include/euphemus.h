@@ -61,7 +61,6 @@ static __inline__ int eu_string_ref_equal(struct eu_string_ref a,
    facilitate binary compatibility while retaining flexibility in the
    representations used. */
 struct eu_metadata;
-struct eu_struct_metadata;
 
 struct eu_type_descriptor {
 	const struct eu_metadata **metadata;
@@ -277,7 +276,7 @@ struct eu_struct_descriptor_v1 {
 	const struct eu_type_descriptor *extra_value_descriptor;
 };
 
-void eu_struct_extras_fini(const struct eu_struct_metadata *md, void *v_extras);
+void eu_struct_extras_fini(const struct eu_metadata *md, void *v_extras);
 size_t eu_object_size(struct eu_value val);
 
 struct eu_object_iter {

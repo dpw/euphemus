@@ -829,9 +829,9 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 
 	fprintf(codegen->c_out,
 		"\tif (p->extras.len)\n"
-		"\t\teu_struct_extras_fini((struct eu_struct_metadata *)%s(), &p->extras);\n"
+		"\t\teu_struct_extras_fini(%s(), &p->extras);\n"
 		"}\n\n",
-		sti->ptr_metadata_func_name);
+		sti->metadata_func_name);
 
 	fprintf(codegen->h_out,
 		"void %.*s_destroy(struct %.*s *p);\n\n",

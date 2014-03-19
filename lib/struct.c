@@ -86,25 +86,6 @@ static const struct eu_metadata *add_extra(const struct eu_struct_metadata *md,
 	return NULL;
 }
 
-void eu_struct_extras_fini(const struct eu_struct_metadata *md,
-			   void *v_extras)
-{
-	struct eu_generic_members *extras = v_extras;
-	const struct eu_metadata *evmd = md->extra_value_metadata;
-	char *m = extras->members;
-	size_t i;
-
-	for (i = 0; i < extras->len; i++) {
-		free((void *)((struct eu_string_ref *)m)->chars);
-		evmd->fini(evmd, m + md->extra_member_value_offset);
-		m += md->extra_member_size;
-	}
-
-	free(extras->members);
-	extras->members = NULL;
-	extras->len = 0;
-}
-
 static const struct eu_metadata *lookup_member(
 					const struct eu_struct_metadata *md,
 					char *s, const char *name,
@@ -379,6 +360,25 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 #undef RESUME_ONLY
 }
 
+static void struct_extras_fini(const struct eu_struct_metadata *md,
+			       void *v_extras)
+{
+	struct eu_generic_members *extras = v_extras;
+	const struct eu_metadata *evmd = md->extra_value_metadata;
+	char *m = extras->members;
+	size_t i;
+
+	for (i = 0; i < extras->len; i++) {
+		free((void *)((struct eu_string_ref *)m)->chars);
+		evmd->fini(evmd, m + md->extra_member_value_offset);
+		m += md->extra_member_size;
+	}
+
+	free(extras->members);
+	extras->members = NULL;
+	extras->len = 0;
+}
+
 static void inline_struct_fini(const struct eu_metadata *gmetadata, void *s)
 {
 	const struct eu_struct_metadata *metadata
@@ -391,7 +391,7 @@ static void inline_struct_fini(const struct eu_metadata *gmetadata, void *s)
 				       (char *)s + member->offset);
 	}
 
-	eu_struct_extras_fini(metadata, (char *)s + metadata->extras_offset);
+	struct_extras_fini(metadata, (char *)s + metadata->extras_offset);
 }
 
 static void struct_ptr_fini(const struct eu_metadata *gmetadata, void *value)
@@ -403,6 +403,14 @@ static void struct_ptr_fini(const struct eu_metadata *gmetadata, void *value)
 		free(s);
 		*(void **)value = NULL;
 	}
+}
+
+void eu_struct_extras_fini(const struct eu_metadata *smd, void *v_extras)
+{
+	if (smd->fini != inline_struct_fini)
+		abort();
+
+	struct_extras_fini((const struct eu_struct_metadata *)smd, v_extras);
 }
 
 static void struct_parse_cont_destroy(struct eu_parse *ep,
