@@ -178,7 +178,6 @@ enum eu_parse_result eu_array_parse(const struct eu_metadata *gmetadata,
 				    struct eu_parse *ep, void *result);
 void eu_array_fini(const struct eu_metadata *gmetadata, void *value);
 struct eu_value eu_array_get(struct eu_value val, struct eu_string_ref name);
-int eu_object_iter_init_fail(struct eu_value val, struct eu_object_iter *iter);
 
 /* Others */
 

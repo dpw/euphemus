@@ -135,11 +135,18 @@ static int variant_object_iter_init(struct eu_value val,
 	return eu_object_iter_init(iter, eu_variant_peek(var));
 }
 
+static size_t variant_object_size(struct eu_value val)
+{
+	struct eu_variant *var = val.value;
+	return eu_object_size(eu_variant_peek(var));
+}
+
 const struct eu_metadata eu_variant_metadata = {
 	EU_JSON_VARIANT,
 	sizeof(struct eu_variant),
 	variant_parse,
 	variant_fini,
 	variant_get,
-	variant_object_iter_init
+	variant_object_iter_init,
+	variant_object_size
 };

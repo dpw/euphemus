@@ -574,16 +574,30 @@ void eu_object_iter_fini(struct eu_object_iter *iter)
 	free(iter->priv);
 }
 
+static size_t inline_struct_size(struct eu_value val)
+{
+	const struct eu_struct_metadata *md
+		= (const struct eu_struct_metadata *)val.metadata;
+	unsigned char *p = val.value;
+	unsigned int i, count = 0;
+	struct eu_generic_members *extras = (void *)(p + md->extras_offset);
+
+	for (i = 0; i < md->n_members; i++)
+		if (struct_member_present(md->members + i, p))
+			count++;
+
+	return count + extras->len;
+}
+
+static size_t struct_ptr_size(struct eu_value val)
+{
+	val.value = *(void **)val.value;
+	return inline_struct_size(val);
+}
+
 size_t eu_object_size(struct eu_value val)
 {
-	struct eu_object_iter i;
-	size_t n = 0;
-
-	for (eu_object_iter_init(&i, val); eu_object_iter_next(&i);)
-		n++;
-
-	eu_object_iter_fini(&i);
-	return n;
+	return val.metadata->object_size(val);
 }
 
 const struct eu_struct_metadata eu_object_metadata = {
@@ -593,7 +607,8 @@ const struct eu_struct_metadata eu_object_metadata = {
 		inline_struct_parse,
 		inline_struct_fini,
 		inline_struct_get,
-		inline_struct_iter_init
+		inline_struct_iter_init,
+		inline_struct_size
 	},
 	-1,
 	0,
@@ -646,12 +661,14 @@ static int introduce_struct(struct eu_struct_descriptor_v1 *d,
 	md->base.fini = inline_struct_fini;
 	md->base.get = inline_struct_get;
 	md->base.object_iter_init = inline_struct_iter_init;
+	md->base.object_size = inline_struct_size;
 
 	pmd->base.size = sizeof(void *);
 	pmd->base.parse = struct_ptr_parse;
 	pmd->base.fini = struct_ptr_fini;
 	pmd->base.get = struct_ptr_get;
 	pmd->base.object_iter_init = struct_ptr_iter_init;
+	pmd->base.object_size = struct_ptr_size;
 
 	md->struct_size = pmd->struct_size = d->struct_size;
 	md->extras_offset = pmd->extras_offset = d->extras_offset;

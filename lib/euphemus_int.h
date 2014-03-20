@@ -53,6 +53,7 @@ struct eu_metadata {
 
 	int (*object_iter_init)(struct eu_value val,
 				struct eu_object_iter *iter);
+	size_t (*object_size)(struct eu_value val);
 };
 
 struct eu_introduce_chain {
@@ -124,6 +125,8 @@ int eu_parse_append_to_scratch_with_nul(struct eu_parse *ep, const char *start,
 
 void eu_noop_fini(const struct eu_metadata *metadata, void *value);
 struct eu_value eu_get_fail(struct eu_value val, struct eu_string_ref name);
+int eu_object_iter_init_fail(struct eu_value val, struct eu_object_iter *iter);
+size_t eu_object_size_fail(struct eu_value val);
 
 extern const struct eu_array_metadata eu_variant_array_metadata;
 extern const struct eu_metadata eu_null_metadata;

@@ -159,7 +159,8 @@ const struct eu_array_metadata eu_variant_array_metadata = {
 		eu_array_parse,
 		eu_array_fini,
 		eu_array_get,
-		eu_object_iter_init_fail
+		eu_object_iter_init_fail,
+		eu_object_size_fail
 	},
 	&eu_variant_metadata
 };

@@ -37,13 +37,20 @@ int eu_object_iter_init_fail(struct eu_value val, struct eu_object_iter *iter)
 	return 0;
 }
 
+size_t eu_object_size_fail(struct eu_value val)
+{
+	(void)val;
+	return 0;
+}
+
 static struct eu_metadata fail_metadata = {
 	EU_JSON_INVALID,
 	0,
 	fail_parse,
 	fail_fini,
 	eu_get_fail,
-	eu_object_iter_init_fail
+	eu_object_iter_init_fail,
+	eu_object_size_fail
 };
 
 const struct eu_metadata *eu_introduce(const struct eu_type_descriptor *d)

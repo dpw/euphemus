@@ -134,7 +134,8 @@ const struct eu_metadata eu_number_metadata = {
 	number_parse,
 	eu_noop_fini,
 	eu_get_fail,
-	eu_object_iter_init_fail
+	eu_object_iter_init_fail,
+	eu_object_size_fail
 };
 
 enum eu_parse_result eu_variant_number(const void *number_metadata,

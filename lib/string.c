@@ -354,5 +354,6 @@ const struct eu_metadata eu_string_metadata = {
 	string_parse,
 	string_fini,
 	eu_get_fail,
-	eu_object_iter_init_fail
+	eu_object_iter_init_fail,
+	eu_object_size_fail
 };

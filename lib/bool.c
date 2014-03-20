@@ -42,7 +42,8 @@ struct eu_metadata eu_bool_metadata = {
 	bool_parse,
 	eu_noop_fini,
 	eu_get_fail,
-	eu_object_iter_init_fail
+	eu_object_iter_init_fail,
+	eu_object_size
 };
 
 struct eu_bool_misc {

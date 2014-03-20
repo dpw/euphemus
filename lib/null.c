@@ -34,7 +34,8 @@ const struct eu_metadata eu_null_metadata = {
 	null_parse,
 	eu_noop_fini,
 	eu_get_fail,
-	eu_object_iter_init_fail
+	eu_object_iter_init_fail,
+	eu_object_size_fail
 };
 
 enum eu_parse_result eu_variant_n(const void *null_metadata, struct eu_parse *ep,
