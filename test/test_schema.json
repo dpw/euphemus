@@ -6,7 +6,11 @@
 		"num": { "type": "number" },
 		"bool": { "type": "boolean" },
 		"any": {},
-		"bar": { "$ref": "#/definitions/bar" }
+		"bar": { "$ref": "#/definitions/bar" },
+                "array": {
+                        "type": "array",
+                        "additionalItems": { "$ref": "#/definitions/bar" }
+                }
         },
 
         "definitions": {

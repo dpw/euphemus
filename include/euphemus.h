@@ -68,6 +68,7 @@ struct eu_type_descriptor {
 		EU_TDESC_SHIM,
 		EU_TDESC_STRUCT_PTR_V1,
 		EU_TDESC_STRUCT_V1,
+		EU_TDESC_ARRAY_V1,
 	} kind;
 };
 
@@ -168,6 +169,11 @@ static __inline__ struct eu_value eu_string_value(struct eu_string *string)
 }
 
 /* Arrays */
+
+struct eu_array_descriptor_v1 {
+	struct eu_type_descriptor base;
+	const struct eu_type_descriptor *element_descriptor;
+};
 
 struct eu_array {
 	void *a;

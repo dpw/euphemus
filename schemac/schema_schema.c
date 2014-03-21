@@ -36,7 +36,7 @@ void named_schemas_destroy(struct named_schemas *p)
 	}
 }
 
-static const struct eu_struct_member_descriptor_v1 schema_members[7] = {
+static const struct eu_struct_member_descriptor_v1 schema_members[8] = {
 	{
 		offsetof(struct schema, ref),
 		4,
@@ -80,6 +80,13 @@ static const struct eu_struct_member_descriptor_v1 schema_members[7] = {
 		&struct_schema_descriptor.struct_ptr_base
 	},
 	{
+		offsetof(struct schema, additionalItems),
+		15,
+		-1, 0,
+		"additionalItems",
+		&struct_schema_descriptor.struct_ptr_base
+	},
+	{
 		offsetof(struct schema, euphemusStructName),
 		18,
 		3 / CHAR_BIT, 1 << (3 % CHAR_BIT),
@@ -111,6 +118,7 @@ void schema_fini(struct schema *p)
 	eu_string_fini(&p->title);
 	if (p->properties) named_schemas_destroy(p->properties);
 	if (p->additionalProperties) schema_destroy(p->additionalProperties);
+	if (p->additionalItems) schema_destroy(p->additionalItems);
 	eu_string_fini(&p->euphemusStructName);
 	if (p->extras.len)
 		eu_struct_extras_fini(struct_schema_metadata(), &p->extras);

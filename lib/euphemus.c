@@ -81,6 +81,9 @@ const struct eu_metadata *eu_introduce_aux(const struct eu_type_descriptor *d,
 	case EU_TDESC_STRUCT_PTR_V1:
 		return eu_introduce_struct_ptr(d, chain);
 
+	case EU_TDESC_ARRAY_V1:
+		return eu_introduce_array(d, chain);
+
 	default:
 		return NULL;
 	}

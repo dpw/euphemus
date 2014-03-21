@@ -175,3 +175,31 @@ enum eu_parse_result eu_variant_array(const void *unused_metadata,
 			   &result->u.array);
 }
 
+const struct eu_metadata *eu_introduce_array(const struct eu_type_descriptor *d,
+					     struct eu_introduce_chain *chain)
+{
+	struct eu_introduce_chain chain_head;
+	struct eu_array_metadata *md = malloc(sizeof *md);
+	struct eu_array_descriptor_v1 *ad
+		= container_of(d, struct eu_array_descriptor_v1, base);
+
+	if (md == NULL)
+		return NULL;
+
+	chain_head.descriptor = &ad->base;
+	chain_head.metadata = &md->base;
+	chain_head.next = chain;
+
+	md->base.json_type = EU_JSON_ARRAY;
+	md->base.size = sizeof(struct eu_array);
+	md->base.parse = eu_array_parse;
+	md->base.fini = eu_array_fini;
+	md->base.get = eu_array_get;
+	md->base.object_iter_init = eu_object_iter_init_fail;
+	md->base.object_size = eu_object_size_fail;
+	md->element_metadata = eu_introduce_aux(ad->element_descriptor,
+						&chain_head);
+
+	*d->metadata = &md->base;
+	return &md->base;
+}

@@ -80,6 +80,7 @@ struct schema {
 	struct eu_string title;
 	struct named_schemas *properties;
 	struct schema *additionalProperties;
+	struct schema *additionalItems;
 	struct eu_string euphemusStructName;
 	struct eu_variant_members extras;
 };

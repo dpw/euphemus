@@ -69,6 +69,8 @@ const struct eu_metadata *eu_introduce_struct(const struct eu_type_descriptor *d
 const struct eu_metadata *eu_introduce_struct_ptr(
 					      const struct eu_type_descriptor *d,
 					      struct eu_introduce_chain *c);
+const struct eu_metadata *eu_introduce_array(const struct eu_type_descriptor *gd,
+					     struct eu_introduce_chain *chain);
 
 struct eu_object_iter_priv {
 	int (*next)(struct eu_object_iter *iter);

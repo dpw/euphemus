@@ -14,10 +14,15 @@
 
                                 "type": { "type": "string" },
                                 "title": { "type": "string" },
+
                                 "properties": {
                                         "$ref": "#/definitions/named-schemas"
                                 },
                                 "additionalProperties": {
+                                        "$ref": "#/definitions/schema"
+                                },
+
+                                "additionalItems": {
                                         "$ref": "#/definitions/schema"
                                 },
 

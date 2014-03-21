@@ -14,11 +14,14 @@ static void check_test_schema(struct test_schema *test_schema)
 	assert(test_schema->bool);
 	assert(eu_value_type(eu_variant_value(&test_schema->any)) == EU_JSON_NULL);
 	assert(test_schema->bar);
+	assert(test_schema->array.len == 1);
+	assert(eu_string_ref_equal(eu_string_to_ref(&test_schema->array.a[0]->str),
+				   eu_cstr("y")));
 }
 
 static void test_struct_ptr(void)
 {
-	TEST_PARSE("{\"str\":\"x\",\"any\":null,\"bar\":{},\"num\":42,\"bool\":true}",
+	TEST_PARSE("{\"str\":\"x\",\"any\":null,\"bar\":{},\"num\":42,\"bool\":true,\"array\":[{\"str\":\"y\"}]}",
 		   struct test_schema *,
 		   test_schema_ptr_to_eu_value,
 		   check_test_schema(result),
@@ -54,7 +57,7 @@ static void test_bad_struct_ptr(void)
 
 static void test_inline_struct(void)
 {
-	TEST_PARSE("{\"str\":\"x\",\"any\":null,\"bar\":{},\"num\":42,\"bool\":true}",
+	TEST_PARSE("{\"str\":\"x\",\"any\":null,\"bar\":{},\"num\":42,\"bool\":true,\"array\":[{\"str\":\"y\"}]}",
 		   struct test_schema,
 		   test_schema_to_eu_value,
 		   check_test_schema(&result),

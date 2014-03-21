@@ -118,7 +118,7 @@ struct type_info {
 	struct type_info_ops *ops;
 	struct type_info *next_to_destroy;
 
-	/* The basis for constructed names related to the type */
+	/* The basis for constructed C identifiers related to the type */
 	const char *base_name;
 
 	/* The C expression for a pointer to the type's metadata */
@@ -133,6 +133,7 @@ struct type_info {
 	const char *member_struct_name;
 
 	eu_bool_t is_pointer;
+	eu_bool_t defined_yet;
 };
 
 struct type_info_ops {
@@ -161,6 +162,10 @@ static void declare(struct type_info *ti, FILE *out, const char *name)
 /* Define the type */
 static void define_type(struct type_info *ti, struct codegen *codegen)
 {
+	if (ti->defined_yet)
+		return;
+
+	ti->defined_yet = 1;
 	ti->ops->define(ti, codegen);
 }
 
@@ -236,6 +241,7 @@ static void type_info_init(struct type_info *ti,
 	ti->members_struct_name = NULL;
 	ti->member_struct_name = NULL;
 	ti->is_pointer = is_pointer;
+	ti->defined_yet = !ops->define;
 
 	ti->next_to_destroy = codegen->type_infos_to_destroy;
 	codegen->type_infos_to_destroy = ti;
@@ -268,12 +274,6 @@ static void noop_fill(struct type_info *ti, struct codegen *codegen,
 	(void)ti;
 	(void)codegen;
 	(void)schema;
-}
-
-static void noop_define(struct type_info *ti, struct codegen *codegen)
-{
-	(void)ti;
-	(void)codegen;
 }
 
 static void noop_call_fini(struct type_info *ti, FILE *out,
@@ -313,7 +313,7 @@ static void simple_type_destroy(struct type_info *ti)
 struct type_info_ops simple_type_info_ops = {
 	noop_fill,
 	simple_type_declare,
-	noop_define,
+	NULL,
 	noop_call_fini,
 	simple_type_destroy
 };
@@ -327,7 +327,7 @@ static void builtin_type_call_fini(struct type_info *ti, FILE *out,
 struct type_info_ops builtin_type_info_ops = {
 	noop_fill,
 	simple_type_declare,
-	noop_define,
+	NULL,
 	builtin_type_call_fini,
 	simple_type_destroy
 };
@@ -471,8 +471,6 @@ struct struct_type_info {
 	char *metadata_func_name;
 	char *ptr_metadata_func_name;
 	char *descriptor_name;
-
-	char defined_yet;
 };
 
 static struct type_info_ops struct_type_info_ops;
@@ -510,7 +508,6 @@ static struct type_info *alloc_struct(struct schema *schema,
 	sti->extras_type = NULL;
 	sti->members = NULL;
 	sti->members_len = 0;
-	sti->defined_yet = 0;
 
 	type_info_init(&sti->base, codegen, &struct_type_info_ops,
 		       xsprintf("struct_%.*s",
@@ -568,7 +565,6 @@ static void struct_fill(struct type_info *ti, struct codegen *codegen,
 						schema->additionalProperties,
 						eu_string_ref_null);
 }
-
 
 static void struct_declare(struct type_info *ti, FILE *out, const char *name)
 {
@@ -654,11 +650,6 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 	struct type_info *extras_type;
 	char *metadata_ptr_name, *ptr_metadata_ptr_name;
 
-	if (sti->defined_yet)
-		return;
-
-	sti->defined_yet = 1;
-
 	/* The definitions of any types used in this struct. */
 	for (i = 0; i < sti->members_len; i++) {
 		struct member_info *mi = &sti->members[i];
@@ -698,7 +689,8 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 		"};\n\n",
 		extras_type->members_struct_name);
 
-	/* Member metadata */
+	/* Descriptor definition */
+
 	fprintf(codegen->c_out,
 		"static const struct eu_struct_member_descriptor_v1 %.*s_members[%d] = {\n",
 		(int)sti->struct_name.len, sti->struct_name.chars,
@@ -893,6 +885,152 @@ static struct type_info_ops struct_type_info_ops = {
 	struct_destroy
 };
 
+/* Arrays */
+
+struct array_type_info {
+	struct type_info base;
+	char *metadata_func_name;
+	char *descriptor_name;
+	struct type_info *element_type;
+};
+
+static char *string_ref_to_cstr(struct eu_string_ref s)
+{
+	/* This ought to check that s is a valid C identifier. */
+	char *c = xalloc(s.len + 1);
+	memcpy(c, s.chars, s.len);
+	c[s.len] = 0;
+	return c;
+}
+
+static struct type_info_ops array_type_info_ops;
+
+static struct type_info *alloc_array(struct schema *schema,
+				     struct codegen *codegen,
+				     struct eu_string_ref name)
+{
+	struct array_type_info *ati = xalloc(sizeof *ati);
+	char *cname;
+
+	ati->element_type = NULL;
+
+	if (!eu_string_ref_ok(name)) {
+		/* This is not safe, as it might be a reference to
+		   ourself.  But we need to resolve it early to get
+		   the base_name.  Need to detect the circularity case
+		   and gensym a name. */
+		ati->element_type = resolve_type(codegen,
+						 schema->additionalItems,
+						 eu_string_ref_null);
+
+		cname = xsprintf("%s_array", ati->element_type->base_name);
+	}
+	else {
+		cname = string_ref_to_cstr(name);
+	}
+
+	ati->metadata_func_name = xsprintf("%s_metadata", cname);
+	ati->descriptor_name = xsprintf("%s_descriptor", cname);
+
+	type_info_init(&ati->base, codegen, &array_type_info_ops, cname,
+		       xsprintf("%s()", ati->metadata_func_name),
+		       xsprintf("&%s.base", ati->descriptor_name),
+		       0);
+	return &ati->base;
+}
+
+static void array_fill(struct type_info *ti, struct codegen *codegen,
+		       struct schema *schema)
+{
+	struct array_type_info *ati = (void *)ti;
+
+	if (!ati->element_type)
+		ati->element_type = resolve_type(codegen, schema->additionalItems,
+						 eu_string_ref_null);
+}
+
+static void array_declare(struct type_info *ti, FILE *out, const char *name)
+{
+	fprintf(out, "\tstruct %s %s;\n", ti->base_name, name);
+}
+
+static void array_define(struct type_info *ti, struct codegen *codegen)
+{
+	struct array_type_info *ati = (void *)ti;
+	char *metadata_ptr_name;
+
+	fprintf(codegen->h_out, "struct %s {\n", ti->base_name);
+	declare(ati->element_type, codegen->h_out, "*a");
+	fprintf(codegen->h_out,
+		"\tsize_t len;\n"
+		"};\n\n");
+
+	/* Descriptor definition */
+
+	metadata_ptr_name = xsprintf("%s_metadata_ptr", ti->base_name);
+
+	fprintf(codegen->h_out,
+		"extern const struct eu_metadata *%s;\n"
+		"extern const struct eu_array_descriptor_v1 %s;\n\n",
+		metadata_ptr_name,
+		ati->descriptor_name);
+
+	fprintf(codegen->c_out,
+		"const struct eu_metadata *%s;\n\n"
+		"const struct eu_array_descriptor_v1 %s = {\n"
+		"\t{ &%s, EU_TDESC_ARRAY_V1 },\n"
+		"\t%s\n"
+		"};\n\n",
+		metadata_ptr_name,
+		ati->descriptor_name,
+		metadata_ptr_name,
+		ati->element_type->descriptor_ptr_expr);
+
+	fprintf(codegen->h_out,
+		"static __inline__ const struct eu_metadata *%s(void)\n"
+		"{\n"
+		"\tif (%s)\n"
+		"\t\treturn %s;\n"
+		"\telse\n"
+		"\t\treturn eu_introduce(&%s.base);\n"
+		"}\n\n",
+		ati->metadata_func_name,
+		metadata_ptr_name, metadata_ptr_name,
+		ati->descriptor_name);
+
+	free(metadata_ptr_name);
+}
+
+static void array_call_fini(struct type_info *ti, FILE *out, const char *var_expr)
+{
+	fprintf(out, "\teu_array_fini(%s, &%s);\n", ti->metadata_ptr_expr, var_expr);
+}
+
+
+static void array_destroy(struct type_info *ti)
+{
+	struct array_type_info *ati = (void *)ti;
+
+	type_info_fini(ti);
+	free(ati->metadata_func_name);
+	free(ati->descriptor_name);
+	free((void *)ati->base.base_name);
+	free((void *)ati->base.metadata_ptr_expr);
+	free((void *)ati->base.descriptor_ptr_expr);
+	free(ati);
+}
+
+static struct type_info_ops array_type_info_ops = {
+	array_fill,
+	array_declare,
+	array_define,
+	array_call_fini,
+	array_destroy
+};
+
+
+/* Definition resolution */
+
 #define REF_PREFIX "#/definitions/"
 #define REF_PREFIX_LEN 14
 
@@ -963,8 +1101,9 @@ static struct type_info *alloc_type(struct codegen *codegen,
 
 	if (eu_string_ref_equal(type, eu_cstr("object")))
 		return alloc_struct(schema, codegen, name);
-
-	if (eu_string_ref_equal(type, eu_cstr("string")))
+	else if (eu_string_ref_equal(type, eu_cstr("array")))
+		return alloc_array(schema, codegen, name);
+	else if (eu_string_ref_equal(type, eu_cstr("string")))
 		res = codegen->string_type;
 	else if (eu_string_ref_equal(type, eu_cstr("number")))
 		res = codegen->number_type;
