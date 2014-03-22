@@ -93,8 +93,9 @@ static void test_path(void)
 {
 	struct test_schema test_schema;
 	struct eu_parse *parse;
-	const char *json = "{\"bar\":{\"bar\":{\"bar\":{\"hello\":\"world\"}}}}";
+	const char *json = "{\"bar\":{\"bar\":{\"bar\":{\"hello\":\"world\"}}},\"array\":[{\"str\":\"x\"},{\"str\":\"y\"},{\"str\":\"z\"}]}";
 	struct eu_value val;
+	struct bar **p;
 
 	parse = eu_parse_create(test_schema_to_eu_value(&test_schema));
 	assert(eu_parse(parse, json, strlen(json)));
@@ -108,6 +109,14 @@ static void test_path(void)
 	assert(eu_value_type(val) == EU_JSON_STRING);
 	assert(eu_string_ref_equal(eu_value_to_string_ref(val),
 				   eu_cstr("world")));
+
+	val = test_schema_to_eu_value(&test_schema);
+	val = eu_get_path(val, eu_cstr("/array/1"));
+	assert(eu_value_ok(val));
+	assert(eu_value_type(val) == EU_JSON_OBJECT);
+	assert(val.metadata == struct_bar_ptr_metadata());
+	p = val.value;
+	assert(eu_string_ref_equal(eu_string_to_ref(&(*p)->str), eu_cstr("y")));
 
 	test_schema_fini(&test_schema);
 }
