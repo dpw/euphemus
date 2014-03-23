@@ -15,7 +15,7 @@ static void check_test_schema(struct test_schema *test_schema)
 	assert(eu_value_type(eu_variant_value(&test_schema->any)) == EU_JSON_NULL);
 	assert(test_schema->bar);
 	assert(test_schema->array.len == 1);
-	assert(eu_string_ref_equal(eu_string_to_ref(&test_schema->array.a[0]->str),
+	assert(eu_string_ref_equal(eu_string_to_ref(&test_schema->array.a[0].str),
 				   eu_cstr("y")));
 }
 
@@ -95,7 +95,7 @@ static void test_path(void)
 	struct eu_parse *parse;
 	const char *json = "{\"bar\":{\"bar\":{\"bar\":{\"hello\":\"world\"}}},\"array\":[{\"str\":\"x\"},{\"str\":\"y\"},{\"str\":\"z\"}]}";
 	struct eu_value val;
-	struct bar **p;
+	struct bar *p;
 
 	parse = eu_parse_create(test_schema_to_eu_value(&test_schema));
 	assert(eu_parse(parse, json, strlen(json)));
@@ -114,9 +114,9 @@ static void test_path(void)
 	val = eu_get_path(val, eu_cstr("/array/1"));
 	assert(eu_value_ok(val));
 	assert(eu_value_type(val) == EU_JSON_OBJECT);
-	assert(val.metadata == struct_bar_ptr_metadata());
+	assert(val.metadata == struct_bar_metadata());
 	p = val.value;
-	assert(eu_string_ref_equal(eu_string_to_ref(&(*p)->str), eu_cstr("y")));
+	assert(eu_string_ref_equal(eu_string_to_ref(&p->str), eu_cstr("y")));
 
 	test_schema_fini(&test_schema);
 }

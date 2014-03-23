@@ -7,7 +7,7 @@
 #define STRUCT_SCHEMA_MEMBERS_DEFINED
 struct struct_schema_member {
 	struct eu_string_ref name;
-	struct schema *value;
+	struct schema value;
 };
 
 struct struct_schema_members {
