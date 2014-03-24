@@ -212,7 +212,7 @@ static void define_members_struct(struct type_info *ti, struct codegen *codegen)
 		"struct %s {\n"
 		"\tstruct eu_string_ref name;\n",
 		ti->member_struct_name);
-	declare(ti, codegen->h_out, "value", REQUIRED);
+	declare(ti, codegen->h_out, "value", OPTIONAL);
 	fprintf(codegen->h_out, "};\n\n");
 
 	/* The *_members struct declaration */
