@@ -138,7 +138,12 @@ struct type_info {
 	const char *member_struct_name;
 
 	eu_bool_t no_presence_bit;
-	eu_bool_t defined_yet;
+
+	enum {
+		NOT_DEFINED,
+		DEFINING,
+		DEFINED
+	} defined;
 };
 
 struct type_info_ops {
@@ -166,26 +171,50 @@ static void declare(struct type_info *ti, FILE *out, const char *name,
 	ti->ops->declare(ti, out, name, optional);
 }
 
+static void upcase_print(FILE *out, const char *s)
+{
+	while (*s)
+		putc(toupper(*s++), out);
+}
+
+static void define_member_struct(struct type_info *ti, struct codegen *codegen)
+{
+	fprintf(codegen->h_out, "#define ");
+	upcase_print(codegen->h_out, ti->members_struct_name);
+	fprintf(codegen->h_out, "_DEFINED\n\n");
+
+	/* The *_member struct declaration */
+	fprintf(codegen->h_out,
+		"struct %s {\n"
+		"\tstruct eu_string_ref name;\n",
+		ti->member_struct_name);
+	declare(ti, codegen->h_out, "value", REQUIRED);
+	fprintf(codegen->h_out, "};\n\n");
+}
+
 /* Define the type */
 static void define_type(struct type_info *ti, struct codegen *codegen)
 {
-	if (ti->defined_yet)
+	if (ti->defined != NOT_DEFINED)
 		return;
 
-	ti->defined_yet = 1;
+	ti->defined = DEFINING;
 	ti->ops->define(ti, codegen);
+	ti->defined = DEFINED;
+
+	if (ti->member_struct_name) {
+		fprintf(codegen->h_out, "#ifndef ");
+		upcase_print(codegen->h_out, ti->members_struct_name);
+		fprintf(codegen->h_out, "_DEFINED\n");
+		define_member_struct(ti, codegen);
+		fprintf(codegen->h_out, "#endif\n\n");
+	}
 }
 
 /* Generate a finalizer call for the type */
 static void call_fini(struct type_info *ti, FILE *out, const char *var_expr)
 {
 	ti->ops->call_fini(ti, out, var_expr);
-}
-
-static void upcase_print(FILE *out, const char *s)
-{
-	while (*s)
-		putc(toupper(*s++), out);
 }
 
 /* Emitting the definition of the *_members struct for the type, if
@@ -203,17 +232,9 @@ static void define_members_struct(struct type_info *ti, struct codegen *codegen)
 	fprintf(codegen->h_out, "#ifndef ");
 	upcase_print(codegen->h_out, ti->members_struct_name);
 	fprintf(codegen->h_out, "_DEFINED\n");
-	fprintf(codegen->h_out, "#define ");
-	upcase_print(codegen->h_out, ti->members_struct_name);
-	fprintf(codegen->h_out, "_DEFINED\n");
 
-	/* The *_member struct declaration */
-	fprintf(codegen->h_out,
-		"struct %s {\n"
-		"\tstruct eu_string_ref name;\n",
-		ti->member_struct_name);
-	declare(ti, codegen->h_out, "value", OPTIONAL);
-	fprintf(codegen->h_out, "};\n\n");
+	if (ti->defined == DEFINED)
+		define_member_struct(ti, codegen);
 
 	/* The *_members struct declaration */
 	fprintf(codegen->h_out,
@@ -244,7 +265,7 @@ static void type_info_init(struct type_info *ti,
 	ti->members_struct_name = NULL;
 	ti->member_struct_name = NULL;
 	ti->no_presence_bit = no_presence_bit;
-	ti->defined_yet = !ops->define;
+	ti->defined = ops->define ? NOT_DEFINED : DEFINED;
 
 	ti->next_to_destroy = codegen->type_infos_to_destroy;
 	codegen->type_infos_to_destroy = ti;
@@ -573,7 +594,7 @@ static void struct_fill(struct type_info *ti, struct codegen *codegen,
 
 			mi->json_name = p->name;
 			mi->c_name = sanitize_name(mi->json_name);
-			mi->type = resolve_type(codegen, p->value,
+			mi->type = resolve_type(codegen, &p->value,
 						eu_string_ref_null);
 		}
 	}
@@ -791,7 +812,7 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 		extras_type->member_struct_name,
 		(int)sti->struct_name.len, sti->struct_name.chars,
 		(int)sti->struct_name.len, sti->struct_name.chars,
-		extras_type->descriptor_ptr_expr[OPTIONAL]);
+		extras_type->descriptor_ptr_expr[REQUIRED]);
 
 	fprintf(codegen->h_out,
 		"static __inline__ const struct eu_metadata *%s(void)\n"
@@ -1236,7 +1257,7 @@ static void codegen_process_definitions(struct codegen *codegen,
 	   and the target definitions in such cases. */
 	for (i = 0; i < n; i++) {
 		struct definition *def = &codegen->defs[i];
-		struct schema *schema = definitions->extras.members[i].value;
+		struct schema *schema = &definitions->extras.members[i].value;
 
 		if (!schema->ref.chars) {
 			def->state = DEF_SCHEMA;
@@ -1266,7 +1287,7 @@ static void codegen_process_definitions(struct codegen *codegen,
 
 		if (def->state == DEF_SCHEMA_TYPE)
 			fill_type(def->u.type, codegen,
-				  definitions->extras.members[i].value);
+				  &definitions->extras.members[i].value);
 	}
 }
 

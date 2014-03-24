@@ -4,12 +4,6 @@
 #include <euphemus.h>
 
 #ifndef STRUCT_SCHEMA_MEMBERS_DEFINED
-#define STRUCT_SCHEMA_MEMBERS_DEFINED
-struct struct_schema_member {
-	struct eu_string_ref name;
-	struct schema *value;
-};
-
 struct struct_schema_members {
 	struct struct_schema_member *members;
 	size_t len;
@@ -58,6 +52,7 @@ static __inline__ struct eu_value named_schemas_to_eu_value(struct named_schemas
 
 #ifndef EU_VARIANT_MEMBERS_DEFINED
 #define EU_VARIANT_MEMBERS_DEFINED
+
 struct eu_variant_member {
 	struct eu_string_ref name;
 	struct eu_variant value;
@@ -117,4 +112,14 @@ static __inline__ struct eu_value schema_to_eu_value(struct schema *p)
 {
 	return eu_value(p, struct_schema_metadata());
 }
+
+#ifndef STRUCT_SCHEMA_MEMBERS_DEFINED
+#define STRUCT_SCHEMA_MEMBERS_DEFINED
+
+struct struct_schema_member {
+	struct eu_string_ref name;
+	struct schema value;
+};
+
+#endif
 

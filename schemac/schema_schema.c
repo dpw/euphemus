@@ -19,7 +19,7 @@ const struct eu_struct_descriptor_v1 struct_named_schemas_descriptor = {
 	offsetof(struct struct_schema_member, value),
 	sizeof(named_schemas_members) / sizeof(struct eu_struct_member_descriptor_v1),
 	named_schemas_members,
-	&struct_schema_descriptor.struct_ptr_base
+	&struct_schema_descriptor.struct_base
 };
 
 void named_schemas_fini(struct named_schemas *p)
