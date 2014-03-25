@@ -157,7 +157,9 @@ static __inline__ struct eu_string_ref eu_string_to_ref(
 
 static __inline__ void eu_string_fini(struct eu_string *string)
 {
-	free(string->chars);
+	if (string->len)
+		free(string->chars);
+
 	string->chars = NULL;
 }
 

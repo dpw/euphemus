@@ -85,6 +85,7 @@ RESUME_ONLY(case ARRAY_PARSE_COMMA:)
 
  empty:
 	ep->input++;
+	result->a = ZERO_LENGTH_PTR;
 	return EU_PARSE_OK;
 
  pause:

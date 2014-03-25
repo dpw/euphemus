@@ -81,6 +81,9 @@ static enum eu_parse_result string_parse_common(
 
  done:
 	len = p - ep->input;
+	if (!len)
+		goto empty;
+
 	buf = malloc(len);
 	if (!buf)
 		goto alloc_error;
@@ -90,6 +93,12 @@ static enum eu_parse_result string_parse_common(
 	result->len = len;
 
 	/* skip the final '"' */
+	ep->input = p + 1;
+	return EU_PARSE_OK;
+
+ empty:
+	result->chars = ZERO_LENGTH_PTR;
+
 	ep->input = p + 1;
 	return EU_PARSE_OK;
 
@@ -188,8 +197,10 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
  done:
 	len = p - ep->input;
 	total_len = cont->len + len + unescaped_char_len;
-
 	buf = cont->buf;
+	if (!total_len)
+		goto empty;
+
 	if (total_len > cont->capacity) {
 		buf = realloc(buf, total_len);
 		if (!buf)
@@ -210,6 +221,13 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 				      cont->capacity)))
 		goto alloc_error;
 
+	/* skip the final '"' */
+	ep->input = p + 1;
+	return EU_PARSE_OK;
+
+ empty:
+	free(buf);
+	cont->result->chars = ZERO_LENGTH_PTR;
 	ep->input = p + 1;
 	return EU_PARSE_OK;
 

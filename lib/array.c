@@ -88,17 +88,19 @@ static enum eu_parse_result array_parse_resume(struct eu_parse *ep,
 static void array_fini(const struct eu_metadata *el_metadata,
 		       struct eu_array *array)
 {
-	char *el = array->a;
-	size_t i;
+	if (array->len) {
+		char *el = array->a;
+		size_t i;
 
-	for (i = 0; i < array->len; i++) {
-		el_metadata->fini(el_metadata, el);
-		el += el_metadata->size;
+		for (i = 0; i < array->len; i++) {
+			el_metadata->fini(el_metadata, el);
+			el += el_metadata->size;
+		}
+
+		free(array->a);
+		array->a = NULL;
+		array->len = 0;
 	}
-
-	free(array->a);
-	array->a = NULL;
-	array->len = 0;
 }
 
 static void array_parse_cont_destroy(struct eu_parse *ep,
