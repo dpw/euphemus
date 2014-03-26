@@ -40,7 +40,7 @@ static const struct eu_struct_member_descriptor_v1 schema_members[8] = {
 	{
 		offsetof(struct schema, ref),
 		4,
-		0 / CHAR_BIT, 1 << (0 % CHAR_BIT),
+		-1, 0,
 		"$ref",
 		&eu_string_descriptor
 	},
@@ -54,14 +54,14 @@ static const struct eu_struct_member_descriptor_v1 schema_members[8] = {
 	{
 		offsetof(struct schema, type),
 		4,
-		1 / CHAR_BIT, 1 << (1 % CHAR_BIT),
+		-1, 0,
 		"type",
 		&eu_string_descriptor
 	},
 	{
 		offsetof(struct schema, title),
 		5,
-		2 / CHAR_BIT, 1 << (2 % CHAR_BIT),
+		-1, 0,
 		"title",
 		&eu_string_descriptor
 	},
@@ -89,7 +89,7 @@ static const struct eu_struct_member_descriptor_v1 schema_members[8] = {
 	{
 		offsetof(struct schema, euphemusStructName),
 		18,
-		3 / CHAR_BIT, 1 << (3 % CHAR_BIT),
+		-1, 0,
 		"euphemusStructName",
 		&eu_string_descriptor
 	},

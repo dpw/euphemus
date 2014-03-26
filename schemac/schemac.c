@@ -310,14 +310,15 @@ static void noop_call_fini(struct type_info *ti, FILE *out,
 	(void)var_expr;
 }
 
-struct type_info *make_simple_type(struct codegen *codegen,
-				   struct type_info_ops *ops,
-				   const char *c_type_name,
-				   const char *base_name)
+static struct type_info *make_simple_or_builtin_type(struct codegen *codegen,
+						     struct type_info_ops *ops,
+						     const char *c_type_name,
+						     const char *base_name,
+						     eu_bool_t no_presence_bit)
 {
 	struct simple_type_info *sti = xalloc(sizeof *sti);
 
-	type_info_init(&sti->base, codegen, ops, base_name, 0);
+	type_info_init(&sti->base, codegen, ops, base_name, no_presence_bit);
 
 	sti->base.metadata_ptr_expr[REQUIRED]
 		= sti->base.metadata_ptr_expr[OPTIONAL]
@@ -349,6 +350,14 @@ struct type_info_ops simple_type_info_ops = {
 	simple_type_destroy
 };
 
+struct type_info *make_simple_type(struct codegen *codegen,
+				   const char *c_type_name,
+				   const char *base_name)
+{
+	return make_simple_or_builtin_type(codegen, &simple_type_info_ops,
+					   c_type_name, base_name, 0);
+}
+
 static void builtin_type_call_fini(struct type_info *ti, FILE *out,
 				   const char *var_expr)
 {
@@ -362,6 +371,14 @@ struct type_info_ops builtin_type_info_ops = {
 	builtin_type_call_fini,
 	simple_type_destroy
 };
+
+struct type_info *make_builtin_type(struct codegen *codegen,
+				   const char *c_type_name,
+				   const char *base_name)
+{
+	return make_simple_or_builtin_type(codegen, &builtin_type_info_ops,
+					   c_type_name, base_name, 1);
+}
 
 static char *remove_extension(const char *path)
 {
@@ -400,17 +417,12 @@ static void codegen_init(struct codegen *codegen, const char *source_path)
 	codegen->defs = NULL;
 	codegen->n_defs = 0;
 
-	codegen->number_type = make_simple_type(codegen, &simple_type_info_ops,
-						"double", "eu_number");
-	codegen->bool_type = make_simple_type(codegen, &simple_type_info_ops,
-					      "eu_bool_t", "eu_bool");
-	codegen->string_type = make_simple_type(codegen, &builtin_type_info_ops,
-						"struct eu_string",
+	codegen->number_type = make_simple_type(codegen, "double", "eu_number");
+	codegen->bool_type = make_simple_type(codegen, "eu_bool_t", "eu_bool");
+	codegen->string_type = make_builtin_type(codegen, "struct eu_string",
 						"eu_string");
-	codegen->variant_type = make_simple_type(codegen,
-						 &builtin_type_info_ops,
-						 "struct eu_variant",
-						 "eu_variant");
+	codegen->variant_type = make_builtin_type(codegen, "struct eu_variant",
+						  "eu_variant");
 }
 
 static void codegen_fini(struct codegen *codegen)
@@ -977,7 +989,7 @@ static struct type_info *alloc_array(struct schema *schema,
 	ati->descriptor_name = xsprintf("%s_descriptor", cname);
 
 	type_info_init(&ati->base, codegen, &array_type_info_ops, cname,
-		       0);
+		       1);
 
 	ati->base.metadata_ptr_expr[REQUIRED]
 		= ati->base.metadata_ptr_expr[OPTIONAL]

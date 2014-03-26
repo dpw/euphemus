@@ -68,7 +68,6 @@ struct eu_variant_members {
 #endif
 
 struct schema {
-	unsigned char presence_bits[(4 - 1) / CHAR_BIT + 1];
 	struct eu_string ref;
 	struct named_schemas *definitions;
 	struct eu_string type;
