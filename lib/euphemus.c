@@ -110,7 +110,12 @@ struct eu_value eu_value_get(struct eu_value val, struct eu_string_ref name)
 
 enum eu_json_type eu_value_type(struct eu_value val)
 {
-	enum eu_json_type t = val.metadata->json_type;
+	enum eu_json_type t;
+
+	if (!val.metadata)
+		return EU_JSON_INVALID;
+
+	t = val.metadata->json_type;
 	if (t != EU_JSON_VARIANT)
 		return t;
 	else

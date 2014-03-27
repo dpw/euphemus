@@ -105,14 +105,12 @@ static void test_path(void)
 	val = test_schema_to_eu_value(&test_schema);
 	assert(!eu_value_ok(eu_get_path(val, eu_cstr("/baz"))));
 	val = eu_get_path(val, eu_cstr("/bar/bar/bar/hello"));
-	assert(eu_value_ok(val));
 	assert(eu_value_type(val) == EU_JSON_STRING);
 	assert(eu_string_ref_equal(eu_value_to_string_ref(val),
 				   eu_cstr("world")));
 
 	val = test_schema_to_eu_value(&test_schema);
 	val = eu_get_path(val, eu_cstr("/array/1"));
-	assert(eu_value_ok(val));
 	assert(eu_value_type(val) == EU_JSON_OBJECT);
 	assert(val.metadata == struct_bar_metadata());
 	p = val.value;
@@ -135,7 +133,6 @@ static void test_path_extras(void)
 
 	val = bar_to_eu_value(&bar);
 	val = eu_get_path(val, eu_cstr("/x"));
-	assert(eu_value_ok(val));
 	assert(eu_value_type(val) == EU_JSON_STRING);
 	assert(eu_string_ref_equal(eu_value_to_string_ref(val), eu_cstr("y")));
 

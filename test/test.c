@@ -65,25 +65,25 @@ static void check_variant(struct eu_variant *var)
 
 	assert(eu_value_type(var_val) == EU_JSON_OBJECT);
 
-	assert(eu_value_ok(val = eu_value_get_cstr(var_val, "str\\\"")));
+	val = eu_value_get_cstr(var_val, "str\\\"");
 	assert(eu_value_type(val) == EU_JSON_STRING);
 	assert(eu_string_ref_equal(eu_value_to_string_ref(val),
 				   eu_cstr("hello, world!")));
 
-	assert(eu_value_ok(val = eu_value_get_cstr(var_val, "obj")));
+	val = eu_value_get_cstr(var_val, "obj");
 	assert(eu_value_type(val) == EU_JSON_OBJECT);
-	assert(eu_value_ok(val = eu_value_get_cstr(val, "num")));
+	val = eu_value_get_cstr(val, "num");
 	assert(eu_value_type(val) == EU_JSON_NUMBER);
 	assert(*eu_value_to_number(val) = 42);
 
-	assert(eu_value_ok(val = eu_value_get_cstr(var_val, "bool")));
+	val = eu_value_get_cstr(var_val, "bool");
 	assert(eu_value_type(val) == EU_JSON_BOOL);
 	assert(*eu_value_to_bool(val));
 
-	assert(eu_value_ok(val = eu_value_get_cstr(var_val, "null")));
+	val = eu_value_get_cstr(var_val, "null");
 	assert(eu_value_type(val) == EU_JSON_NULL);
 
-	assert(eu_value_ok(val = eu_value_get_cstr(var_val, "array")));
+	val = eu_value_get_cstr(var_val, "array");
 	assert(eu_value_type(val) == EU_JSON_ARRAY);
 	assert(eu_value_to_array(val)->len == 2);
 }
@@ -178,7 +178,6 @@ static void test_path(void)
 	val = eu_variant_value(&var);
 	assert(!eu_value_ok(eu_get_path(val, eu_cstr("/nosuch"))));
 	val = eu_get_path(val, eu_cstr("/a/c"));
-	assert(eu_value_ok(val));
 	assert(eu_value_type(val) == EU_JSON_BOOL);
 	assert(*eu_value_to_bool(val));
 	eu_variant_fini(&var);
@@ -186,7 +185,6 @@ static void test_path(void)
 	parse_variant("[10, 20, 30]", &var);
 	val = eu_variant_value(&var);
 	val = eu_get_path(val, eu_cstr("/1"));
-	assert(eu_value_ok(val));
 	assert(eu_value_type(val) == EU_JSON_NUMBER);
 	assert(*eu_value_to_number(val) == 20);
 	eu_variant_fini(&var);
