@@ -40,6 +40,7 @@ struct eu_metadata eu_bool_metadata = {
 	EU_JSON_BOOL,
 	sizeof(eu_bool_t),
 	bool_parse,
+	eu_generate_fail,
 	eu_noop_fini,
 	eu_get_fail,
 	eu_object_iter_init_fail,

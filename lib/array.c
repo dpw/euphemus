@@ -159,6 +159,7 @@ const struct eu_array_metadata eu_variant_array_metadata = {
 		EU_JSON_ARRAY,
 		sizeof(struct eu_array),
 		eu_array_parse,
+		eu_generate_fail,
 		eu_array_fini,
 		eu_array_get,
 		eu_object_iter_init_fail,
@@ -195,7 +196,7 @@ const struct eu_metadata *eu_introduce_array(const struct eu_type_descriptor *d,
 	md->base.json_type = EU_JSON_ARRAY;
 	md->base.size = sizeof(struct eu_array);
 	md->base.parse = eu_array_parse;
-	md->base.fini = eu_array_fini;
+	md->base.generate = eu_generate_fail;
 	md->base.get = eu_array_get;
 	md->base.object_iter_init = eu_object_iter_init_fail;
 	md->base.object_size = eu_object_size_fail;

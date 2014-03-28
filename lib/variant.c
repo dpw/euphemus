@@ -99,6 +99,15 @@ static enum eu_parse_result whitespace(const void *variant_metadata,
 		return res;
 }
 
+static enum eu_gen_result variant_generate(const struct eu_metadata *metadata,
+					   struct eu_generate *eg,
+					   void *value)
+{
+	struct eu_variant *var = value;
+	(void)metadata;
+	return var->metadata->generate(var->metadata, eg, &var->u);
+}
+
 void eu_variant_fini(struct eu_variant *variant)
 {
 	if (variant->metadata)
@@ -145,6 +154,7 @@ const struct eu_metadata eu_variant_metadata = {
 	EU_JSON_VARIANT,
 	sizeof(struct eu_variant),
 	variant_parse,
+	variant_generate,
 	variant_fini,
 	variant_get,
 	variant_object_iter_init,

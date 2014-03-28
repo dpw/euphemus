@@ -370,6 +370,7 @@ const struct eu_metadata eu_string_metadata = {
 	EU_JSON_STRING,
 	sizeof(struct eu_string),
 	string_parse,
+	eu_generate_fail,
 	string_fini,
 	eu_get_fail,
 	eu_object_iter_init_fail,

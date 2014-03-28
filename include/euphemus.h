@@ -122,6 +122,20 @@ int eu_parse(struct eu_parse *ep, const char *input, size_t len);
 int eu_parse_finish(struct eu_parse *ep);
 void eu_parse_destroy(struct eu_parse *ep);
 
+/* Generation */
+
+struct eu_generate;
+
+struct eu_generate *eu_generate_create(struct eu_value value);
+
+/* Returns the number of bytes produced.  If the output buffer was not
+   filled, then either generation is complete or an error occured.
+   Use eu_generate_ok to find out which. */
+size_t eu_generate(struct eu_generate *eg, char *output, size_t len);
+
+int eu_generate_ok(struct eu_generate *eg);
+void eu_generate_destroy(struct eu_generate *eg);
+
 /* Path resolution */
 
 struct eu_value eu_get_path(struct eu_value val, struct eu_string_ref path);

@@ -26,7 +26,7 @@ VPATH=$(ROOT)
 PROJECT_CFLAGS=-I$(ROOT)include -D_GNU_SOURCE -Wno-multichar -Wpointer-arith
 
 # The euphemus library source files
-LIB_SRCS=$(foreach S,euphemus.c parse.c path.c struct.c array.c string.c variant.c number.c bool.c null.c unescape.c,lib/$(S))
+LIB_SRCS=$(foreach S,euphemus.c parse.c generate.c path.c struct.c array.c string.c variant.c number.c bool.c null.c unescape.c,lib/$(S))
 
 # Other source files
 SRCS=schemac/schemac.c schemac/schema_schema.c
@@ -36,7 +36,7 @@ SRCS+=$(addprefix test/,test.c test_codegen.c test_schema.c)
 EXECUTABLES=schemac/schemac
 
 # parse_perf requires json-c to
-ifneq "$(wildcard /usr/local/include/json/json.h)" ""
+ifneq "$(wildcard /usr/include/json/json.h)" ""
 SRCS+=test/parse_perf.c
 EXECUTABLES+=test/parse_perf
 HDROBJS_/usr/include/json/json.h=-ljson

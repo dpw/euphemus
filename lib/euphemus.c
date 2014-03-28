@@ -17,6 +17,16 @@ static enum eu_parse_result fail_parse(const struct eu_metadata *metadata,
 	return EU_PARSE_ERROR;
 }
 
+enum eu_gen_result eu_generate_fail(const struct eu_metadata *metadata,
+				    struct eu_generate *eg,
+				    void *value)
+{
+	(void)metadata;
+	(void)eg;
+	(void)value;
+	return EU_GEN_ERROR;
+}
+
 static void fail_fini(const struct eu_metadata *metadata, void *value)
 {
 	(void)metadata;
@@ -47,6 +57,7 @@ static struct eu_metadata fail_metadata = {
 	EU_JSON_INVALID,
 	0,
 	fail_parse,
+	eu_generate_fail,
 	fail_fini,
 	eu_get_fail,
 	eu_object_iter_init_fail,

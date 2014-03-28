@@ -132,6 +132,7 @@ const struct eu_metadata eu_number_metadata = {
 	EU_JSON_NUMBER,
 	sizeof(double),
 	number_parse,
+	eu_generate_fail,
 	eu_noop_fini,
 	eu_get_fail,
 	eu_object_iter_init_fail,

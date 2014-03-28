@@ -50,6 +50,10 @@ struct eu_metadata {
 				      struct eu_parse *ep,
 				      void *result);
 
+	enum eu_gen_result (*generate)(const struct eu_metadata *metadata,
+				       struct eu_generate *eg,
+				       void *value);
+
 	/* Release any resources associated with the value.*/
 	void (*fini)(const struct eu_metadata *metadata, void *value);
 
@@ -134,6 +138,9 @@ void eu_noop_fini(const struct eu_metadata *metadata, void *value);
 struct eu_value eu_get_fail(struct eu_value val, struct eu_string_ref name);
 int eu_object_iter_init_fail(struct eu_value val, struct eu_object_iter *iter);
 size_t eu_object_size_fail(struct eu_value val);
+enum eu_gen_result eu_generate_fail(const struct eu_metadata *metadata,
+				    struct eu_generate *eg,
+				    void *value);
 
 extern const struct eu_array_metadata eu_variant_array_metadata;
 extern const struct eu_metadata eu_null_metadata;
@@ -296,5 +303,16 @@ static __inline__ enum eu_parse_result eu_parse_expect(struct eu_parse *ep,
 }
 
 #endif
+
+enum eu_gen_result {
+	EU_GEN_OK,
+	EN_GEN_PAUSED,
+	EU_GEN_ERROR
+};
+
+struct eu_generate {
+	struct eu_value value;
+	eu_bool_t error;
+};
 
 #endif
