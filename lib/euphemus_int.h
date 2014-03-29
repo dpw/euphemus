@@ -313,6 +313,9 @@ enum eu_gen_result {
 struct eu_generate {
 	struct eu_value value;
 	eu_bool_t error;
+
+	char *output;
+	char *output_end;
 };
 
 #endif

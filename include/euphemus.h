@@ -163,26 +163,33 @@ struct eu_string {
 	size_t len;
 };
 
-static __inline__ struct eu_string_ref eu_string_to_ref(
-						      struct eu_string *string)
+static __inline__ struct eu_string_ref eu_string_to_ref(struct eu_string *str)
 {
-	return eu_string_ref(string->chars, string->len);
+	return eu_string_ref(str->chars, str->len);
 }
 
-static __inline__ void eu_string_fini(struct eu_string *string)
+static __inline__ void eu_string_init(struct eu_string *str)
 {
-	if (string->len)
-		free(string->chars);
+	str->chars = NULL;
+	str->len = 0;
+}
 
-	string->chars = NULL;
+static __inline__ void eu_string_fini(struct eu_string *str)
+{
+	if (str->len)
+		free(str->chars);
+
+	str->chars = NULL;
 }
 
 extern const struct eu_metadata eu_string_metadata;
 
-static __inline__ struct eu_value eu_string_value(struct eu_string *string)
+static __inline__ struct eu_value eu_string_value(struct eu_string *str)
 {
-	return eu_value(string, &eu_string_metadata);
+	return eu_value(str, &eu_string_metadata);
 }
+
+int eu_string_assign(struct eu_string *str, struct eu_string_ref sref);
 
 /* Arrays */
 

@@ -376,3 +376,18 @@ const struct eu_metadata eu_string_metadata = {
 	eu_object_iter_init_fail,
 	eu_object_size_fail
 };
+
+int eu_string_assign(struct eu_string *str, struct eu_string_ref sref)
+{
+	if (str->len)
+		free(str->chars);
+
+	if ((str->chars = strdup(sref.chars))) {
+		str->len = sref.len;
+		return 1;
+	}
+	else {
+		str->len = 0;
+		return 0;
+	}
+}
