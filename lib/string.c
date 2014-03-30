@@ -358,6 +358,29 @@ static enum eu_parse_result string_parse(const struct eu_metadata *metadata,
 		return res;
 }
 
+static enum eu_gen_result string_generate(const struct eu_metadata *metadata,
+					  struct eu_generate *eg,
+					  void *value)
+{
+	struct eu_string *str = value;
+
+	(void)metadata;
+	*eg->output++ = '\"';
+
+	if (str->len < (size_t)(eg->output_end - eg->output)) {
+		/* TODO need to scan for chars that need escaping */
+
+		memcpy(eg->output, str->chars, str->len);
+		eg->output += str->len;
+		*eg->output++ = '\"';
+		return EU_GEN_OK;
+	}
+	else {
+		/* TODO pause case */
+		return EU_GEN_ERROR;
+	}
+}
+
 static void string_fini(const struct eu_metadata *metadata, void *value)
 {
 	struct eu_string *str = value;
@@ -370,7 +393,7 @@ const struct eu_metadata eu_string_metadata = {
 	EU_JSON_STRING,
 	sizeof(struct eu_string),
 	string_parse,
-	eu_generate_fail,
+	string_generate,
 	string_fini,
 	eu_get_fail,
 	eu_object_iter_init_fail,

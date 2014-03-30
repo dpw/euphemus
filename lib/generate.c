@@ -13,7 +13,7 @@ size_t eu_generate(struct eu_generate *eg, char *output, size_t len)
 {
 	const struct eu_metadata *md = eg->value.metadata;
 
-	if (unlikely(eg->error))
+	if (unlikely(eg->error || len == 0))
 		return 0;
 
 	eg->output = output;
