@@ -85,6 +85,76 @@ struct eu_object_iter_priv {
 	int (*next)(struct eu_object_iter *iter);
 };
 
+/* Parse/Generation stack management */
+
+struct eu_stack {
+	char *stack;
+	size_t scratch_size;
+	size_t new_stack_bottom;
+	size_t new_stack_top;
+	size_t old_stack_bottom;
+	size_t stack_area_size;
+};
+
+void *eu_stack_init(struct eu_stack *st, size_t alloc_size);
+void eu_stack_fini(struct eu_stack *st, struct eu_parse *ep);
+void eu_stack_begin_pause(struct eu_stack *st);
+void *eu_stack_alloc(struct eu_stack *st, size_t size);
+
+static __inline__ void *eu_stack_alloc_first(struct eu_stack *st, size_t size)
+{
+	eu_stack_begin_pause(st);
+	return eu_stack_alloc(st, size);
+}
+
+int eu_stack_run(struct eu_stack *st, struct eu_parse *ep);
+
+static __inline__ int eu_stack_empty(struct eu_stack *st)
+{
+	return st->new_stack_bottom == st->new_stack_top
+		&& st->old_stack_bottom == st->stack_area_size;
+}
+
+int eu_stack_reserve_scratch(struct eu_stack *st, size_t s);
+
+static __inline__ int eu_stack_reserve_more_scratch(struct eu_stack *st,
+						    size_t s)
+{
+	return eu_stack_reserve_scratch(st, st->scratch_size + s);
+}
+
+static __inline__ void eu_stack_reset_scratch(struct eu_stack *st)
+{
+	st->scratch_size = 0;
+}
+
+static __inline__ void eu_stack_set_scratch_end(struct eu_stack *st,
+						char *end)
+{
+	st->scratch_size = end - st->stack;
+}
+
+static __inline__ char *eu_stack_scratch(struct eu_stack *st)
+{
+	return st->stack;
+}
+
+static __inline__ char *eu_stack_scratch_end(struct eu_stack *st)
+{
+	return st->stack + st->scratch_size;
+}
+
+static __inline__ struct eu_string_ref eu_stack_scratch_ref(struct eu_stack *st)
+{
+	return eu_string_ref(st->stack, st->scratch_size);
+}
+
+int eu_stack_set_scratch(struct eu_stack *st, const char *start,
+			 const char *end);
+int eu_stack_append_scratch(struct eu_stack *st, const char *start,
+			    const char *end);
+int eu_stack_append_scratch_with_nul(struct eu_stack *st, const char *start,
+				     const char *end);
 
 /* Parsing */
 
@@ -96,13 +166,7 @@ enum eu_parse_result {
 };
 
 struct eu_parse {
-	char *stack;
-	size_t scratch_size;
-	size_t new_stack_bottom;
-	size_t new_stack_top;
-	size_t old_stack_bottom;
-	size_t stack_area_size;
-
+	struct eu_stack stack;
 	const struct eu_metadata *metadata;
 	void *result;
 
@@ -120,19 +184,60 @@ struct eu_parse_cont {
 	void (*destroy)(struct eu_parse *ep, struct eu_parse_cont *cont);
 };
 
-void eu_parse_begin_pause(struct eu_parse *ep);
-void *eu_parse_alloc_cont(struct eu_parse *ep, size_t size);
-void *eu_parse_alloc_first_cont(struct eu_parse *ep, size_t size);
+static __inline__ void eu_parse_begin_pause(struct eu_parse *ep)
+{
+	eu_stack_begin_pause(&ep->stack);
+}
+
+static __inline__ void *eu_parse_alloc_cont(struct eu_parse *ep, size_t size)
+{
+	return eu_stack_alloc(&ep->stack, size);
+}
+
+static __inline__ void *eu_parse_alloc_first_cont(struct eu_parse *ep,
+						  size_t size)
+{
+	return eu_stack_alloc_first(&ep->stack, size);
+}
+
 void eu_parse_cont_noop_destroy(struct eu_parse *ep, struct eu_parse_cont *cont);
 
-int eu_parse_reserve_scratch(struct eu_parse *ep, size_t s);
-void eu_parse_reset_scratch(struct eu_parse *ep);
-int eu_parse_copy_to_scratch(struct eu_parse *ep, const char *start,
-			     const char *end);
-int eu_parse_append_to_scratch(struct eu_parse *ep, const char *start,
-			       const char *end);
-int eu_parse_append_to_scratch_with_nul(struct eu_parse *ep, const char *start,
-					const char *end);
+static __inline__ int eu_parse_reserve_scratch(struct eu_parse *ep, size_t s)
+{
+	return eu_stack_reserve_scratch(&ep->stack, s);
+}
+
+static __inline__ int eu_parse_reserve_more_scratch(struct eu_parse *ep,
+						    size_t s)
+{
+	return eu_stack_reserve_more_scratch(&ep->stack, s);
+}
+
+static __inline__ void eu_parse_reset_scratch(struct eu_parse *ep)
+{
+	eu_stack_reset_scratch(&ep->stack);
+}
+
+static __inline__ int eu_parse_copy_to_scratch(struct eu_parse *ep,
+					       const char *start,
+					       const char *end)
+{
+	return eu_stack_set_scratch(&ep->stack, start, end);
+}
+
+static __inline__ int eu_parse_append_to_scratch(struct eu_parse *ep,
+						 const char *start,
+						 const char *end)
+{
+	return eu_stack_append_scratch(&ep->stack, start, end);
+}
+
+static __inline__ int eu_parse_append_to_scratch_with_nul(struct eu_parse *ep,
+							  const char *start,
+							  const char *end)
+{
+	return eu_stack_append_scratch_with_nul(&ep->stack, start, end);
+}
 
 void eu_noop_fini(const struct eu_metadata *metadata, void *value);
 struct eu_value eu_get_fail(struct eu_value val, struct eu_string_ref name);

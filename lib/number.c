@@ -111,8 +111,9 @@ static enum eu_parse_result number_parse_resume(struct eu_parse *ep,
 								 p))
 				goto error;
 
-			*result = strtod(ep->stack, &strtod_end);
-			if (strtod_end != ep->stack + ep->scratch_size - 1)
+			*result = strtod(eu_stack_scratch(&ep->stack),
+					 &strtod_end);
+			if (strtod_end != eu_stack_scratch_end(&ep->stack) - 1)
 				abort();
 
 			eu_parse_reset_scratch(ep);

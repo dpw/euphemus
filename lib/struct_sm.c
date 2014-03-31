@@ -139,11 +139,14 @@ RESUME_ONLY(case STRUCT_PARSE_COMMA:)
 		goto error_input_set;
 
 	{
-		char *unescaped_end = eu_unescape(ep, p, ep->stack, &unescape);
+		char *unescaped_end = eu_unescape(ep, p,
+						  eu_stack_scratch(&ep->stack),
+						  &unescape);
 		if (!unescaped_end || unescape)
 			goto error_input_set;
 
-		member_metadata = lookup_member(metadata, result, ep->stack,
+		member_metadata = lookup_member(metadata, result,
+						eu_stack_scratch(&ep->stack),
 						unescaped_end, &member_value);
 		eu_parse_reset_scratch(ep);
 	}
@@ -155,11 +158,13 @@ pause_unescape_member_name:
 		goto error_input_set;
 
         {
-		char *unescaped_end = eu_unescape(ep, p, ep->stack, &unescape);
+		char *unescaped_end = eu_unescape(ep, p,
+						  eu_stack_scratch(&ep->stack),
+						  &unescape);
 		if (!unescaped_end)
 			goto error_input_set;
 
-		ep->scratch_size = unescaped_end - ep->stack;
+		eu_stack_set_scratch_end(&ep->stack, unescaped_end);
 	}
 
 	state = STRUCT_PARSE_IN_MEMBER_NAME;
