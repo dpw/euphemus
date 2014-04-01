@@ -197,6 +197,7 @@ const struct eu_metadata *eu_introduce_array(const struct eu_type_descriptor *d,
 	md->base.size = sizeof(struct eu_array);
 	md->base.parse = eu_array_parse;
 	md->base.generate = eu_generate_fail;
+	md->base.fini = eu_array_fini;
 	md->base.get = eu_array_get;
 	md->base.object_iter_init = eu_object_iter_init_fail;
 	md->base.object_size = eu_object_size_fail;
