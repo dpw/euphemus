@@ -107,8 +107,8 @@ static enum eu_parse_result number_parse_resume(struct eu_parse *ep,
 		{
 			char *strtod_end;
 
-			if (!eu_parse_append_to_scratch_with_nul(ep, ep->input,
-								 p))
+			if (!eu_stack_append_scratch_with_nul(&ep->stack,
+							      ep->input, p))
 				goto error;
 
 			*result = strtod(eu_stack_scratch(&ep->stack),
@@ -116,7 +116,7 @@ static enum eu_parse_result number_parse_resume(struct eu_parse *ep,
 			if (strtod_end != eu_stack_scratch_end(&ep->stack) - 1)
 				abort();
 
-			eu_parse_reset_scratch(ep);
+			eu_stack_reset_scratch(&ep->stack);
 		}
 
 	done:

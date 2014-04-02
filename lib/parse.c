@@ -120,7 +120,7 @@ enum eu_parse_result eu_consume_whitespace_pause(
 					void *result)
 {
 	struct consume_ws_cont *cont
-		= eu_parse_alloc_first_cont(ep, sizeof *cont);
+		= eu_stack_alloc_first(&ep->stack, sizeof *cont);
 	if (!cont)
 		return EU_PARSE_ERROR;
 
@@ -189,7 +189,7 @@ enum eu_parse_result eu_parse_expect_slow(struct eu_parse *ep,
 
 	ep->input += avail;
 
-	cont = eu_parse_alloc_first_cont(ep, sizeof *cont);
+	cont = eu_stack_alloc_first(&ep->stack, sizeof *cont);
 	if (cont) {
 		cont->base.resume = expect_parse_resume;
 		cont->base.destroy = eu_parse_cont_noop_destroy;

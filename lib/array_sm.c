@@ -89,10 +89,10 @@ RESUME_ONLY(case ARRAY_PARSE_COMMA:)
 	return EU_PARSE_OK;
 
  pause:
-	eu_parse_begin_pause(ep);
+	eu_stack_begin_pause(&ep->stack);
 
  pause_in_element:
-	cont = eu_parse_alloc_cont(ep, sizeof *cont);
+	cont = eu_stack_alloc(&ep->stack, sizeof *cont);
 	if (cont) {
 		cont->base.resume = array_parse_resume;
 		cont->base.destroy = array_parse_cont_destroy;

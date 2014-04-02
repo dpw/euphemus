@@ -254,7 +254,7 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 	if (unlikely(unescape)) {
 		eu_unicode_char_t uc;
 
-		if (!eu_parse_reserve_more_scratch(ep, UTF8_LONGEST))
+		if (!eu_stack_reserve_more_scratch(&ep->stack, UTF8_LONGEST))
 			return EU_PARSE_ERROR;
 
 		if (!eu_finish_unescape(ep, &unescape, &uc))
@@ -292,8 +292,8 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 				}
 			}
 			else {
-				if (!eu_parse_append_to_scratch(ep, ep->input,
-								p))
+				if (!eu_stack_append_scratch(&ep->stack,
+							     ep->input, p))
 					goto alloc_error;
 
 				goto pause;
@@ -304,7 +304,7 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 		member_metadata = lookup_member_2(metadata, result,
 						eu_stack_scratch_ref(&ep->stack),
 						ep->input, p, &member_value);
-		eu_parse_reset_scratch(ep);
+		eu_stack_reset_scratch(&ep->stack);
 		goto looked_up_member;
 
 	resume_unescape_member_name:
@@ -315,7 +315,7 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 				goto pause_resume_unescape_member_name;
 		} while (*p != '\"' || quotes_escaped_bounded(p, ep->input));
 
-		if (!eu_parse_reserve_more_scratch(ep, p - ep->input))
+		if (!eu_stack_reserve_more_scratch(&ep->stack, p - ep->input))
 			goto error_input_set;
 
 		{
@@ -329,13 +329,13 @@ static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
 			member_metadata = lookup_member(metadata, result,
 						  eu_stack_scratch(&ep->stack),
 						  unescaped_end, &member_value);
-			eu_parse_reset_scratch(ep);
+			eu_stack_reset_scratch(&ep->stack);
 		}
 
 		goto looked_up_member;
 
 	pause_resume_unescape_member_name:
-		if (!eu_parse_reserve_more_scratch(ep, p - ep->input))
+		if (!eu_stack_reserve_more_scratch(&ep->stack, p - ep->input))
 			goto error_input_set;
 
 		{

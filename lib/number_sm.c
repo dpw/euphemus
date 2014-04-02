@@ -175,15 +175,15 @@ RESUME_ONLY(case NUMBER_PARSE_E_DIGITS:)
 
  pause:
 #ifndef RESUME
-	if (!eu_parse_copy_to_scratch(ep, ep->input, p))
+	if (!eu_stack_set_scratch(&ep->stack, ep->input, p))
 #else
-	if (!eu_parse_append_to_scratch(ep, ep->input, p))
+	if (!eu_stack_append_scratch(&ep->stack, ep->input, p))
 #endif
 		goto error;
 
 	ep->input = p;
 
-	cont = eu_parse_alloc_first_cont(ep, sizeof *cont);
+	cont = eu_stack_alloc_first(&ep->stack, sizeof *cont);
 	if (!cont)
 		goto error;
 

@@ -104,15 +104,15 @@ RESUME_ONLY(case STRUCT_PARSE_COMMA:)
 
  pause_in_member_name:
 	state = STRUCT_PARSE_IN_MEMBER_NAME;
-	if (!eu_parse_copy_to_scratch(ep, ep->input, p))
+	if (!eu_stack_set_scratch(&ep->stack, ep->input, p))
 		goto alloc_error;
 
  pause:
 	ep->input = p;
-	eu_parse_begin_pause(ep);
+	eu_stack_begin_pause(&ep->stack);
 
  pause_input_set:
-	cont = eu_parse_alloc_cont(ep, sizeof *cont);
+	cont = eu_stack_alloc(&ep->stack, sizeof *cont);
 	if (!cont)
 		goto alloc_error;
 
@@ -135,7 +135,7 @@ RESUME_ONLY(case STRUCT_PARSE_COMMA:)
 			goto pause_unescape_member_name;
 	} while (*p != '\"' || quotes_escaped(p));
 
-	if (!eu_parse_reserve_scratch(ep, p - ep->input))
+	if (!eu_stack_reserve_scratch(&ep->stack, p - ep->input))
 		goto error_input_set;
 
 	{
@@ -148,13 +148,13 @@ RESUME_ONLY(case STRUCT_PARSE_COMMA:)
 		member_metadata = lookup_member(metadata, result,
 						eu_stack_scratch(&ep->stack),
 						unescaped_end, &member_value);
-		eu_parse_reset_scratch(ep);
+		eu_stack_reset_scratch(&ep->stack);
 	}
 
 	goto looked_up_member;
 
 pause_unescape_member_name:
-	if (!eu_parse_reserve_scratch(ep, p - ep->input))
+	if (!eu_stack_reserve_scratch(&ep->stack, p - ep->input))
 		goto error_input_set;
 
         {

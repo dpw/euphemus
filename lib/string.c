@@ -35,7 +35,7 @@ static struct string_parse_cont *alloc_cont(struct eu_parse *ep, const char *p,
 					    struct eu_string *result)
 {
 	struct string_parse_cont *cont
-		= eu_parse_alloc_first_cont(ep, sizeof *cont);
+		= eu_stack_alloc_first(&ep->stack, sizeof *cont);
 
 	if (cont) {
 		cont->base.resume = string_parse_resume;
