@@ -18,6 +18,9 @@ void *eu_stack_init(struct eu_stack *st, size_t alloc_size)
 		st->stack_area_size = alloc_size;
 		st->scratch_size = st->new_stack_top = st->new_stack_bottom
 			= st->old_stack_bottom = 0;
+
+		((struct eu_stack_frame *)stack)->size = alloc_size;
+
 		return stack;
 	}
 
@@ -43,7 +46,7 @@ void eu_stack_begin_pause(struct eu_stack *st)
 void *eu_stack_alloc(struct eu_stack *st, size_t size)
 {
 	size_t new_stack_top;
-	struct eu_parse_cont *f;
+	struct eu_stack_frame *f;
 
 	size = ROUND_UP(size);
 	new_stack_top = st->new_stack_top + size;
@@ -73,27 +76,27 @@ void *eu_stack_alloc(struct eu_stack *st, size_t size)
 		st->old_stack_bottom = st->stack_area_size - old_stack_size;
 	}
 
-	f = (struct eu_parse_cont *)(st->stack + st->new_stack_top);
+	f = (struct eu_stack_frame *)(st->stack + st->new_stack_top);
 	f->size = size;
 	st->new_stack_top = new_stack_top;
 	return f;
 }
 
-int eu_stack_run(struct eu_stack *st, struct eu_parse *ep)
+int eu_stack_run(struct eu_stack *st, void *context)
 {
-	struct eu_parse_cont *c;
+	struct eu_stack_frame *f;
 
 	/* Process frames from the new stack */
 	while (st->new_stack_bottom != st->new_stack_top) {
-		c = (struct eu_parse_cont *)(st->stack + st->new_stack_bottom);
-		st->new_stack_bottom += c->size;
+		f = (struct eu_stack_frame *)(st->stack + st->new_stack_bottom);
+		st->new_stack_bottom += f->size;
 
-		switch (c->resume(ep, c)) {
+		switch (f->resume(f, context)) {
 		case EU_PARSE_OK:
 			break;
 
 		case EU_PARSE_REINSTATE_PAUSED:
-			st->new_stack_bottom -= c->size;
+			st->new_stack_bottom -= f->size;
 			/* fall through */
 
 		case EU_PARSE_PAUSED:
@@ -106,15 +109,15 @@ int eu_stack_run(struct eu_stack *st, struct eu_parse *ep)
 
 	/* Process frames from the old stack */
 	while (st->old_stack_bottom != st->stack_area_size) {
-		c = (struct eu_parse_cont *)(st->stack + st->old_stack_bottom);
-		st->old_stack_bottom += c->size;
+		f = (struct eu_stack_frame *)(st->stack + st->old_stack_bottom);
+		st->old_stack_bottom += f->size;
 
-		switch (c->resume(ep, c)) {
+		switch (f->resume(f, context)) {
 		case EU_PARSE_OK:
 			break;
 
 		case EU_PARSE_REINSTATE_PAUSED:
-			st->old_stack_bottom -= c->size;
+			st->old_stack_bottom -= f->size;
 			/* fall through */
 
 		case EU_PARSE_PAUSED:
@@ -231,23 +234,28 @@ int eu_stack_append_scratch_with_nul(struct eu_stack *st, const char *start,
 	}
 }
 
-void eu_stack_fini(struct eu_stack *st, struct eu_parse *ep)
+void eu_stack_fini(struct eu_stack *st)
 {
-	struct eu_parse_cont *c;
+	struct eu_stack_frame *f;
 
 	/* If the parse was unfinished, there might be stack frames to
 	   clean up. */
 	while (st->new_stack_bottom != st->new_stack_top) {
-		c = (struct eu_parse_cont *)(st->stack + st->new_stack_bottom);
-		st->new_stack_bottom += c->size;
-		c->destroy(ep, c);
+		f = (struct eu_stack_frame *)(st->stack + st->new_stack_bottom);
+		st->new_stack_bottom += f->size;
+		f->destroy(f);
 	}
 
 	while (st->old_stack_bottom != st->stack_area_size) {
-		c = (struct eu_parse_cont *)(st->stack + st->old_stack_bottom);
-		st->old_stack_bottom += c->size;
-		c->destroy(ep, c);
+		f = (struct eu_stack_frame *)(st->stack + st->old_stack_bottom);
+		st->old_stack_bottom += f->size;
+		f->destroy(f);
 	}
 
 	free(st->stack);
+}
+
+void eu_stack_frame_noop_destroy(struct eu_stack_frame *cont)
+{
+	(void)cont;
 }

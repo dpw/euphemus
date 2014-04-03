@@ -17,8 +17,8 @@ static eu_bool_t assign_trimming(struct eu_string *result, char *buf,
 	return 1;
 }
 
-struct string_parse_cont {
-	struct eu_parse_cont base;
+struct string_parse_frame {
+	struct eu_stack_frame base;
 	struct eu_string *result;
 	char *buf;
 	size_t len;
@@ -26,27 +26,26 @@ struct string_parse_cont {
 	eu_unescape_state_t unescape;
 };
 
-static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
-						struct eu_parse_cont *gcont);
-static void string_parse_cont_destroy(struct eu_parse *ep,
-				      struct eu_parse_cont *cont);
+static enum eu_parse_result string_parse_resume(struct eu_stack_frame *gframe,
+						void *v_ep);
+static void string_parse_frame_destroy(struct eu_stack_frame *gframe);
 
-static struct string_parse_cont *alloc_cont(struct eu_parse *ep, const char *p,
+static struct string_parse_frame *alloc_frame(struct eu_parse *ep, const char *p,
 					    struct eu_string *result)
 {
-	struct string_parse_cont *cont
-		= eu_stack_alloc_first(&ep->stack, sizeof *cont);
+	struct string_parse_frame *frame
+		= eu_stack_alloc_first(&ep->stack, sizeof *frame);
 
-	if (cont) {
-		cont->base.resume = string_parse_resume;
-		cont->base.destroy = string_parse_cont_destroy;
-		cont->result = result;
-		cont->len = p - ep->input;
-		cont->capacity = cont->len * 2;
-		cont->unescape = 0;
-		cont->buf = malloc(cont->capacity);
-		if (cont->buf)
-			return cont;
+	if (frame) {
+		frame->base.resume = string_parse_resume;
+		frame->base.destroy = string_parse_frame_destroy;
+		frame->result = result;
+		frame->len = p - ep->input;
+		frame->capacity = frame->len * 2;
+		frame->unescape = 0;
+		frame->buf = malloc(frame->capacity);
+		if (frame->buf)
+			return frame;
 	}
 
 	return NULL;
@@ -60,7 +59,7 @@ static enum eu_parse_result string_parse_common(
 	const char *p = ep->input;
 	const char *end = ep->input_end;
 	struct eu_string *result = v_result;
-	struct string_parse_cont *cont;
+	struct string_parse_frame *frame;
 	char *buf;
 	size_t len;
 
@@ -103,11 +102,11 @@ static enum eu_parse_result string_parse_common(
 	return EU_PARSE_OK;
 
  pause:
-	cont = alloc_cont(ep, p, result);
-	if (!cont)
+	frame = alloc_frame(ep, p, result);
+	if (!frame)
 		goto alloc_error;
 
-	memcpy(cont->buf, ep->input, cont->len);
+	memcpy(frame->buf, ep->input, frame->len);
 	ep->input = p;
 	return EU_PARSE_PAUSED;
 
@@ -139,15 +138,15 @@ static enum eu_parse_result string_parse_common(
 	return EU_PARSE_OK;
 
  pause_unescape:
-	cont = alloc_cont(ep, p, result);
-	if (!cont)
+	frame = alloc_frame(ep, p, result);
+	if (!frame)
 		goto alloc_error;
 
-	end = eu_unescape(ep, p, cont->buf, &cont->unescape);
+	end = eu_unescape(ep, p, frame->buf, &frame->unescape);
 	if (!end)
 		goto error;
 
-	cont->len = end - cont->buf;
+	frame->len = end - frame->buf;
 	ep->input = p;
 	return EU_PARSE_PAUSED;
 
@@ -160,21 +159,22 @@ static enum eu_parse_result string_parse_common(
 	return EU_PARSE_ERROR;
 }
 
-static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
-						struct eu_parse_cont *gcont)
+static enum eu_parse_result string_parse_resume(struct eu_stack_frame *gframe,
+						void *v_ep)
 {
-	struct string_parse_cont *cont = (struct string_parse_cont *)gcont;
+	struct string_parse_frame *frame = (struct string_parse_frame *)gframe;
+	struct eu_parse *ep = v_ep;
 	const char *p, *end;
 	char *buf;
 	size_t len, total_len;
 	int unescaped_char_len = 0;
 	eu_unicode_char_t unescaped_char;
 
-	if (unlikely(cont->unescape)) {
-		if (!eu_finish_unescape(ep, &cont->unescape, &unescaped_char))
+	if (unlikely(frame->unescape)) {
+		if (!eu_finish_unescape(ep, &frame->unescape, &unescaped_char))
 			goto error;
 
-		if (cont->unescape)
+		if (frame->unescape)
 			return EU_PARSE_REINSTATE_PAUSED;
 
 		unescaped_char_len = eu_unicode_utf8_length(unescaped_char);
@@ -196,29 +196,29 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 
  done:
 	len = p - ep->input;
-	total_len = cont->len + len + unescaped_char_len;
-	buf = cont->buf;
+	total_len = frame->len + len + unescaped_char_len;
+	buf = frame->buf;
 	if (!total_len)
 		goto empty;
 
-	if (total_len > cont->capacity) {
+	if (total_len > frame->capacity) {
 		buf = realloc(buf, total_len);
 		if (!buf)
 			goto alloc_error;
 
-		cont->buf = buf;
-		cont->capacity = total_len;
+		frame->buf = buf;
+		frame->capacity = total_len;
 	}
 
 	if (unlikely(unescaped_char_len)) {
-		eu_unicode_to_utf8(unescaped_char, buf + cont->len);
-		cont->len += unescaped_char_len;
+		eu_unicode_to_utf8(unescaped_char, buf + frame->len);
+		frame->len += unescaped_char_len;
 	}
 
-	memcpy(buf + cont->len, ep->input, len);
+	memcpy(buf + frame->len, ep->input, len);
 
-	if (unlikely(!assign_trimming(cont->result, buf, total_len,
-				      cont->capacity)))
+	if (unlikely(!assign_trimming(frame->result, buf, total_len,
+				      frame->capacity)))
 		goto alloc_error;
 
 	/* skip the final '"' */
@@ -227,32 +227,32 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 
  empty:
 	free(buf);
-	cont->result->chars = ZERO_LENGTH_PTR;
+	frame->result->chars = ZERO_LENGTH_PTR;
 	ep->input = p + 1;
 	return EU_PARSE_OK;
 
  pause:
 	len = p - ep->input;
-	total_len = cont->len + len + unescaped_char_len;
+	total_len = frame->len + len + unescaped_char_len;
 
-	buf = cont->buf;
-	if (total_len > cont->capacity) {
+	buf = frame->buf;
+	if (total_len > frame->capacity) {
 		size_t new_capacity = total_len * 2;
 		buf = realloc(buf, new_capacity);
 		if (!buf)
 			goto alloc_error;
 
-		cont->buf = buf;
-		cont->capacity = new_capacity;
+		frame->buf = buf;
+		frame->capacity = new_capacity;
 	}
 
 	if (unlikely(unescaped_char_len)) {
-		eu_unicode_to_utf8(unescaped_char, buf + cont->len);
-		cont->len += unescaped_char_len;
+		eu_unicode_to_utf8(unescaped_char, buf + frame->len);
+		frame->len += unescaped_char_len;
 	}
 
-	memcpy(buf + cont->len, ep->input, len);
-	cont->len = total_len;
+	memcpy(buf + frame->len, ep->input, len);
+	frame->len = total_len;
 	ep->input = p;
 	return EU_PARSE_REINSTATE_PAUSED;
 
@@ -265,32 +265,32 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 	} while (*p != '\"' || quotes_escaped_bounded(p, ep->input));
 
 	len = p - ep->input;
-	total_len = cont->len + len + unescaped_char_len;
+	total_len = frame->len + len + unescaped_char_len;
 
-	buf = cont->buf;
-	if (total_len > cont->capacity) {
-		cont->capacity = total_len;
+	buf = frame->buf;
+	if (total_len > frame->capacity) {
+		frame->capacity = total_len;
 		buf = realloc(buf, total_len);
 		if (!buf)
 			goto alloc_error;
 
-		cont->buf = buf;
+		frame->buf = buf;
 	}
 
 	if (unlikely(unescaped_char_len)) {
-		eu_unicode_to_utf8(unescaped_char, buf + cont->len);
-		cont->len += unescaped_char_len;
+		eu_unicode_to_utf8(unescaped_char, buf + frame->len);
+		frame->len += unescaped_char_len;
 	}
 
 	{
 		eu_unescape_state_t ues;
-		end = eu_unescape(ep, p, buf + cont->len, &ues);
+		end = eu_unescape(ep, p, buf + frame->len, &ues);
 		if (!end || ues)
 			goto error;
 	}
 
-	if (unlikely(!assign_trimming(cont->result, buf, end - buf,
-				      cont->capacity)))
+	if (unlikely(!assign_trimming(frame->result, buf, end - buf,
+				      frame->capacity)))
 		goto alloc_error;
 
 	ep->input = p + 1;
@@ -298,43 +298,39 @@ static enum eu_parse_result string_parse_resume(struct eu_parse *ep,
 
  pause_unescape:
 	len = p - ep->input;
-	total_len = cont->len + len + unescaped_char_len;
+	total_len = frame->len + len + unescaped_char_len;
 
-	buf = cont->buf;
-	if (total_len > cont->capacity) {
+	buf = frame->buf;
+	if (total_len > frame->capacity) {
 		size_t new_capacity = total_len * 2;
 		buf = realloc(buf, new_capacity);
 		if (!buf)
 			goto alloc_error;
 
-		cont->buf = buf;
-		cont->capacity = new_capacity;
+		frame->buf = buf;
+		frame->capacity = new_capacity;
 	}
 
 	if (unlikely(unescaped_char_len)) {
-		eu_unicode_to_utf8(unescaped_char, buf + cont->len);
-		cont->len += unescaped_char_len;
+		eu_unicode_to_utf8(unescaped_char, buf + frame->len);
+		frame->len += unescaped_char_len;
 	}
 
-	end = eu_unescape(ep, p, buf + cont->len, &cont->unescape);
-	cont->len = end - buf;
+	end = eu_unescape(ep, p, buf + frame->len, &frame->unescape);
+	frame->len = end - buf;
 	ep->input = p;
 	return EU_PARSE_REINSTATE_PAUSED;
 
  alloc_error:
  error:
-	free(cont->buf);
+	free(frame->buf);
 	return EU_PARSE_ERROR;
 }
 
-static void string_parse_cont_destroy(struct eu_parse *ep,
-				      struct eu_parse_cont *gcont)
+static void string_parse_frame_destroy(struct eu_stack_frame *gframe)
 {
-	struct string_parse_cont *cont = (struct string_parse_cont *)gcont;
-
-	(void)ep;
-
-	free(cont->buf);
+	struct string_parse_frame *frame = (struct string_parse_frame *)gframe;
+	free(frame->buf);
 }
 
 enum eu_parse_result eu_variant_string(const void *string_metadata,

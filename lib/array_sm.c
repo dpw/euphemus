@@ -92,14 +92,14 @@ RESUME_ONLY(case ARRAY_PARSE_COMMA:)
 	eu_stack_begin_pause(&ep->stack);
 
  pause_in_element:
-	cont = eu_stack_alloc(&ep->stack, sizeof *cont);
-	if (cont) {
-		cont->base.resume = array_parse_resume;
-		cont->base.destroy = array_parse_cont_destroy;
-		cont->state = state;
-		cont->el_metadata = el_metadata;
-		cont->result = result;
-		cont->capacity = capacity;
+	frame = eu_stack_alloc(&ep->stack, sizeof *frame);
+	if (frame) {
+		frame->base.resume = array_parse_resume;
+		frame->base.destroy = array_parse_frame_destroy;
+		frame->state = state;
+		frame->el_metadata = el_metadata;
+		frame->result = result;
+		frame->capacity = capacity;
 		result->len = len;
 		return EU_PARSE_PAUSED;
 	}

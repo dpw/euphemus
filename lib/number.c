@@ -20,16 +20,16 @@ enum number_parse_state {
 	NUMBER_PARSE_E_DIGITS,
 };
 
-struct number_parse_cont {
-	struct eu_parse_cont base;
+struct number_parse_frame {
+	struct eu_stack_frame base;
 	enum number_parse_state state;
 	signed char negate;
 	double *result;
 	int64_t int_value;
 };
 
-static enum eu_parse_result number_parse_resume(struct eu_parse *ep,
-						struct eu_parse_cont *gcont);
+static enum eu_parse_result number_parse_resume(struct eu_stack_frame *gframe,
+						void *v_ep);
 
 static enum eu_parse_result number_parse(const struct eu_metadata *metadata,
 					 struct eu_parse *ep,
@@ -41,7 +41,7 @@ static enum eu_parse_result number_parse(const struct eu_metadata *metadata,
 	enum number_parse_state state;
 	signed char negate;
 	int64_t int_value;
-	struct number_parse_cont *cont;
+	struct number_parse_frame *frame;
 
 	(void)metadata;
 
@@ -88,14 +88,15 @@ static enum eu_parse_result number_parse(const struct eu_metadata *metadata,
 	return EU_PARSE_OK;
 }
 
-static enum eu_parse_result number_parse_resume(struct eu_parse *ep,
-						struct eu_parse_cont *gcont)
+static enum eu_parse_result number_parse_resume(struct eu_stack_frame *gframe,
+						void *v_ep)
 {
-	struct number_parse_cont *cont = (struct number_parse_cont *)gcont;
-	enum number_parse_state state = cont->state;
-	signed char negate = cont->negate;
-	int64_t int_value = cont->int_value;
-	double *result = cont->result;
+	struct number_parse_frame *frame = (struct number_parse_frame *)gframe;
+	struct eu_parse *ep = v_ep;
+	enum number_parse_state state = frame->state;
+	signed char negate = frame->negate;
+	int64_t int_value = frame->int_value;
+	double *result = frame->result;
 	const char *p = ep->input;
 	const char *end = ep->input_end;
 

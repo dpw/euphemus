@@ -12,18 +12,17 @@ enum array_parse_state {
 	ARRAY_PARSE_COMMA
 };
 
-struct array_parse_cont {
-	struct eu_parse_cont base;
+struct array_parse_frame {
+	struct eu_stack_frame base;
 	enum array_parse_state state;
 	const struct eu_metadata *el_metadata;
 	struct eu_array *result;
 	size_t capacity;
 };
 
-static enum eu_parse_result array_parse_resume(struct eu_parse *ep,
-					       struct eu_parse_cont *gcont);
-static void array_parse_cont_destroy(struct eu_parse *ep,
-				     struct eu_parse_cont *cont);
+static enum eu_parse_result array_parse_resume(struct eu_stack_frame *gframe,
+					       void *v_ep);
+static void array_parse_frame_destroy(struct eu_stack_frame *gframe);
 
 enum eu_parse_result array_parse(const struct eu_metadata *gmetadata,
 				 struct eu_parse *ep,
@@ -46,7 +45,7 @@ enum eu_parse_result array_parse(const struct eu_metadata *gmetadata,
 				 struct eu_parse *ep,
 				 void *v_result)
 {
-	struct array_parse_cont *cont;
+	struct array_parse_frame *frame;
 	const struct eu_array_metadata *metadata
 		= (const struct eu_array_metadata *)gmetadata;
 	enum array_parse_state state;
@@ -62,15 +61,16 @@ enum eu_parse_result array_parse(const struct eu_metadata *gmetadata,
 #include "array_sm.c"
 }
 
-static enum eu_parse_result array_parse_resume(struct eu_parse *ep,
-						struct eu_parse_cont *gcont)
+static enum eu_parse_result array_parse_resume(struct eu_stack_frame *gframe,
+					       void *v_ep)
 {
-	struct array_parse_cont *cont = (struct array_parse_cont *)gcont;
-	enum array_parse_state state = cont->state;
-	const struct eu_metadata *el_metadata = cont->el_metadata;
+	struct array_parse_frame *frame = (struct array_parse_frame *)gframe;
+	struct eu_parse *ep = v_ep;
+	enum array_parse_state state = frame->state;
+	const struct eu_metadata *el_metadata = frame->el_metadata;
 	size_t el_size = el_metadata->size;
-	struct eu_array *result = cont->result;
-	size_t capacity = cont->capacity;
+	struct eu_array *result = frame->result;
+	size_t capacity = frame->capacity;
 	size_t len = result->len;
 	char *el = (char *)result->a + len * el_size;
 
@@ -80,7 +80,7 @@ static enum eu_parse_result array_parse_resume(struct eu_parse *ep,
 #undef RESUME
 	}
 
-	/* Without -O, gcc incorrectly reports that control can reach
+	/* Without -O, gcc incorrectly reports that framerol can reach
 	   here. */
 	abort();
 }
@@ -103,13 +103,10 @@ static void array_fini(const struct eu_metadata *el_metadata,
 	}
 }
 
-static void array_parse_cont_destroy(struct eu_parse *ep,
-				     struct eu_parse_cont *gcont)
+static void array_parse_frame_destroy(struct eu_stack_frame *gframe)
 {
-	struct array_parse_cont *cont = (struct array_parse_cont *)gcont;
-
-	(void)ep;
-	array_fini(cont->el_metadata, cont->result);
+	struct array_parse_frame *frame = (struct array_parse_frame *)gframe;
+	array_fini(frame->el_metadata, frame->result);
 }
 
 void eu_array_fini(const struct eu_metadata *gmetadata, void *value)

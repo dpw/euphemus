@@ -183,16 +183,16 @@ RESUME_ONLY(case NUMBER_PARSE_E_DIGITS:)
 
 	ep->input = p;
 
-	cont = eu_stack_alloc_first(&ep->stack, sizeof *cont);
-	if (!cont)
+	frame = eu_stack_alloc_first(&ep->stack, sizeof *frame);
+	if (!frame)
 		goto error;
 
-	cont->base.resume = number_parse_resume;
-	cont->base.destroy = eu_parse_cont_noop_destroy;
-	cont->state = state;
-	cont->negate = negate;
-	cont->int_value = int_value;
-	cont->result = result;
+	frame->base.resume = number_parse_resume;
+	frame->base.destroy = eu_stack_frame_noop_destroy;
+	frame->state = state;
+	frame->negate = negate;
+	frame->int_value = int_value;
+	frame->result = result;
 	return EU_PARSE_PAUSED;
 
  error:

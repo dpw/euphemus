@@ -112,19 +112,19 @@ RESUME_ONLY(case STRUCT_PARSE_COMMA:)
 	eu_stack_begin_pause(&ep->stack);
 
  pause_input_set:
-	cont = eu_stack_alloc(&ep->stack, sizeof *cont);
-	if (!cont)
+	frame = eu_stack_alloc(&ep->stack, sizeof *frame);
+	if (!frame)
 		goto alloc_error;
 
-	cont->base.resume = struct_parse_resume;
-	cont->base.destroy = struct_parse_cont_destroy;
-	cont->state = state;
-	cont->metadata = metadata;
-	cont->result = result;
-	cont->result_ptr = result_ptr;
-	cont->member_metadata = member_metadata;
-	cont->member_value = member_value;
-	cont->unescape = unescape;
+	frame->base.resume = struct_parse_resume;
+	frame->base.destroy = struct_parse_frame_destroy;
+	frame->state = state;
+	frame->metadata = metadata;
+	frame->result = result;
+	frame->result_ptr = result_ptr;
+	frame->member_metadata = member_metadata;
+	frame->member_value = member_value;
+	frame->unescape = unescape;
 	return EU_PARSE_PAUSED;
 
  unescape_member_name:

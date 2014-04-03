@@ -163,8 +163,8 @@ enum struct_parse_state {
 	STRUCT_PARSE_COMMA
 };
 
-struct struct_parse_cont {
-	struct eu_parse_cont base;
+struct struct_parse_frame {
+	struct eu_stack_frame base;
 	enum struct_parse_state state;
 	const struct eu_struct_metadata *metadata;
 	void *result;
@@ -174,10 +174,9 @@ struct struct_parse_cont {
 	eu_unescape_state_t unescape;
 };
 
-static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
-						struct eu_parse_cont *gcont);
-static void struct_parse_cont_destroy(struct eu_parse *ep,
-				      struct eu_parse_cont *cont);
+static enum eu_parse_result struct_parse_resume(struct eu_stack_frame *gframe,
+						void *v_ep);
+static void struct_parse_frame_destroy(struct eu_stack_frame *gframe);
 static enum eu_parse_result struct_parse(const struct eu_metadata *gmetadata,
 					 struct eu_parse *ep, void *result,
 					 void **result_ptr);
@@ -223,7 +222,7 @@ static enum eu_parse_result struct_parse(const struct eu_metadata *gmetadata,
 					 struct eu_parse *ep, void *result,
 					 void **result_ptr)
 {
-	struct struct_parse_cont *cont;
+	struct struct_parse_frame *frame;
 	const struct eu_struct_metadata *metadata
 		= (const struct eu_struct_metadata *)gmetadata;
 	enum struct_parse_state state;
@@ -238,17 +237,18 @@ static enum eu_parse_result struct_parse(const struct eu_metadata *gmetadata,
 #undef RESUME_ONLY
 }
 
-static enum eu_parse_result struct_parse_resume(struct eu_parse *ep,
-						struct eu_parse_cont *gcont)
+static enum eu_parse_result struct_parse_resume(struct eu_stack_frame *gframe,
+						void *v_ep)
 {
-	struct struct_parse_cont *cont = (struct struct_parse_cont *)gcont;
-	enum struct_parse_state state = cont->state;
-	const struct eu_struct_metadata *metadata = cont->metadata;
-	void *result = cont->result;
-	void **result_ptr = cont->result_ptr;
-	const struct eu_metadata *member_metadata = cont->member_metadata;
-	void *member_value = cont->member_value;
-	eu_unescape_state_t unescape = cont->unescape;
+	struct struct_parse_frame *frame = (struct struct_parse_frame *)gframe;
+	struct eu_parse *ep = v_ep;
+	enum struct_parse_state state = frame->state;
+	const struct eu_struct_metadata *metadata = frame->metadata;
+	void *result = frame->result;
+	void **result_ptr = frame->result_ptr;
+	const struct eu_metadata *member_metadata = frame->member_metadata;
+	void *member_value = frame->member_value;
+	eu_unescape_state_t unescape = frame->unescape;
 	const char *p, *end;
 
 	if (unlikely(unescape)) {
@@ -410,17 +410,14 @@ void eu_struct_extras_fini(const struct eu_metadata *smd, void *v_extras)
 	struct_extras_fini((const struct eu_struct_metadata *)smd, v_extras);
 }
 
-static void struct_parse_cont_destroy(struct eu_parse *ep,
-				      struct eu_parse_cont *gcont)
+static void struct_parse_frame_destroy(struct eu_stack_frame *gframe)
 {
-	struct struct_parse_cont *cont = (struct struct_parse_cont *)gcont;
+	struct struct_parse_frame *frame = (struct struct_parse_frame *)gframe;
 
-	(void)ep;
-
-	inline_struct_fini(&cont->metadata->base, cont->result);
-	if (cont->result_ptr) {
-		free(cont->result);
-		*cont->result_ptr = NULL;
+	inline_struct_fini(&frame->metadata->base, frame->result);
+	if (frame->result_ptr) {
+		free(frame->result);
+		*frame->result_ptr = NULL;
 	}
 }
 

@@ -96,8 +96,17 @@ struct eu_stack {
 	size_t stack_area_size;
 };
 
+/* A stack frame. */
+struct eu_stack_frame {
+	size_t size;
+	enum eu_parse_result (*resume)(struct eu_stack_frame *frame,
+				       void *context);
+	void (*destroy)(struct eu_stack_frame *frame);
+};
+
+
 void *eu_stack_init(struct eu_stack *st, size_t alloc_size);
-void eu_stack_fini(struct eu_stack *st, struct eu_parse *ep);
+void eu_stack_fini(struct eu_stack *st);
 void eu_stack_begin_pause(struct eu_stack *st);
 void *eu_stack_alloc(struct eu_stack *st, size_t size);
 
@@ -107,7 +116,7 @@ static __inline__ void *eu_stack_alloc_first(struct eu_stack *st, size_t size)
 	return eu_stack_alloc(st, size);
 }
 
-int eu_stack_run(struct eu_stack *st, struct eu_parse *ep);
+int eu_stack_run(struct eu_stack *st, void *context);
 
 static __inline__ int eu_stack_empty(struct eu_stack *st)
 {
@@ -156,6 +165,9 @@ int eu_stack_append_scratch(struct eu_stack *st, const char *start,
 int eu_stack_append_scratch_with_nul(struct eu_stack *st, const char *start,
 				     const char *end);
 
+void eu_stack_frame_noop_destroy(struct eu_stack_frame *frame);
+
+
 /* Parsing */
 
 enum eu_parse_result {
@@ -175,16 +187,6 @@ struct eu_parse {
 
 	int error;
 };
-
-/* A continuation stack frame. */
-struct eu_parse_cont {
-	size_t size;
-	enum eu_parse_result (*resume)(struct eu_parse *p,
-				       struct eu_parse_cont *cont);
-	void (*destroy)(struct eu_parse *ep, struct eu_parse_cont *cont);
-};
-
-void eu_parse_cont_noop_destroy(struct eu_parse *ep, struct eu_parse_cont *cont);
 
 void eu_noop_fini(const struct eu_metadata *metadata, void *value);
 struct eu_value eu_get_fail(struct eu_value val, struct eu_string_ref name);
