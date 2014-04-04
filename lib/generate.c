@@ -19,7 +19,7 @@ size_t eu_generate(struct eu_generate *eg, char *output, size_t len)
 	eg->output = output;
 	eg->output_end = output + len;
 
-	if (md->generate(md, eg, eg->value.value) == EU_GEN_OK) {
+	if (md->generate(md, eg, eg->value.value) == EU_OK) {
 		return eg->output - output;
 	}
 	else {

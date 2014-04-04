@@ -193,10 +193,10 @@ RESUME_ONLY(case NUMBER_PARSE_E_DIGITS:)
 	frame->negate = negate;
 	frame->int_value = int_value;
 	frame->result = result;
-	return EU_PARSE_PAUSED;
+	return EU_PAUSED;
 
  error:
 	ep->input = p;
-	return EU_PARSE_ERROR;
+	return EU_ERROR;
 
 #undef RESUME_ONLY

@@ -92,17 +92,17 @@ int eu_stack_run(struct eu_stack *st, void *context)
 		st->new_stack_bottom += f->size;
 
 		switch (f->resume(f, context)) {
-		case EU_PARSE_OK:
+		case EU_OK:
 			break;
 
-		case EU_PARSE_REINSTATE_PAUSED:
+		case EU_REINSTATE_PAUSED:
 			st->new_stack_bottom -= f->size;
 			/* fall through */
 
-		case EU_PARSE_PAUSED:
+		case EU_PAUSED:
 			goto out_ok;
 
-		case EU_PARSE_ERROR:
+		case EU_ERROR:
 			goto out_error;
 		}
 	}
@@ -113,17 +113,17 @@ int eu_stack_run(struct eu_stack *st, void *context)
 		st->old_stack_bottom += f->size;
 
 		switch (f->resume(f, context)) {
-		case EU_PARSE_OK:
+		case EU_OK:
 			break;
 
-		case EU_PARSE_REINSTATE_PAUSED:
+		case EU_REINSTATE_PAUSED:
 			st->old_stack_bottom -= f->size;
 			/* fall through */
 
-		case EU_PARSE_PAUSED:
+		case EU_PAUSED:
 			goto out_ok;
 
-		case EU_PARSE_ERROR:
+		case EU_ERROR:
 			goto out_error;
 		}
 	}

@@ -174,23 +174,23 @@ struct struct_parse_frame {
 	eu_unescape_state_t unescape;
 };
 
-static enum eu_parse_result struct_parse_resume(struct eu_stack_frame *gframe,
-						void *v_ep);
+static enum eu_result struct_parse_resume(struct eu_stack_frame *gframe,
+					  void *v_ep);
 static void struct_parse_frame_destroy(struct eu_stack_frame *gframe);
-static enum eu_parse_result struct_parse(const struct eu_metadata *gmetadata,
-					 struct eu_parse *ep, void *result,
-					 void **result_ptr);
+static enum eu_result struct_parse(const struct eu_metadata *gmetadata,
+				   struct eu_parse *ep, void *result,
+				   void **result_ptr);
 
-static enum eu_parse_result struct_ptr_parse(const struct eu_metadata *gmetadata,
-					     struct eu_parse *ep, void *result)
+static enum eu_result struct_ptr_parse(const struct eu_metadata *gmetadata,
+				       struct eu_parse *ep, void *result)
 {
 	const struct eu_struct_metadata *metadata
 		= (const struct eu_struct_metadata *)gmetadata;
 	void *s;
-	enum eu_parse_result res
+	enum eu_result res
 		= eu_consume_whitespace_until(gmetadata, ep, result, '{');
 
-	if (unlikely(res != EU_PARSE_OK))
+	if (unlikely(res != EU_OK))
 		return res;
 
 	s = malloc(metadata->struct_size);
@@ -201,26 +201,25 @@ static enum eu_parse_result struct_ptr_parse(const struct eu_metadata *gmetadata
 	}
 	else {
 		*(void **)result = NULL;
-		return EU_PARSE_ERROR;
+		return EU_ERROR;
 	}
 }
 
-static enum eu_parse_result inline_struct_parse(
-					const struct eu_metadata *gmetadata,
-					struct eu_parse *ep, void *result)
+static enum eu_result inline_struct_parse(const struct eu_metadata *gmetadata,
+					  struct eu_parse *ep, void *result)
 {
-	enum eu_parse_result res
+	enum eu_result res
 		= eu_consume_whitespace_until(gmetadata, ep, result, '{');
 
-	if (unlikely(res != EU_PARSE_OK))
+	if (unlikely(res != EU_OK))
 		return res;
 
 	return struct_parse(gmetadata, ep, result, NULL);
 }
 
-static enum eu_parse_result struct_parse(const struct eu_metadata *gmetadata,
-					 struct eu_parse *ep, void *result,
-					 void **result_ptr)
+static enum eu_result struct_parse(const struct eu_metadata *gmetadata,
+				   struct eu_parse *ep, void *result,
+				   void **result_ptr)
 {
 	struct struct_parse_frame *frame;
 	const struct eu_struct_metadata *metadata
@@ -237,8 +236,8 @@ static enum eu_parse_result struct_parse(const struct eu_metadata *gmetadata,
 #undef RESUME_ONLY
 }
 
-static enum eu_parse_result struct_parse_resume(struct eu_stack_frame *gframe,
-						void *v_ep)
+static enum eu_result struct_parse_resume(struct eu_stack_frame *gframe,
+					  void *v_ep)
 {
 	struct struct_parse_frame *frame = (struct struct_parse_frame *)gframe;
 	struct eu_parse *ep = v_ep;
@@ -255,14 +254,14 @@ static enum eu_parse_result struct_parse_resume(struct eu_stack_frame *gframe,
 		eu_unicode_char_t uc;
 
 		if (!eu_stack_reserve_more_scratch(&ep->stack, UTF8_LONGEST))
-			return EU_PARSE_ERROR;
+			return EU_ERROR;
 
 		if (!eu_finish_unescape(ep, &unescape, &uc))
-			return EU_PARSE_ERROR;
+			return EU_ERROR;
 
 		if (unescape)
 			/* We can't simply return
-			   EU_PARSE_REINSTATE_PAUSED here because
+			   EU_REINSTATE_PAUSED here because
 			   reserve_scratch may have fiddled with the
 			   stack. */
 			goto pause_input_set;
@@ -614,9 +613,8 @@ const struct eu_struct_metadata eu_object_metadata = {
 	&eu_variant_metadata
 };
 
-enum eu_parse_result eu_variant_object(const void *unused_metadata,
-				       struct eu_parse *ep,
-				       struct eu_variant *result)
+enum eu_result eu_variant_object(const void *unused_metadata,
+				 struct eu_parse *ep, struct eu_variant *result)
 {
 	(void)unused_metadata;
 	result->metadata = &eu_object_metadata.base;

@@ -26,10 +26,10 @@
 		state = ARRAY_PARSE_ELEMENT;
 		len++;
 		switch (el_metadata->parse(el_metadata, ep, el)) {
-		case EU_PARSE_OK:
+		case EU_OK:
 			break;
 
-		case EU_PARSE_PAUSED:
+		case EU_PAUSED:
 			goto pause_in_element;
 
 		default:
@@ -81,12 +81,12 @@ RESUME_ONLY(case ARRAY_PARSE_COMMA:)
  done:
 	ep->input++;
 	result->len = len;
-	return EU_PARSE_OK;
+	return EU_OK;
 
  empty:
 	ep->input++;
 	result->a = ZERO_LENGTH_PTR;
-	return EU_PARSE_OK;
+	return EU_OK;
 
  pause:
 	eu_stack_begin_pause(&ep->stack);
@@ -101,11 +101,11 @@ RESUME_ONLY(case ARRAY_PARSE_COMMA:)
 		frame->result = result;
 		frame->capacity = capacity;
 		result->len = len;
-		return EU_PARSE_PAUSED;
+		return EU_PAUSED;
 	}
 
  error:
-	return EU_PARSE_ERROR;
+	return EU_ERROR;
 
 #undef RESUME_ONLY
 

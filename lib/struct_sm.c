@@ -60,10 +60,10 @@ RESUME_ONLY(case STRUCT_PARSE_COLON:)
 		ep->input = p;
 		switch (member_metadata->parse(member_metadata, ep,
 					       member_value)) {
-		case EU_PARSE_OK:
+		case EU_OK:
 			break;
 
-		case EU_PARSE_PAUSED:
+		case EU_PAUSED:
 			goto pause_input_set;
 
 		default:
@@ -100,7 +100,7 @@ RESUME_ONLY(case STRUCT_PARSE_COMMA:)
 
  done:
 	ep->input = p + 1;
-	return EU_PARSE_OK;
+	return EU_OK;
 
  pause_in_member_name:
 	state = STRUCT_PARSE_IN_MEMBER_NAME;
@@ -125,7 +125,7 @@ RESUME_ONLY(case STRUCT_PARSE_COMMA:)
 	frame->member_metadata = member_metadata;
 	frame->member_value = member_value;
 	frame->unescape = unescape;
-	return EU_PARSE_PAUSED;
+	return EU_PAUSED;
 
  unescape_member_name:
 	/* Skip the backslash, and scan forward to find the end of the
@@ -179,4 +179,4 @@ pause_unescape_member_name:
 		*result_ptr = NULL;
 	}
 
-	return EU_PARSE_ERROR;
+	return EU_ERROR;

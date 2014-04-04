@@ -28,12 +28,11 @@ struct number_parse_frame {
 	int64_t int_value;
 };
 
-static enum eu_parse_result number_parse_resume(struct eu_stack_frame *gframe,
-						void *v_ep);
+static enum eu_result number_parse_resume(struct eu_stack_frame *gframe,
+					  void *v_ep);
 
-static enum eu_parse_result number_parse(const struct eu_metadata *metadata,
-					 struct eu_parse *ep,
-					 void *v_result)
+static enum eu_result number_parse(const struct eu_metadata *metadata,
+				   struct eu_parse *ep, void *v_result)
 {
 	const char *p = ep->input;
 	const char *end = ep->input_end;
@@ -59,9 +58,9 @@ static enum eu_parse_result number_parse(const struct eu_metadata *metadata,
 			goto int_digits;
 
 		case WHITESPACE_CASES: {
-			enum eu_parse_result res
+			enum eu_result res
 				= eu_consume_whitespace(metadata, ep, result);
-			if (res != EU_PARSE_OK)
+			if (res != EU_OK)
 				return res;
 
 			p = ep->input;
@@ -85,11 +84,11 @@ static enum eu_parse_result number_parse(const struct eu_metadata *metadata,
 
  done:
 	ep->input = p;
-	return EU_PARSE_OK;
+	return EU_OK;
 }
 
-static enum eu_parse_result number_parse_resume(struct eu_stack_frame *gframe,
-						void *v_ep)
+static enum eu_result number_parse_resume(struct eu_stack_frame *gframe,
+					  void *v_ep)
 {
 	struct number_parse_frame *frame = (struct number_parse_frame *)gframe;
 	struct eu_parse *ep = v_ep;
@@ -122,7 +121,7 @@ static enum eu_parse_result number_parse_resume(struct eu_stack_frame *gframe,
 
 	done:
 		ep->input = p;
-		return EU_PARSE_OK;
+		return EU_OK;
 	}
 
 	/* Without -O, gcc incorrectly reports that control can reach
@@ -141,9 +140,8 @@ const struct eu_metadata eu_number_metadata = {
 	eu_object_size_fail
 };
 
-enum eu_parse_result eu_variant_number(const void *number_metadata,
-				       struct eu_parse *ep,
-				       struct eu_variant *result)
+enum eu_result eu_variant_number(const void *number_metadata,
+				 struct eu_parse *ep, struct eu_variant *result)
 {
 	result->metadata = number_metadata;
 	return number_parse(number_metadata, ep, &result->u.number);

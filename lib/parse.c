@@ -8,8 +8,8 @@ struct initial_parse_frame {
 	struct eu_parse *ep;
 };
 
-static enum eu_parse_result initial_parse_resume(struct eu_stack_frame *frame,
-						 void *v_ep)
+static enum eu_result initial_parse_resume(struct eu_stack_frame *frame,
+					   void *v_ep)
 {
 	struct eu_parse *ep = v_ep;
 	(void)frame;
@@ -17,7 +17,7 @@ static enum eu_parse_result initial_parse_resume(struct eu_stack_frame *frame,
 	if (ep->input != ep->input_end)
 		return ep->metadata->parse(ep->metadata, ep, ep->result);
 	else
-		return EU_PARSE_REINSTATE_PAUSED;
+		return EU_REINSTATE_PAUSED;
 }
 
 static void initial_parse_destroy(struct eu_stack_frame *gframe)
@@ -107,41 +107,38 @@ struct consume_ws_frame {
 	void *result;
 };
 
-static enum eu_parse_result consume_ws_resume(struct eu_stack_frame *gframe,
-					      void *v_ep);
+static enum eu_result consume_ws_resume(struct eu_stack_frame *gframe,
+					void *v_ep);
 
-enum eu_parse_result eu_consume_whitespace_pause(
-					const struct eu_metadata *metadata,
-					struct eu_parse *ep,
-					void *result)
+enum eu_result eu_consume_whitespace_pause(const struct eu_metadata *metadata,
+					   struct eu_parse *ep,
+					   void *result)
 {
 	struct consume_ws_frame *frame
 		= eu_stack_alloc_first(&ep->stack, sizeof *frame);
 	if (!frame)
-		return EU_PARSE_ERROR;
+		return EU_ERROR;
 
 	frame->base.resume = consume_ws_resume;
 	frame->base.destroy = eu_stack_frame_noop_destroy;
 	frame->metadata = metadata;
 	frame->result = result;
-	return EU_PARSE_PAUSED;
+	return EU_PAUSED;
 }
 
-enum eu_parse_result eu_consume_ws_until_slow(const struct eu_metadata *metadata,
-					      struct eu_parse *ep,
-					      void *result,
-					      char c)
+enum eu_result eu_consume_ws_until_slow(const struct eu_metadata *metadata,
+					struct eu_parse *ep, void *result,
+					char c)
 {
-	enum eu_parse_result res
-		= eu_consume_whitespace(metadata, ep, result);
-	if (res == EU_PARSE_OK && unlikely(*ep->input != c))
-		res = EU_PARSE_ERROR;
+	enum eu_result res = eu_consume_whitespace(metadata, ep, result);
+	if (res == EU_OK && unlikely(*ep->input != c))
+		res = EU_ERROR;
 
 	return res;
 }
 
-static enum eu_parse_result consume_ws_resume(struct eu_stack_frame *gframe,
-					      void *v_ep)
+static enum eu_result consume_ws_resume(struct eu_stack_frame *gframe,
+					void *v_ep)
 {
 	struct consume_ws_frame *frame = (struct consume_ws_frame *)gframe;
 	struct eu_parse *ep = v_ep;
@@ -163,12 +160,11 @@ struct expect_parse_frame {
 	unsigned int expect_len;
 };
 
-static enum eu_parse_result expect_parse_resume(struct eu_stack_frame *gframe,
-						void *v_ep);
+static enum eu_result expect_parse_resume(struct eu_stack_frame *gframe,
+					  void *v_ep);
 
-enum eu_parse_result eu_parse_expect_slow(struct eu_parse *ep,
-					  const char *expect,
-					  unsigned int expect_len)
+enum eu_result eu_parse_expect_slow(struct eu_parse *ep, const char *expect,
+				    unsigned int expect_len)
 {
 	size_t avail = ep->input_end - ep->input;
 	struct expect_parse_frame *frame;
@@ -176,14 +172,14 @@ enum eu_parse_result eu_parse_expect_slow(struct eu_parse *ep,
 	if (expect_len <= avail) {
 		if (!memcmp(ep->input, expect, expect_len)) {
 			ep->input += expect_len;
-			return EU_PARSE_OK;
+			return EU_OK;
 		}
 
-		return EU_PARSE_ERROR;
+		return EU_ERROR;
 	}
 
 	if (memcmp(ep->input, expect, avail))
-		return EU_PARSE_ERROR;
+		return EU_ERROR;
 
 	ep->input += avail;
 
@@ -193,14 +189,14 @@ enum eu_parse_result eu_parse_expect_slow(struct eu_parse *ep,
 		frame->base.destroy = eu_stack_frame_noop_destroy;
 		frame->expect = expect + avail;
 		frame->expect_len = expect_len - avail;
-		return EU_PARSE_PAUSED;
+		return EU_PAUSED;
 	}
 
-	return EU_PARSE_ERROR;
+	return EU_ERROR;
 }
 
-static enum eu_parse_result expect_parse_resume(struct eu_stack_frame *gframe,
-						void *v_ep)
+static enum eu_result expect_parse_resume(struct eu_stack_frame *gframe,
+					  void *v_ep)
 {
 	struct expect_parse_frame *frame
 		= (struct expect_parse_frame *)gframe;

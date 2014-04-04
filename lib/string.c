@@ -26,8 +26,8 @@ struct string_parse_frame {
 	eu_unescape_state_t unescape;
 };
 
-static enum eu_parse_result string_parse_resume(struct eu_stack_frame *gframe,
-						void *v_ep);
+static enum eu_result string_parse_resume(struct eu_stack_frame *gframe,
+					  void *v_ep);
 static void string_parse_frame_destroy(struct eu_stack_frame *gframe);
 
 static struct string_parse_frame *alloc_frame(struct eu_parse *ep, const char *p,
@@ -51,10 +51,8 @@ static struct string_parse_frame *alloc_frame(struct eu_parse *ep, const char *p
 	return NULL;
 }
 
-static enum eu_parse_result string_parse_common(
-					const struct eu_metadata *metadata,
-					struct eu_parse *ep,
-					void *v_result)
+static enum eu_result string_parse_common(const struct eu_metadata *metadata,
+					  struct eu_parse *ep, void *v_result)
 {
 	const char *p = ep->input;
 	const char *end = ep->input_end;
@@ -93,13 +91,13 @@ static enum eu_parse_result string_parse_common(
 
 	/* skip the final '"' */
 	ep->input = p + 1;
-	return EU_PARSE_OK;
+	return EU_OK;
 
  empty:
 	result->chars = ZERO_LENGTH_PTR;
 
 	ep->input = p + 1;
-	return EU_PARSE_OK;
+	return EU_OK;
 
  pause:
 	frame = alloc_frame(ep, p, result);
@@ -108,7 +106,7 @@ static enum eu_parse_result string_parse_common(
 
 	memcpy(frame->buf, ep->input, frame->len);
 	ep->input = p;
-	return EU_PARSE_PAUSED;
+	return EU_PAUSED;
 
  unescape:
 	/* Skip the backslash, and scan forward to find the end of the
@@ -135,7 +133,7 @@ static enum eu_parse_result string_parse_common(
 
 	/* skip the final '"' */
 	ep->input = p + 1;
-	return EU_PARSE_OK;
+	return EU_OK;
 
  pause_unescape:
 	frame = alloc_frame(ep, p, result);
@@ -148,19 +146,19 @@ static enum eu_parse_result string_parse_common(
 
 	frame->len = end - frame->buf;
 	ep->input = p;
-	return EU_PARSE_PAUSED;
+	return EU_PAUSED;
 
  alloc_error:
-	return EU_PARSE_ERROR;
+	return EU_ERROR;
 
  error_free_buf:
 	free(buf);
  error:
-	return EU_PARSE_ERROR;
+	return EU_ERROR;
 }
 
-static enum eu_parse_result string_parse_resume(struct eu_stack_frame *gframe,
-						void *v_ep)
+static enum eu_result string_parse_resume(struct eu_stack_frame *gframe,
+					  void *v_ep)
 {
 	struct string_parse_frame *frame = (struct string_parse_frame *)gframe;
 	struct eu_parse *ep = v_ep;
@@ -175,7 +173,7 @@ static enum eu_parse_result string_parse_resume(struct eu_stack_frame *gframe,
 			goto error;
 
 		if (frame->unescape)
-			return EU_PARSE_REINSTATE_PAUSED;
+			return EU_REINSTATE_PAUSED;
 
 		unescaped_char_len = eu_unicode_utf8_length(unescaped_char);
 	}
@@ -223,13 +221,13 @@ static enum eu_parse_result string_parse_resume(struct eu_stack_frame *gframe,
 
 	/* skip the final '"' */
 	ep->input = p + 1;
-	return EU_PARSE_OK;
+	return EU_OK;
 
  empty:
 	free(buf);
 	frame->result->chars = ZERO_LENGTH_PTR;
 	ep->input = p + 1;
-	return EU_PARSE_OK;
+	return EU_OK;
 
  pause:
 	len = p - ep->input;
@@ -254,7 +252,7 @@ static enum eu_parse_result string_parse_resume(struct eu_stack_frame *gframe,
 	memcpy(buf + frame->len, ep->input, len);
 	frame->len = total_len;
 	ep->input = p;
-	return EU_PARSE_REINSTATE_PAUSED;
+	return EU_REINSTATE_PAUSED;
 
  unescape:
 	/* Skip the backslash, and scan forward to find the end of the
@@ -294,7 +292,7 @@ static enum eu_parse_result string_parse_resume(struct eu_stack_frame *gframe,
 		goto alloc_error;
 
 	ep->input = p + 1;
-	return EU_PARSE_OK;
+	return EU_OK;
 
  pause_unescape:
 	len = p - ep->input;
@@ -319,12 +317,12 @@ static enum eu_parse_result string_parse_resume(struct eu_stack_frame *gframe,
 	end = eu_unescape(ep, p, buf + frame->len, &frame->unescape);
 	frame->len = end - buf;
 	ep->input = p;
-	return EU_PARSE_REINSTATE_PAUSED;
+	return EU_REINSTATE_PAUSED;
 
  alloc_error:
  error:
 	free(frame->buf);
-	return EU_PARSE_ERROR;
+	return EU_ERROR;
 }
 
 static void string_parse_frame_destroy(struct eu_stack_frame *gframe)
@@ -333,30 +331,27 @@ static void string_parse_frame_destroy(struct eu_stack_frame *gframe)
 	free(frame->buf);
 }
 
-enum eu_parse_result eu_variant_string(const void *string_metadata,
-				       struct eu_parse *ep,
-				       struct eu_variant *result)
+enum eu_result eu_variant_string(const void *string_metadata,
+				 struct eu_parse *ep, struct eu_variant *result)
 {
 	result->metadata = string_metadata;
 	return string_parse_common(string_metadata, ep, &result->u.string);
 }
 
-static enum eu_parse_result string_parse(const struct eu_metadata *metadata,
-					 struct eu_parse *ep,
-					 void *result)
+static enum eu_result string_parse(const struct eu_metadata *metadata,
+				   struct eu_parse *ep, void *result)
 {
-	enum eu_parse_result res
+	enum eu_result res
 		= eu_consume_whitespace_until(metadata, ep, result, '\"');
 
-	if (res == EU_PARSE_OK)
+	if (res == EU_OK)
 		return string_parse_common(metadata, ep, result);
 	else
 		return res;
 }
 
-static enum eu_gen_result string_generate(const struct eu_metadata *metadata,
-					  struct eu_generate *eg,
-					  void *value)
+static enum eu_result string_generate(const struct eu_metadata *metadata,
+				      struct eu_generate *eg, void *value)
 {
 	struct eu_string *str = value;
 
@@ -369,11 +364,11 @@ static enum eu_gen_result string_generate(const struct eu_metadata *metadata,
 		memcpy(eg->output, str->chars, str->len);
 		eg->output += str->len;
 		*eg->output++ = '\"';
-		return EU_GEN_OK;
+		return EU_OK;
 	}
 	else {
 		/* TODO pause case */
-		return EU_GEN_ERROR;
+		return EU_ERROR;
 	}
 }
 

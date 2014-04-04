@@ -7,24 +7,22 @@ void eu_noop_fini(const struct eu_metadata *metadata, void *value)
 	(void)value;
 }
 
-static enum eu_parse_result fail_parse(const struct eu_metadata *metadata,
-				       struct eu_parse *ep,
-				       void *result)
+static enum eu_result fail_parse(const struct eu_metadata *metadata,
+				 struct eu_parse *ep, void *result)
 {
 	(void)metadata;
 	(void)ep;
 	(void)result;
-	return EU_PARSE_ERROR;
+	return EU_ERROR;
 }
 
-enum eu_gen_result eu_generate_fail(const struct eu_metadata *metadata,
-				    struct eu_generate *eg,
-				    void *value)
+enum eu_result eu_generate_fail(const struct eu_metadata *metadata,
+				struct eu_generate *eg, void *value)
 {
 	(void)metadata;
 	(void)eg;
 	(void)value;
-	return EU_GEN_ERROR;
+	return EU_ERROR;
 }
 
 static void fail_fini(const struct eu_metadata *metadata, void *value)

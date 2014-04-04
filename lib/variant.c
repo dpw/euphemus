@@ -3,22 +3,21 @@
 #include <euphemus.h>
 #include "euphemus_int.h"
 
-static enum eu_parse_result invalid(const void *misc, struct eu_parse *ep,
-				    struct eu_variant *result)
+static enum eu_result invalid(const void *misc, struct eu_parse *ep,
+			      struct eu_variant *result)
 {
 	(void)misc;
 	(void)ep;
 	(void)result;
-	return EU_PARSE_ERROR;
+	return EU_ERROR;
 }
 
-static enum eu_parse_result whitespace(const void *variant_metadata,
-				       struct eu_parse *ep,
-				       struct eu_variant *result);
+static enum eu_result whitespace(const void *variant_metadata,
+				 struct eu_parse *ep, struct eu_variant *result);
 
 struct char_type_slot {
-	enum eu_parse_result (*func)(const void *misc, struct eu_parse *ep,
-				     struct eu_variant *result);
+	enum eu_result (*func)(const void *misc, struct eu_parse *ep,
+			       struct eu_variant *result);
 	const void *misc;
 };
 
@@ -77,9 +76,8 @@ static const struct char_type_slot char_type_slots[CHAR_TYPE_MAX] = {
 	[CHAR_TYPE_N] = { eu_variant_n, &eu_null_metadata },
 };
 
-static enum eu_parse_result variant_parse(const struct eu_metadata *metadata,
-					 struct eu_parse *ep,
-					 void *result)
+static enum eu_result variant_parse(const struct eu_metadata *metadata,
+				    struct eu_parse *ep, void *result)
 {
 	unsigned char ct = char_types[(unsigned char)*ep->input];
 	struct char_type_slot slot = char_type_slots[ct];
@@ -87,21 +85,18 @@ static enum eu_parse_result variant_parse(const struct eu_metadata *metadata,
 	return slot.func(slot.misc, ep, result);
 }
 
-static enum eu_parse_result whitespace(const void *variant_metadata,
-				       struct eu_parse *ep,
-				       struct eu_variant *result)
+static enum eu_result whitespace(const void *variant_metadata,
+				 struct eu_parse *ep, struct eu_variant *result)
 {
-	enum eu_parse_result res
-		= eu_consume_whitespace(variant_metadata, ep, result);
-	if (res == EU_PARSE_OK)
+	enum eu_result res = eu_consume_whitespace(variant_metadata, ep, result);
+	if (res == EU_OK)
 		return variant_parse(variant_metadata, ep, result);
 	else
 		return res;
 }
 
-static enum eu_gen_result variant_generate(const struct eu_metadata *metadata,
-					   struct eu_generate *eg,
-					   void *value)
+static enum eu_result variant_generate(const struct eu_metadata *metadata,
+				       struct eu_generate *eg, void *value)
 {
 	struct eu_variant *var = value;
 	(void)metadata;

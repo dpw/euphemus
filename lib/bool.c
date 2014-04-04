@@ -1,9 +1,8 @@
 #include <euphemus.h>
 #include "euphemus_int.h"
 
-static enum eu_parse_result bool_parse(const struct eu_metadata *metadata,
-				       struct eu_parse *ep,
-				       void *v_result)
+static enum eu_result bool_parse(const struct eu_metadata *metadata,
+				 struct eu_parse *ep, void *v_result)
 {
 	eu_bool_t *result = v_result;
 	struct expect expect = EXPECT_INIT(4, 'alse', "alse");
@@ -22,16 +21,16 @@ static enum eu_parse_result bool_parse(const struct eu_metadata *metadata,
 			return eu_parse_expect(ep, expect);
 
 		case WHITESPACE_CASES: {
-			enum eu_parse_result res
+			enum eu_result res
 				= eu_consume_whitespace(metadata, ep, result);
-			if (res != EU_PARSE_OK)
+			if (res != EU_OK)
 				return res;
 
 			break;
 		}
 
 		default:
-			return EU_PARSE_ERROR;
+			return EU_ERROR;
 		}
 	}
 }
@@ -55,8 +54,8 @@ struct eu_bool_misc {
 const struct eu_bool_misc eu_bool_true = { 1, EXPECT_INIT(3, 'rue', "rue") };
 const struct eu_bool_misc eu_bool_false = { 0, EXPECT_INIT(4, 'alse', "alse") };
 
-enum eu_parse_result eu_variant_bool(const void *v_misc, struct eu_parse *ep,
-				     struct eu_variant *result)
+enum eu_result eu_variant_bool(const void *v_misc, struct eu_parse *ep,
+			       struct eu_variant *result)
 {
 	const struct eu_bool_misc *misc = v_misc;
 

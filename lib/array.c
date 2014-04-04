@@ -20,30 +20,12 @@ struct array_parse_frame {
 	size_t capacity;
 };
 
-static enum eu_parse_result array_parse_resume(struct eu_stack_frame *gframe,
-					       void *v_ep);
+static enum eu_result array_parse_resume(struct eu_stack_frame *gframe,
+					 void *v_ep);
 static void array_parse_frame_destroy(struct eu_stack_frame *gframe);
 
-enum eu_parse_result array_parse(const struct eu_metadata *gmetadata,
-				 struct eu_parse *ep,
-				 void *v_result);
-
-enum eu_parse_result eu_array_parse(const struct eu_metadata *gmetadata,
-				    struct eu_parse *ep,
-				    void *result)
-{
-	enum eu_parse_result res
-		= eu_consume_whitespace_until(gmetadata, ep, result, '[');
-
-	if (res == EU_PARSE_OK)
-		return array_parse(gmetadata, ep, result);
-	else
-		return res;
-}
-
-enum eu_parse_result array_parse(const struct eu_metadata *gmetadata,
-				 struct eu_parse *ep,
-				 void *v_result)
+static enum eu_result array_parse_aux(const struct eu_metadata *gmetadata,
+				      struct eu_parse *ep, void *v_result)
 {
 	struct array_parse_frame *frame;
 	const struct eu_array_metadata *metadata
@@ -61,8 +43,8 @@ enum eu_parse_result array_parse(const struct eu_metadata *gmetadata,
 #include "array_sm.c"
 }
 
-static enum eu_parse_result array_parse_resume(struct eu_stack_frame *gframe,
-					       void *v_ep)
+static enum eu_result array_parse_resume(struct eu_stack_frame *gframe,
+					 void *v_ep)
 {
 	struct array_parse_frame *frame = (struct array_parse_frame *)gframe;
 	struct eu_parse *ep = v_ep;
@@ -84,6 +66,19 @@ static enum eu_parse_result array_parse_resume(struct eu_stack_frame *gframe,
 	   here. */
 	abort();
 }
+
+static enum eu_result array_parse(const struct eu_metadata *gmetadata,
+				  struct eu_parse *ep, void *result)
+{
+	enum eu_result res
+		= eu_consume_whitespace_until(gmetadata, ep, result, '[');
+
+	if (res == EU_OK)
+		return array_parse_aux(gmetadata, ep, result);
+	else
+		return res;
+}
+
 
 static void array_fini(const struct eu_metadata *el_metadata,
 		       struct eu_array *array)
@@ -155,7 +150,7 @@ const struct eu_array_metadata eu_variant_array_metadata = {
 	{
 		EU_JSON_ARRAY,
 		sizeof(struct eu_array),
-		eu_array_parse,
+		array_parse,
 		eu_generate_fail,
 		eu_array_fini,
 		eu_array_get,
@@ -165,14 +160,13 @@ const struct eu_array_metadata eu_variant_array_metadata = {
 	&eu_variant_metadata
 };
 
-enum eu_parse_result eu_variant_array(const void *unused_metadata,
-				      struct eu_parse *ep,
-				      struct eu_variant *result)
+enum eu_result eu_variant_array(const void *unused_metadata,
+				struct eu_parse *ep, struct eu_variant *result)
 {
 	(void)unused_metadata;
 	result->metadata = &eu_variant_array_metadata.base;
-	return array_parse(&eu_variant_array_metadata.base, ep,
-			   &result->u.array);
+	return array_parse_aux(&eu_variant_array_metadata.base, ep,
+			       &result->u.array);
 }
 
 const struct eu_metadata *eu_introduce_array(const struct eu_type_descriptor *d,
@@ -192,7 +186,7 @@ const struct eu_metadata *eu_introduce_array(const struct eu_type_descriptor *d,
 
 	md->base.json_type = EU_JSON_ARRAY;
 	md->base.size = sizeof(struct eu_array);
-	md->base.parse = eu_array_parse;
+	md->base.parse = array_parse;
 	md->base.generate = eu_generate_fail;
 	md->base.fini = eu_array_fini;
 	md->base.get = eu_array_get;

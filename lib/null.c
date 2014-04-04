@@ -1,9 +1,8 @@
 #include <euphemus.h>
 #include "euphemus_int.h"
 
-static enum eu_parse_result null_parse(const struct eu_metadata *metadata,
-				       struct eu_parse *ep,
-				       void *result)
+static enum eu_result null_parse(const struct eu_metadata *metadata,
+				 struct eu_parse *ep, void *result)
 {
 	struct expect expect = EXPECT_INIT(3, 'ull', "ull");
 
@@ -14,16 +13,16 @@ static enum eu_parse_result null_parse(const struct eu_metadata *metadata,
 			return eu_parse_expect(ep, expect);
 
 		case WHITESPACE_CASES: {
-			enum eu_parse_result res
+			enum eu_result res
 				= eu_consume_whitespace(metadata, ep, result);
-			if (res != EU_PARSE_OK)
+			if (res != EU_OK)
 				return res;
 
 			break;
 		}
 
 		default:
-			return EU_PARSE_ERROR;
+			return EU_ERROR;
 		}
 	}
 }
@@ -39,8 +38,8 @@ const struct eu_metadata eu_null_metadata = {
 	eu_object_size_fail
 };
 
-enum eu_parse_result eu_variant_n(const void *null_metadata, struct eu_parse *ep,
-				  struct eu_variant *result)
+enum eu_result eu_variant_n(const void *null_metadata, struct eu_parse *ep,
+			    struct eu_variant *result)
 {
 	struct expect expect = EXPECT_INIT(3, 'ull', "ull");
 
