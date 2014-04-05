@@ -122,7 +122,7 @@ static __inline__ void *eu_stack_alloc_first(struct eu_stack *st, size_t size)
 	return eu_stack_alloc(st, size);
 }
 
-int eu_stack_run(struct eu_stack *st, void *context);
+enum eu_result eu_stack_run(struct eu_stack *st, void *context);
 
 static __inline__ int eu_stack_empty(struct eu_stack *st)
 {
@@ -174,7 +174,7 @@ int eu_stack_append_scratch_with_nul(struct eu_stack *st, const char *start,
 void eu_stack_frame_noop_destroy(struct eu_stack_frame *frame);
 
 
-/* Parsing */
+/* JSON parsing */
 
 struct eu_parse {
 	struct eu_stack stack;
@@ -353,12 +353,15 @@ static __inline__ enum eu_result eu_parse_expect(struct eu_parse *ep,
 
 #endif
 
+/* JSON generation */
+
 struct eu_generate {
-	struct eu_value value;
-	eu_bool_t error;
+	struct eu_stack stack;
 
 	char *output;
 	char *output_end;
+
+	eu_bool_t error;
 };
 
 #endif

@@ -82,7 +82,7 @@ void *eu_stack_alloc(struct eu_stack *st, size_t size)
 	return f;
 }
 
-int eu_stack_run(struct eu_stack *st, void *context)
+enum eu_result eu_stack_run(struct eu_stack *st, void *context)
 {
 	struct eu_stack_frame *f;
 
@@ -100,10 +100,10 @@ int eu_stack_run(struct eu_stack *st, void *context)
 			/* fall through */
 
 		case EU_PAUSED:
-			goto out_ok;
+			return EU_PAUSED;
 
 		case EU_ERROR:
-			goto out_error;
+			return EU_ERROR;
 		}
 	}
 
@@ -121,18 +121,14 @@ int eu_stack_run(struct eu_stack *st, void *context)
 			/* fall through */
 
 		case EU_PAUSED:
-			goto out_ok;
+			return EU_PAUSED;
 
 		case EU_ERROR:
-			goto out_error;
+			return EU_ERROR;
 		}
 	}
 
- out_ok:
-	return 1;
-
- out_error:
-	return 0;
+	return EU_OK;
 }
 
 int eu_stack_reserve_scratch(struct eu_stack *st, size_t s)

@@ -39,7 +39,7 @@ struct eu_parse *eu_parse_create(struct eu_value result)
 	/* Make the stack area just big enough for the
 	   initial_parse_resume frame. Having some slack doesn't seem
 	   to save much work. */
-	frame = eu_stack_init(&ep->stack, sizeof(struct initial_parse_frame));
+	frame = eu_stack_init(&ep->stack, sizeof *frame);
 	if (!frame)
 		goto free_ep;
 
@@ -74,21 +74,28 @@ void eu_parse_destroy(struct eu_parse *ep)
 
 int eu_parse(struct eu_parse *ep, const char *input, size_t len)
 {
-	if (ep->error)
+	if (unlikely(ep->error))
 		return 0;
 
 	ep->input = input;
 	ep->input_end = input + len;
 
-	if (eu_stack_run(&ep->stack, ep)) {
+	switch (eu_stack_run(&ep->stack, ep)) {
+	case EU_PAUSED:
+		return 1;
+
+	case EU_OK:
 		/* Done parsing.  Check for trailing input. */
 		ep->input = skip_whitespace(ep->input, ep->input_end);
 		if (ep->input == ep->input_end)
 			return 1;
+
+		/* fall through */
+	default:
+		ep->error = 1;
+		return 0;
 	}
 
-	ep->error = 1;
-	return 0;
 }
 
 int eu_parse_finish(struct eu_parse *ep)
