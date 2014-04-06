@@ -59,14 +59,11 @@ size_t eu_generate(struct eu_generate *eg, char *output, size_t len)
 	eg->output_end = output + len;
 
 	switch (eu_stack_run(&eg->stack, eg)) {
-	case EU_PAUSED:
-		return 0;
-
-	default:
+	case EU_ERROR:
 		eg->error = 1;
 
 		/* fall through */
-	case EU_OK:
+	default:
 		return eg->output - output;
 	}
 }

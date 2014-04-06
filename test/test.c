@@ -211,17 +211,30 @@ static void test_gen_string(void)
 {
 	struct eu_string str;
 	struct eu_generate *eg;
-	char out[100];
+	char c, out[100];
 	size_t len;
 
 	eu_string_init(&str);
 	assert(eu_string_assign(&str, eu_cstr("hello")));
+
 	eg = eu_generate_create(eu_string_value(&str));
 	len = eu_generate(eg, out, 100);
 	assert(eu_generate_ok(eg));
 	assert(eu_string_ref_equal(eu_string_ref(out, len),
 				   eu_cstr("\"hello\"")));
 	eu_generate_destroy(eg);
+
+	eg = eu_generate_create(eu_string_value(&str));
+	len = 0;
+
+	while (eu_generate(eg, &c, 1))
+		out[len++] = c;
+
+	assert(eu_generate_ok(eg));
+	assert(eu_string_ref_equal(eu_string_ref(out, len),
+				   eu_cstr("\"hello\"")));
+	eu_generate_destroy(eg);
+
 	eu_string_fini(&str);
 }
 
