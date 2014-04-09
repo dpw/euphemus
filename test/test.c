@@ -269,6 +269,11 @@ static void test_gen_string(void)
 	eu_string_fini(&str);
 }
 
+static void test_gen_null(void)
+{
+	test_gen(eu_null_value(), "null");
+}
+
 int main(void)
 {
 	test_parse_string();
@@ -281,6 +286,7 @@ int main(void)
 	test_size();
 
 	test_gen_string();
+	test_gen_null();
 
 	return 0;
 }

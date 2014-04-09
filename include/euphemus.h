@@ -217,11 +217,18 @@ static __inline__ struct eu_value eu_number_value(double *number)
 
 
 typedef unsigned char eu_bool_t;
-extern struct eu_metadata eu_bool_metadata;
+extern const struct eu_metadata eu_bool_metadata;
 
 static __inline__ struct eu_value eu_bool_value(eu_bool_t *bool)
 {
 	return eu_value(bool, &eu_bool_metadata);
+}
+
+extern const struct eu_metadata eu_null_metadata;
+
+static __inline__ struct eu_value eu_null_value(void)
+{
+	return eu_value(NULL, &eu_null_metadata);
 }
 
 /* Variants */

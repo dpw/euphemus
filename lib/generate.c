@@ -73,3 +73,41 @@ int eu_generate_ok(struct eu_generate *eg)
 	return !eg->error;
 }
 
+struct fixed_gen_frame {
+	struct eu_stack_frame base;
+	const char *str;
+	size_t len;
+};
+
+static enum eu_result fixed_gen_resume(struct eu_stack_frame *gframe, void *eg)
+{
+	struct fixed_gen_frame *frame = (struct fixed_gen_frame *)gframe;
+	return eu_fixed_gen(eg, frame->str, frame->len);
+}
+
+enum eu_result eu_fixed_gen(struct eu_generate *eg, const char *str, size_t len)
+{
+	size_t space = eg->output_end - eg->output;
+	struct fixed_gen_frame *frame;
+
+	if (space >= len) {
+		memcpy(eg->output, str, len);
+		eg->output += len;
+		return EU_OK;
+	}
+
+	memcpy(eg->output, str, space);
+	eg->output += space;
+
+	frame = eu_stack_alloc_first(&eg->stack, sizeof *frame);
+	if (frame) {
+		frame->base.resume = fixed_gen_resume;
+		frame->base.destroy = eu_stack_frame_noop_destroy;
+		frame->str = str + space;
+		frame->len = len - space;
+		return EU_PAUSED;
+	}
+
+	return EU_ERROR;
+}
+

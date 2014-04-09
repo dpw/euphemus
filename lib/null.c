@@ -27,11 +27,19 @@ static enum eu_result null_parse(const struct eu_metadata *metadata,
 	}
 }
 
+static enum eu_result null_generate(const struct eu_metadata *metadata,
+				    struct eu_generate *eg, void *value)
+{
+	(void)metadata;
+	(void)value;
+	return eu_fixed_gen(eg, "null", 4);
+}
+
 const struct eu_metadata eu_null_metadata = {
 	EU_JSON_NULL,
 	0,
 	null_parse,
-	eu_generate_fail,
+	null_generate,
 	eu_noop_fini,
 	eu_get_fail,
 	eu_object_iter_init_fail,

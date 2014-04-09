@@ -364,4 +364,6 @@ struct eu_generate {
 	eu_bool_t error;
 };
 
+enum eu_result eu_fixed_gen(struct eu_generate *eg, const char *str, size_t len);
+
 #endif
