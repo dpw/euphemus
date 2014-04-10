@@ -274,6 +274,13 @@ static void test_gen_null(void)
 	test_gen(eu_null_value(), "null");
 }
 
+static void test_gen_bool(void)
+{
+	eu_bool_t t = 1, f = 0;
+	test_gen(eu_bool_value(&t), "true");
+	test_gen(eu_bool_value(&f), "false");
+}
+
 int main(void)
 {
 	test_parse_string();
@@ -287,6 +294,7 @@ int main(void)
 
 	test_gen_string();
 	test_gen_null();
+	test_gen_bool();
 
 	return 0;
 }

@@ -35,11 +35,32 @@ static enum eu_result bool_parse(const struct eu_metadata *metadata,
 	}
 }
 
+struct fixed_gen {
+	size_t len;
+	const char *str;
+};
+
+static struct fixed_gen bool_fixed_gens[2] = {
+	{ 4, "true" },
+	{ 5, "false" }
+};
+
+static enum eu_result bool_generate(const struct eu_metadata *metadata,
+				    struct eu_generate *eg, void *v_value)
+{
+	eu_bool_t *value = v_value;
+	struct fixed_gen *fg = bool_fixed_gens + !*value;
+
+	(void)metadata;
+
+	return eu_fixed_gen(eg, fg->str, fg->len);
+}
+
 const struct eu_metadata eu_bool_metadata = {
 	EU_JSON_BOOL,
 	sizeof(eu_bool_t),
 	bool_parse,
-	eu_generate_fail,
+	bool_generate,
 	eu_noop_fini,
 	eu_get_fail,
 	eu_object_iter_init_fail,
