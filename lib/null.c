@@ -4,7 +4,7 @@
 static enum eu_result null_parse(const struct eu_metadata *metadata,
 				 struct eu_parse *ep, void *result)
 {
-	struct expect expect = EXPECT_INIT(3, 'ull', "ull");
+	struct expect expect = EXPECT_INIT(3, MULTICHAR_3('u','l','l'), "ull");
 
 	for (;;) {
 		switch (*ep->input) {
@@ -49,7 +49,7 @@ const struct eu_metadata eu_null_metadata = {
 enum eu_result eu_variant_n(const void *null_metadata, struct eu_parse *ep,
 			    struct eu_variant *result)
 {
-	struct expect expect = EXPECT_INIT(3, 'ull', "ull");
+	struct expect expect = EXPECT_INIT(3, MULTICHAR_3('u','l','l'), "ull");
 
 	result->metadata = null_metadata;
 	ep->input++;

@@ -321,16 +321,20 @@ struct expect {
 	const char *str;
 };
 
-#define EXPECT_INIT(l, lit, str) {                                    \
+/* Little-endian multichar constants */
+#define MULTICHAR_3(a, b, c) (a | ((uint32_t)b << 8) | ((uint32_t)c << 16))
+#define MULTICHAR_4(a, b, c, d) (a | ((uint32_t)b << 8) | ((uint32_t)c << 16) | ((uint32_t)d << 24))
+
+#define EXPECT_INIT(l, chars, str) {                                  \
 	(l) < 4 ? ((uint32_t)1 << ((l & 3)*8)) - 1 : 0xffffffff,      \
-	__builtin_bswap32(lit) >> (4 - (l)) * 8,                      \
+	(chars),                                                      \
 	(l),                                                          \
 	str                                                           \
 }
 
-#define EXPECT_ASSIGN(e, l, lit, s) do {                              \
+#define EXPECT_ASSIGN(e, l, chars, s) do {                            \
 	(e).mask = ((uint32_t)1 << ((l)*8)) - 1;                      \
-	(e).val = __builtin_bswap32(lit) >> (4 - (l)) * 8;            \
+	(e).val = (chars);                                            \
 	(e).len = (l);                                                \
 	(e).str = s;                                                  \
 } while (0);
