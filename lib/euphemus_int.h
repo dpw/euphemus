@@ -276,19 +276,35 @@ static __inline__ enum eu_result eu_consume_whitespace_until(
 enum eu_result eu_parse_expect_slow(struct eu_parse *ep, const char *expect,
 				    unsigned int expect_len);
 
+/* JSON generation */
+
+struct eu_generate {
+	struct eu_stack stack;
+
+	char *output;
+	char *output_end;
+
+	eu_bool_t error;
+};
+
+enum eu_result eu_fixed_gen_slow(struct eu_generate *eg, const char *str,
+				 unsigned int len);
+
 #if !(defined(__i386__) || defined(__x86_64__))
+/*#if 1*/
+
+#define MULTICHAR_3(a, b, c) UNUSED_MULTICHAR
+#define MULTICHAR_4(a, b, c, d) UNUSED_MULTICHAR
+#define MULTICHAR_5(a, b, c, d, e) UNUSED_MULTICHAR
 
 struct expect {
 	unsigned int len;
 	const char *str;
 };
 
-#define EXPECT_INIT(l, lit, str) {                                    \
-	(l),                                                          \
-	str                                                           \
-}
+#define EXPECT_INIT(l, chars, str) { (l), str }
 
-#define EXPECT_ASSIGN(e, l, lit, s) do {                              \
+#define EXPECT_ASSIGN(e, l, chars, s) do {                              \
 	(e).len = (l);                                                \
 	(e).str = s;                                                  \
 } while (0);
@@ -309,6 +325,23 @@ static __inline__ enum eu_result eu_parse_expect(struct eu_parse *ep,
 	}
 }
 
+/* eu_fixed_gen_32 is defined as a macro in order to discard the
+   multichar parameter without compile-time evaluation. */
+#define eu_fixed_gen_32(eg, len, chars, str) eu_fixed_gen_slow(eg, str, len)
+
+struct fixed_gen_64 {
+	unsigned int len;
+	const char *str;
+};
+
+#define FIXED_GEN_64_INIT(l, chars, str) { (l), str }
+
+static __inline__ enum eu_result eu_fixed_gen_64(struct eu_generate *eg,
+						 struct fixed_gen_64 fg)
+{
+	return eu_fixed_gen_slow(eg, fg.str, fg.len);
+}
+
 #else
 
 /* This variant avoids a memcmp in the fast path, but relies on
@@ -323,7 +356,8 @@ struct expect {
 
 /* Little-endian multichar constants */
 #define MULTICHAR_3(a, b, c) (a | ((uint32_t)b << 8) | ((uint32_t)c << 16))
-#define MULTICHAR_4(a, b, c, d) (a | ((uint32_t)b << 8) | ((uint32_t)c << 16) | ((uint32_t)d << 24))
+#define MULTICHAR_4(a, b, c, d) (MULTICHAR_3(a, b, c) | ((uint32_t)d << 24))
+#define MULTICHAR_5(a, b, c, d, e) (MULTICHAR_4(a, b, c, d) | ((uint64_t)e << 32))
 
 #define EXPECT_INIT(l, chars, str) {                                  \
 	(l) < 4 ? ((uint32_t)1 << ((l & 3)*8)) - 1 : 0xffffffff,      \
@@ -355,19 +389,42 @@ static __inline__ enum eu_result eu_parse_expect(struct eu_parse *ep,
 	}
 }
 
-#endif
+static __inline__ enum eu_result eu_fixed_gen_32(struct eu_generate *eg,
+						 unsigned int len,
+						 uint32_t chars,
+						 const char *str)
+{
+	if (eg->output_end - eg->output >= 4) {
+		*(uint32_t *)eg->output = chars;
+		eg->output += len;
+		return EU_OK;
+	}
+	else {
+		return eu_fixed_gen_slow(eg, str, len);
+	}
+}
 
-/* JSON generation */
-
-struct eu_generate {
-	struct eu_stack stack;
-
-	char *output;
-	char *output_end;
-
-	eu_bool_t error;
+struct fixed_gen_64 {
+	uint64_t chars;
+	unsigned int len;
+	const char *str;
 };
 
-enum eu_result eu_fixed_gen(struct eu_generate *eg, const char *str, size_t len);
+#define FIXED_GEN_64_INIT(l, chars, str) { (chars), (l), str }
+
+static __inline__ enum eu_result eu_fixed_gen_64(struct eu_generate *eg,
+						 struct fixed_gen_64 fg)
+{
+	if (eg->output_end - eg->output >= 8) {
+		*(uint64_t *)eg->output = fg.chars;
+		eg->output += fg.len;
+		return EU_OK;
+	}
+	else {
+		return eu_fixed_gen_slow(eg, fg.str, fg.len);
+	}
+}
+
+#endif
 
 #endif

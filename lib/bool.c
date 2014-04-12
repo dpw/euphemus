@@ -37,25 +37,19 @@ static enum eu_result bool_parse(const struct eu_metadata *metadata,
 	}
 }
 
-struct fixed_gen {
-	size_t len;
-	const char *str;
-};
-
-static struct fixed_gen bool_fixed_gens[2] = {
-	{ 4, "true" },
-	{ 5, "false" }
+static struct fixed_gen_64 bool_fixed_gens[2] = {
+	FIXED_GEN_64_INIT(4, MULTICHAR_4('t','r','u','e'), "true"),
+	FIXED_GEN_64_INIT(5, MULTICHAR_5('f','a','l','s','e'), "false")
 };
 
 static enum eu_result bool_generate(const struct eu_metadata *metadata,
 				    struct eu_generate *eg, void *v_value)
 {
 	eu_bool_t *value = v_value;
-	struct fixed_gen *fg = bool_fixed_gens + !*value;
 
 	(void)metadata;
 
-	return eu_fixed_gen(eg, fg->str, fg->len);
+	return eu_fixed_gen_64(eg, bool_fixed_gens[!*value]);
 }
 
 const struct eu_metadata eu_bool_metadata = {

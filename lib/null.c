@@ -32,7 +32,8 @@ static enum eu_result null_generate(const struct eu_metadata *metadata,
 {
 	(void)metadata;
 	(void)value;
-	return eu_fixed_gen(eg, "null", 4);
+
+	return eu_fixed_gen_32(eg, 4, MULTICHAR_4('n','u','l','l'), "null");
 }
 
 const struct eu_metadata eu_null_metadata = {
