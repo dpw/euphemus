@@ -35,8 +35,8 @@ static enum eu_result array_parse_aux(const struct eu_metadata *gmetadata,
 	size_t el_size = el_metadata->size;
 	struct eu_array *result = v_result;
 	size_t len = 0;
+	size_t capacity = 10;
 	char *el;
-	size_t capacity;
 
 	ep->input++;
 

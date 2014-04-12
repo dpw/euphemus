@@ -6,6 +6,8 @@
 #define RESUME_ONLY(x)
 
  leading_minus:
+	negate = 1;
+	int_value = 0;
 	p++;
 	state = NUMBER_PARSE_LEADING_MINUS;
 #else
@@ -21,7 +23,6 @@
 
 	case ONE_TO_9:
 		int_value = *p - '0';
-		negate = 1;
 		goto int_digits;
 
 	default:
@@ -30,6 +31,8 @@
 
 #ifndef RESUME
  leading_zero:
+	negate = 0;
+	int_value = 0;
 #endif
 	p++;
 	state = NUMBER_PARSE_LEADING_ZERO;

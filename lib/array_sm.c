@@ -16,7 +16,6 @@
 	if (*ep->input == ']')
 		goto empty;
 
-	capacity = 10;
 	el = result->a = malloc(el_size * capacity);
 	memset(el, 0, el_size * capacity);
 	if (!el)

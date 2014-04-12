@@ -225,7 +225,7 @@ static enum eu_result struct_parse(const struct eu_metadata *gmetadata,
 	const struct eu_struct_metadata *metadata
 		= (const struct eu_struct_metadata *)gmetadata;
 	enum struct_parse_state state;
-	const struct eu_metadata *member_metadata;
+	const struct eu_metadata *member_metadata = NULL;
 	void *member_value;
 	eu_unescape_state_t unescape = 0;
 	const char *p = ep->input + 1;
@@ -259,6 +259,7 @@ static enum eu_result struct_parse_resume(struct eu_stack_frame *gframe,
 		if (!eu_finish_unescape(ep, &unescape, &uc))
 			return EU_ERROR;
 
+		p = ep->input;
 		if (unescape)
 			/* We can't simply return
 			   EU_REINSTATE_PAUSED here because
