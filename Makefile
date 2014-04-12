@@ -9,10 +9,7 @@ endif
 MAKEFILE:=$(firstword $(MAKEFILE_LIST))
 
 # You can override this from the command line
-CFLAGS=-Wall -Wextra -Werror -ansi -g
-
-# clang doesn't like the use of '-ansi' when linking
-LD_CFLAGS=$(filter-out -ansi,$(CFLAGS))
+CFLAGS=-g
 
 # ROOT is the path to the source tree.  If non-empty, then it includes
 # a trailing slash.
@@ -23,7 +20,7 @@ ROOT=$(filter-out ./,$(dir $(MAKEFILE)))
 VPATH=$(ROOT)
 
 # It's less likely that you'll want to override this
-PROJECT_CFLAGS=-I$(ROOT)include -D_GNU_SOURCE -Wno-multichar -Wpointer-arith
+PROJECT_CFLAGS=-I$(ROOT)include -D_GNU_SOURCE -Wpointer-arith -Wall -Wextra -Werror -ansi
 
 # The euphemus library source files
 LIB_SRCS=$(foreach S,euphemus.c stack.c parse.c generate.c path.c struct.c array.c string.c variant.c number.c bool.c null.c unescape.c,lib/$(S))
@@ -35,7 +32,7 @@ SRCS+=$(addprefix test/,test.c test_codegen.c test_schema.c)
 # Main exectuables that get built
 EXECUTABLES=schemac/schemac
 
-# parse_perf requires json-c to
+# parse_perf requires json-c to build
 ifneq "$(wildcard /usr/include/json/json.h)" ""
 SRCS+=test/parse_perf.c
 EXECUTABLES+=test/parse_perf
@@ -115,7 +112,7 @@ define build_executable
 build_executable_objneeds:=$(call objneeds,$(or $(MAINOBJ_$(1)),$(2)$(1).o))
 ifeq "$$(filter undefined,$$(build_executable_objneeds))" ""
 $(1): $$(build_executable_objneeds)
-	$$(CC) $$(LD_CFLAGS) $(PROJECT_CFLAGS) $$^ -o $$@
+	$$(CC) $(filter-out -ansi,$(CFLAGS) $(PROJECT_CFLAGS)) $$^ -o $$@
 else
 $(1):
 	@false
