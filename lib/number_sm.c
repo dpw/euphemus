@@ -6,7 +6,7 @@
 #define RESUME_ONLY(x)
 
  leading_minus:
-	negate = 1;
+	negate = -1;
 	int_value = 0;
 	p++;
 	state = NUMBER_PARSE_LEADING_MINUS;
@@ -76,8 +76,9 @@ RESUME_ONLY(case NUMBER_PARSE_INT_DIGITS:)
 		goto e;
 
 	default:
-		/* *result = negate ? -int_value : int_value; */
-		*result = (int_value ^ -negate) + negate;
+		/* Negate is 0 or -1, so this gives
+		   negate ? -int_value : int_value */
+		*result = (int_value ^ negate) - negate;
 		goto done;
 	}
 

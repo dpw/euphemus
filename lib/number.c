@@ -23,9 +23,9 @@ enum number_parse_state {
 struct number_parse_frame {
 	struct eu_stack_frame base;
 	enum number_parse_state state;
-	signed char negate;
 	double *result;
 	int64_t int_value;
+	signed char negate;
 };
 
 static enum eu_result number_parse_resume(struct eu_stack_frame *gframe,
