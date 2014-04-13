@@ -255,6 +255,19 @@ static void test_gen(struct eu_value value, const char *expected_cstr)
 	eu_generate_destroy(eg);
 	assert(eu_string_ref_equal(eu_string_ref(buf, len), expected));
 
+	/* Test that resources are released after an unfinished generation. */
+	eg = eu_generate_create(value);
+	eu_generate_destroy(eg);
+
+	for (i = 0;; i++) {
+		eg = eu_generate_create(value);
+		len = eu_generate(eg, buf, i);
+		eu_generate_destroy(eg);
+
+		if (len < i)
+			break;
+	}
+
 	free(buf);
 	free(buf2);
 }
