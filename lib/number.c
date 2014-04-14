@@ -129,11 +129,102 @@ static enum eu_result number_parse_resume(struct eu_stack_frame *gframe,
 	abort();
 }
 
+struct number_gen_frame {
+	struct eu_stack_frame base;
+	unsigned int pos;
+};
+
+static enum eu_result number_gen_resume(struct eu_stack_frame *gframe,
+					void *eg);
+
+static enum eu_result number_generate(const struct eu_metadata *metadata,
+				      struct eu_generate *eg, void *value)
+{
+	double dvalue = *(double *)value;
+	int64_t ivalue = (int64_t)dvalue;
+	uint64_t uvalue;
+	size_t len, space;
+	char *p;
+	struct number_gen_frame *frame;
+	unsigned int pos;
+
+	(void)metadata;
+
+	/* TODO: Handle non-integer values */
+	if ((double)ivalue != dvalue)
+		return EU_ERROR;
+
+	if (ivalue == 0) {
+		*eg->output++ = '0';
+		return EU_OK;
+	}
+
+	if (ivalue > 0) {
+		uvalue = ivalue;
+	}
+	else {
+		*eg->output++ = '-';
+		uvalue = -ivalue;
+	}
+
+	/* A 63-bit integer needs at most 19 digits */
+	if (!eu_stack_reserve_scratch(&eg->stack, 19))
+		return EU_ERROR;
+
+	for (p = eu_stack_scratch(&eg->stack) + 19, len = 1;; len++) {
+		*--p = '0' + uvalue % 10;
+		uvalue /= 10;
+
+		if (!uvalue)
+			break;
+	}
+
+	space = eg->output_end - eg->output;
+	if (space >= len) {
+		memcpy(eg->output, p, len);
+		eg->output += len;
+		return EU_OK;
+	}
+
+	memcpy(eg->output, p, space);
+	eg->output = eg->output_end;
+	pos = p + space - eu_stack_scratch(&eg->stack);
+
+	eg->stack.scratch_size = 19;
+	frame = eu_stack_alloc_first(&eg->stack, sizeof *frame);
+	frame->base.resume = number_gen_resume;
+	frame->base.destroy = eu_stack_frame_noop_destroy;
+	frame->pos = pos;
+	return EU_PAUSED;
+}
+
+static enum eu_result number_gen_resume(struct eu_stack_frame *gframe,
+					void *v_eg)
+{
+	struct number_gen_frame *frame = (struct number_gen_frame *)gframe;
+	struct eu_generate *eg = v_eg;
+	size_t space = eg->output_end - eg->output;
+	size_t len = eg->stack.scratch_size - frame->pos;
+	char *p = eu_stack_scratch(&eg->stack) + frame->pos;
+
+	if (space >= len) {
+		memcpy(eg->output, p, len);
+		eg->output += len;
+		eu_stack_reset_scratch(&eg->stack);
+		return EU_OK;
+	}
+
+	memcpy(eg->output, p, space);
+	eg->output = eg->output_end;
+	frame->pos += space;
+	return EU_REINSTATE_PAUSED;
+}
+
 const struct eu_metadata eu_number_metadata = {
 	EU_JSON_NUMBER,
 	sizeof(double),
 	number_parse,
-	eu_generate_fail,
+	number_generate,
 	eu_noop_fini,
 	eu_get_fail,
 	eu_object_iter_init_fail,

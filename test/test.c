@@ -294,6 +294,18 @@ static void test_gen_bool(void)
 	test_gen(eu_bool_value(&f), "false");
 }
 
+static void test_gen_number(void)
+{
+	double num = 100;
+	test_gen(eu_number_value(&num), "100");
+
+	num = 0;
+	test_gen(eu_number_value(&num), "0");
+
+	num = -12345678910;
+	test_gen(eu_number_value(&num), "-12345678910");
+}
+
 int main(void)
 {
 	test_parse_string();
@@ -308,6 +320,7 @@ int main(void)
 	test_gen_string();
 	test_gen_null();
 	test_gen_bool();
+	test_gen_number();
 
 	return 0;
 }
