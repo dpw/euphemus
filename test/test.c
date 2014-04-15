@@ -27,10 +27,10 @@ static void test_parse_number(void)
 		   double,
 		   eu_number_value,
 		   assert(result == (double)123456789.0123456789e0),);
-	TEST_PARSE("  -0.0123456789e10  ",
+	TEST_PARSE("  -0.0123456789e-10  ",
 		   double,
 		   eu_number_value,
-		   assert(result == (double)-0.0123456789e10),);
+		   assert(result == (double)-0.0123456789e-10),);
 	TEST_PARSE("  0  ",
 		   double,
 		   eu_number_value,
@@ -304,6 +304,12 @@ static void test_gen_number(void)
 
 	num = -12345678910;
 	test_gen(eu_number_value(&num), "-12345678910");
+
+	num = 1.23;
+	test_gen(eu_number_value(&num), "1.23");
+
+	num = -1.234567891234567e-10;
+	test_gen(eu_number_value(&num), "-1.234567891234567e-10");
 }
 
 int main(void)

@@ -1,4 +1,4 @@
-#include <stdint.h>
+#include <stdio.h>
 
 #include <euphemus.h>
 #include "euphemus_int.h"
@@ -143,16 +143,15 @@ static enum eu_result number_generate(const struct eu_metadata *metadata,
 	double dvalue = *(double *)value;
 	int64_t ivalue = (int64_t)dvalue;
 	uint64_t uvalue;
-	size_t len, space;
+	size_t space;
 	char *p;
 	struct number_gen_frame *frame;
-	unsigned int pos;
+	unsigned int len, scratch_size, pos;
 
 	(void)metadata;
 
-	/* TODO: Handle non-integer values */
 	if ((double)ivalue != dvalue)
-		return EU_ERROR;
+		goto non_integer;
 
 	if (ivalue == 0) {
 		*eg->output++ = '0';
@@ -168,10 +167,11 @@ static enum eu_result number_generate(const struct eu_metadata *metadata,
 	}
 
 	/* A 63-bit integer needs at most 19 digits */
-	if (!eu_stack_reserve_scratch(&eg->stack, 19))
+	scratch_size = 19;
+	if (!eu_stack_reserve_scratch(&eg->stack, scratch_size))
 		return EU_ERROR;
 
-	for (p = eu_stack_scratch(&eg->stack) + 19, len = 1;; len++) {
+	for (p = eu_stack_scratch(&eg->stack) + scratch_size, len = 1;; len++) {
 		*--p = '0' + uvalue % 10;
 		uvalue /= 10;
 
@@ -179,6 +179,7 @@ static enum eu_result number_generate(const struct eu_metadata *metadata,
 			break;
 	}
 
+ output_scratch:
 	space = eg->output_end - eg->output;
 	if (space >= len) {
 		memcpy(eg->output, p, len);
@@ -190,12 +191,29 @@ static enum eu_result number_generate(const struct eu_metadata *metadata,
 	eg->output = eg->output_end;
 	pos = p + space - eu_stack_scratch(&eg->stack);
 
-	eg->stack.scratch_size = 19;
+	eg->stack.scratch_size = scratch_size;
 	frame = eu_stack_alloc_first(&eg->stack, sizeof *frame);
 	frame->base.resume = number_gen_resume;
 	frame->base.destroy = eu_stack_frame_noop_destroy;
 	frame->pos = pos;
 	return EU_PAUSED;
+
+ non_integer:
+	/* 30 characters ought to be safe for an IEEE754 double. */
+	if (!eu_stack_reserve_scratch(&eg->stack, 30))
+		return EU_ERROR;
+
+	p = eu_stack_scratch(&eg->stack);
+
+	{
+		int plen = snprintf(p, 30, "%.16g", dvalue);
+		if (plen < 0 || plen >= 30)
+			return EU_ERROR;
+
+		scratch_size = len = plen;
+	}
+
+	goto output_scratch;
 }
 
 static enum eu_result number_gen_resume(struct eu_stack_frame *gframe,
