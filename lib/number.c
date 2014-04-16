@@ -137,6 +137,11 @@ struct number_gen_frame {
 static enum eu_result number_gen_resume(struct eu_stack_frame *gframe,
 					void *eg);
 
+
+/* 30 characters ought to be safe for an IEEE754 double, including the
+   trailing 0 byte. */
+#define MAX_DOUBLE_CHARS 30
+
 static enum eu_result number_generate(const struct eu_metadata *metadata,
 				      struct eu_generate *eg, void *value)
 {
@@ -169,7 +174,7 @@ static enum eu_result number_generate(const struct eu_metadata *metadata,
 	/* A 63-bit integer needs at most 19 digits */
 	scratch_size = 19;
 	if (!eu_stack_reserve_scratch(&eg->stack, scratch_size))
-		return EU_ERROR;
+		goto error;
 
 	for (p = eu_stack_scratch(&eg->stack) + scratch_size, len = 1;; len++) {
 		*--p = '0' + uvalue % 10;
@@ -199,21 +204,35 @@ static enum eu_result number_generate(const struct eu_metadata *metadata,
 	return EU_PAUSED;
 
  non_integer:
-	/* 30 characters ought to be safe for an IEEE754 double. */
-	if (!eu_stack_reserve_scratch(&eg->stack, 30))
-		return EU_ERROR;
+	space = eg->output_end - eg->output;
+	if (space >= MAX_DOUBLE_CHARS) {
+		/* Print into the output buffer */
+		int plen = snprintf(eg->output, MAX_DOUBLE_CHARS, "%.16g",
+				    dvalue);
+		if (plen < 0 || plen >= MAX_DOUBLE_CHARS)
+			goto error;
 
-	p = eu_stack_scratch(&eg->stack);
+		eg->output += plen;
+		return EU_OK;
+	}
+	else {
+		/* Print into the scratch space */
+		int plen;
 
-	{
-		int plen = snprintf(p, 30, "%.16g", dvalue);
-		if (plen < 0 || plen >= 30)
-			return EU_ERROR;
+		if (!eu_stack_reserve_scratch(&eg->stack, MAX_DOUBLE_CHARS))
+			goto error;
+
+		p = eu_stack_scratch(&eg->stack);
+		plen = snprintf(p, MAX_DOUBLE_CHARS, "%.16g", dvalue);
+		if (plen < 0 || plen >= MAX_DOUBLE_CHARS)
+			goto error;
 
 		scratch_size = len = plen;
+		goto output_scratch;
 	}
 
-	goto output_scratch;
+ error:
+	return EU_ERROR;
 }
 
 static enum eu_result number_gen_resume(struct eu_stack_frame *gframe,

@@ -211,8 +211,8 @@ static void test_gen(struct eu_value value, const char *expected_cstr)
 {
 	struct eu_string_ref expected = eu_cstr(expected_cstr);
 	struct eu_generate *eg;
-	char *buf = malloc(expected.len + 1);
-	char *buf2 = malloc(expected.len + 1);
+	char *buf = malloc(expected.len + 100);
+	char *buf2 = malloc(expected.len + 100);
 	size_t i, len, len2;
 
 	/* Test generation in one go. */
