@@ -249,6 +249,31 @@ struct eu_variant {
 	} u;
 };
 
+static __inline__ void eu_variant_init_null(struct eu_variant *var)
+{
+	var->metadata = &eu_null_metadata;
+}
+
+static __inline__ void eu_variant_init_bool(struct eu_variant *var,
+					    eu_bool_t val)
+{
+	var->metadata = &eu_bool_metadata;
+	var->u.bool = val;
+}
+
+static __inline__ void eu_variant_init_number(struct eu_variant *var,
+					      double val)
+{
+	var->metadata = &eu_number_metadata;
+	var->u.number = val;
+}
+
+static __inline__ void eu_variant_init_string(struct eu_variant *var)
+{
+	var->metadata = &eu_string_metadata;
+	eu_string_init(&var->u.string);
+}
+
 extern const struct eu_metadata eu_variant_metadata;
 
 static __inline__ struct eu_value eu_variant_value(struct eu_variant *variant)

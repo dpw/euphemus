@@ -312,6 +312,28 @@ static void test_gen_number(void)
 	test_gen(eu_number_value(&num), "-1.234567891234567e-10");
 }
 
+static void test_gen_variant(void)
+{
+	struct eu_variant var;
+
+	eu_variant_init_null(&var);
+	test_gen(eu_variant_value(&var), "null");
+	eu_variant_fini(&var);
+
+	eu_variant_init_bool(&var, 1);
+	test_gen(eu_variant_value(&var), "true");
+	eu_variant_fini(&var);
+
+	eu_variant_init_number(&var, 100);
+	test_gen(eu_variant_value(&var), "100");
+	eu_variant_fini(&var);
+
+	eu_variant_init_string(&var);
+	eu_string_assign(&var.u.string, eu_cstr("hello"));
+	test_gen(eu_variant_value(&var), "\"hello\"");
+	eu_variant_fini(&var);
+}
+
 int main(void)
 {
 	test_parse_string();
@@ -327,6 +349,7 @@ int main(void)
 	test_gen_null();
 	test_gen_bool();
 	test_gen_number();
+	test_gen_variant();
 
 	return 0;
 }
