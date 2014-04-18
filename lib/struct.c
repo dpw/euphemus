@@ -65,11 +65,6 @@ static const struct eu_metadata *add_extra(const struct eu_struct_metadata *md,
 			memset(members + sz, 0, sz);
 		}
 
-		if (!members) {
-			free(name);
-			return NULL;
-		}
-
 		extras->members = members;
 		extras->priv.capacity = capacity;
 	}
@@ -594,7 +589,7 @@ size_t eu_object_size(struct eu_value val)
 	return val.metadata->object_size(val);
 }
 
-const struct eu_struct_metadata eu_object_metadata = {
+static const struct eu_struct_metadata object_metadata = {
 	{
 		EU_JSON_OBJECT,
 		sizeof(struct eu_object),
@@ -614,13 +609,18 @@ const struct eu_struct_metadata eu_object_metadata = {
 	&eu_variant_metadata
 };
 
+void eu_object_fini(struct eu_object *obj)
+{
+	if (obj->members.len)
+		struct_extras_fini(&object_metadata, &obj->members);
+}
+
 enum eu_result eu_variant_object(const void *unused_metadata,
 				 struct eu_parse *ep, struct eu_variant *result)
 {
 	(void)unused_metadata;
-	result->metadata = &eu_object_metadata.base;
-	return struct_parse(&eu_object_metadata.base, ep, &result->u.object,
-			    NULL);
+	result->metadata = &object_metadata.base;
+	return struct_parse(&object_metadata.base, ep, &result->u.object, NULL);
 }
 
 static int introduce_struct(struct eu_struct_descriptor_v1 *d,

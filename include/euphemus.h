@@ -156,6 +156,13 @@ struct eu_object {
 	struct eu_variant_members members;
 };
 
+static __inline__ void eu_object_init(struct eu_object *obj)
+{
+	memset(obj, 0, sizeof *obj);
+}
+
+void eu_object_fini(struct eu_object *obj);
+
 /* Strings */
 
 struct eu_string {

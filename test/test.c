@@ -312,6 +312,14 @@ static void test_gen_number(void)
 	test_gen(eu_number_value(&num), "-1.234567891234567e-10");
 }
 
+static void test_gen_object(void)
+{
+	struct eu_object obj;
+
+	eu_object_init(&obj);
+	eu_object_fini(&obj);
+}
+
 static void test_gen_variant(void)
 {
 	struct eu_variant var;
@@ -349,6 +357,7 @@ int main(void)
 	test_gen_null();
 	test_gen_bool();
 	test_gen_number();
+	test_gen_object();
 	test_gen_variant();
 
 	return 0;
