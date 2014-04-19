@@ -615,6 +615,20 @@ void eu_object_fini(struct eu_object *obj)
 		struct_extras_fini(&object_metadata, &obj->members);
 }
 
+struct eu_variant *eu_object_add(struct eu_object *obj,
+				 struct eu_string_ref name)
+{
+	struct eu_variant *var;
+
+	if (lookup_member(&object_metadata, (char *)obj, name.chars,
+			  name.chars + name.len, (void **)&var)) {
+		var->metadata = NULL;
+		return var;
+	}
+
+	return NULL;
+}
+
 enum eu_result eu_variant_object(const void *unused_metadata,
 				 struct eu_parse *ep, struct eu_variant *result)
 {
