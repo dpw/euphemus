@@ -317,7 +317,7 @@ static void test_gen_object(void)
 	struct eu_object obj;
 
 	eu_object_init(&obj);
-	assert(eu_object_add(&obj, eu_cstr("foo")));
+	assert(eu_object_get(&obj, eu_cstr("foo")));
 	eu_object_fini(&obj);
 }
 
