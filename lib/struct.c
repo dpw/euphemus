@@ -31,9 +31,8 @@ struct eu_generic_members {
 	} priv;
 };
 
-static const struct eu_metadata *add_extra(const struct eu_struct_metadata *md,
-					   char *s, char *name, size_t name_len,
-					   void **value)
+static void *add_extra(const struct eu_struct_metadata *md,
+		       char *s, char *name, size_t name_len)
 {
 	struct eu_generic_members *extras = (void *)(s + md->extras_offset);
 	size_t capacity = extras->priv.capacity;
@@ -73,22 +72,48 @@ static const struct eu_metadata *add_extra(const struct eu_struct_metadata *md,
 
 	/* The name is always the first field in the member struct */
 	*(struct eu_string_ref *)member = eu_string_ref(name, name_len);
-	*value = member + md->extra_member_value_offset;
-	return md->extra_value_metadata;
+	return member + md->extra_member_value_offset;
 
  err:
 	free(name);
 	return NULL;
 }
 
-static const struct eu_metadata *lookup_member(
+static void *get_extra(const struct eu_struct_metadata *md,
+		       char *s, struct eu_string_ref name)
+{
+	struct eu_generic_members *extras = (void *)(s + md->extras_offset);
+	char *members = extras->members;
+	char *name_copy;
+	size_t i;
+
+	for (i = 0; i < extras->len; i++) {
+		char *member = members + i * md->extra_member_size;
+
+		/* The name is always the first field in the member struct */
+		if (eu_string_ref_equal(*(struct eu_string_ref *)member,
+					name))
+			return member + md->extra_member_value_offset;
+	}
+
+	name_copy = malloc(name.len);
+	if (name_copy) {
+		memcpy(name_copy, name.chars, name.len);
+		return add_extra(md, s, name_copy, name.len);
+	}
+
+	return NULL;
+}
+
+static const struct eu_metadata *add_member(
 					const struct eu_struct_metadata *md,
 					char *s, const char *name,
-					const char *name_end, void **value)
+					const char *name_end, void **value_out)
 {
 	size_t name_len = name_end - name;
 	size_t i;
 	char *name_copy;
+	void *value;
 
 	for (i = 0; i < md->n_members; i++) {
 		const struct eu_struct_member *m = &md->members[i];
@@ -99,7 +124,7 @@ static const struct eu_metadata *lookup_member(
 			if (m->presence_offset >= 0)
 				s[m->presence_offset] |= m->presence_bit;
 
-			*value = s + m->offset;
+			*value_out = s + m->offset;
 			return m->metadata;
 		}
 	}
@@ -109,19 +134,26 @@ static const struct eu_metadata *lookup_member(
 		return NULL;
 
 	memcpy(name_copy, name, name_len);
-	return add_extra(md, s, name_copy, name_len, value);
+	value = add_extra(md, s, name_copy, name_len);
+	if (value) {
+		*value_out = value;
+		return md->extra_value_metadata;
+	}
+
+	return NULL;
 }
 
-static const struct eu_metadata *lookup_member_2(
+static const struct eu_metadata *add_member_2(
 				const struct eu_struct_metadata *md, char *s,
 				struct eu_string_ref buf,
 				const char *more, const char *more_end,
-				void **value)
+				void **value_out)
 {
 	size_t more_len = more_end - more;
 	size_t name_len = buf.len + more_len;
 	size_t i;
 	char *name_copy;
+	void *value;
 
 	for (i = 0; i < md->n_members; i++) {
 		const struct eu_struct_member *m = &md->members[i];
@@ -133,7 +165,7 @@ static const struct eu_metadata *lookup_member_2(
 			if (m->presence_offset >= 0)
 				s[m->presence_offset] |= m->presence_bit;
 
-			*value = s + m->offset;
+			*value_out = s + m->offset;
 			return m->metadata;
 		}
 	}
@@ -144,7 +176,14 @@ static const struct eu_metadata *lookup_member_2(
 
 	memcpy(name_copy, buf.chars, buf.len);
 	memcpy(name_copy + buf.len, more, more_len);
-	return add_extra(md, s, name_copy, name_len, value);
+
+	value = add_extra(md, s, name_copy, name_len);
+	if (value) {
+		*value_out = value;
+		return md->extra_value_metadata;
+	}
+
+	return NULL;
 }
 
 /* A state name refers to the token that precedes it, except for
@@ -296,9 +335,9 @@ static enum eu_result struct_parse_resume(struct eu_stack_frame *gframe,
 		}
 
 	resume_member_name_done:
-		member_metadata = lookup_member_2(metadata, result,
-						eu_stack_scratch_ref(&ep->stack),
-						ep->input, p, &member_value);
+		member_metadata = add_member_2(metadata, result,
+					       eu_stack_scratch_ref(&ep->stack),
+					       ep->input, p, &member_value);
 		eu_stack_reset_scratch(&ep->stack);
 		goto looked_up_member;
 
@@ -321,7 +360,7 @@ static enum eu_result struct_parse_resume(struct eu_stack_frame *gframe,
 			if (!unescaped_end || unescape)
 				goto error_input_set;
 
-			member_metadata = lookup_member(metadata, result,
+			member_metadata = add_member(metadata, result,
 						  eu_stack_scratch(&ep->stack),
 						  unescaped_end, &member_value);
 			eu_stack_reset_scratch(&ep->stack);
@@ -618,15 +657,7 @@ void eu_object_fini(struct eu_object *obj)
 struct eu_variant *eu_object_add(struct eu_object *obj,
 				 struct eu_string_ref name)
 {
-	struct eu_variant *var;
-
-	if (lookup_member(&object_metadata, (char *)obj, name.chars,
-			  name.chars + name.len, (void **)&var)) {
-		var->metadata = NULL;
-		return var;
-	}
-
-	return NULL;
+	return get_extra(&object_metadata, (char *)obj, name);
 }
 
 enum eu_result eu_variant_object(const void *unused_metadata,

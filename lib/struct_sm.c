@@ -34,8 +34,8 @@ RESUME_ONLY(case STRUCT_PARSE_OPEN:)
 		}
 
 	member_name_done:
-		member_metadata = lookup_member(metadata, result, ep->input,
-						p, &member_value);
+		member_metadata = add_member(metadata, result, ep->input,
+					     p, &member_value);
 	looked_up_member:
 		if (!member_metadata)
 			goto error;
@@ -145,9 +145,9 @@ RESUME_ONLY(case STRUCT_PARSE_COMMA:)
 		if (!unescaped_end || unescape)
 			goto error_input_set;
 
-		member_metadata = lookup_member(metadata, result,
-						eu_stack_scratch(&ep->stack),
-						unescaped_end, &member_value);
+		member_metadata = add_member(metadata, result,
+					     eu_stack_scratch(&ep->stack),
+					     unescaped_end, &member_value);
 		eu_stack_reset_scratch(&ep->stack);
 	}
 
