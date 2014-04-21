@@ -276,8 +276,7 @@ static void test_gen_string(void)
 {
 	struct eu_string str;
 
-	eu_string_init(&str);
-	assert(eu_string_assign(&str, eu_cstr("hello")));
+	assert(eu_string_init(&str, eu_cstr("hello")));
 	test_gen(eu_string_value(&str), "\"hello\"");
 	eu_string_fini(&str);
 }
@@ -325,21 +324,20 @@ static void test_gen_variant(void)
 {
 	struct eu_variant var;
 
-	eu_variant_init_null(&var);
+	eu_variant_init(&var);
+
+	eu_variant_assign_null(&var);
 	test_gen(eu_variant_value(&var), "null");
-	eu_variant_fini(&var);
 
-	eu_variant_init_bool(&var, 1);
+	eu_variant_assign_bool(&var, 1);
 	test_gen(eu_variant_value(&var), "true");
-	eu_variant_fini(&var);
 
-	eu_variant_init_number(&var, 100);
+	eu_variant_assign_number(&var, 100);
 	test_gen(eu_variant_value(&var), "100");
-	eu_variant_fini(&var);
 
-	eu_variant_init_string(&var);
-	eu_string_assign(&var.u.string, eu_cstr("hello"));
+	assert(eu_variant_assign_string(&var, eu_cstr("hello")));
 	test_gen(eu_variant_value(&var), "\"hello\"");
+
 	eu_variant_fini(&var);
 }
 

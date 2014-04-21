@@ -178,10 +178,17 @@ static __inline__ struct eu_string_ref eu_string_to_ref(struct eu_string *str)
 	return eu_string_ref(str->chars, str->len);
 }
 
-static __inline__ void eu_string_init(struct eu_string *str)
+static __inline__ int eu_string_init(struct eu_string *str,
+				     struct eu_string_ref s)
 {
-	str->chars = NULL;
-	str->len = 0;
+	if ((str->chars = strdup(s.chars))) {
+		str->len = s.len;
+		return 1;
+	}
+	else {
+		str->len = 0;
+		return 0;
+	}
 }
 
 static __inline__ void eu_string_fini(struct eu_string *str)
@@ -259,29 +266,55 @@ struct eu_variant {
 	} u;
 };
 
-static __inline__ void eu_variant_init_null(struct eu_variant *var)
+static __inline__ void eu_variant_init(struct eu_variant *var)
 {
+	var->metadata = NULL;
+}
+
+void eu_variant_fini(struct eu_variant *variant);
+
+static __inline__ void eu_variant_assign_null(struct eu_variant *var)
+{
+	if (var->metadata)
+		eu_variant_fini(var);
+
 	var->metadata = &eu_null_metadata;
 }
 
-static __inline__ void eu_variant_init_bool(struct eu_variant *var,
+static __inline__ void eu_variant_assign_bool(struct eu_variant *var,
 					    eu_bool_t val)
 {
+	if (var->metadata)
+		eu_variant_fini(var);
+
 	var->metadata = &eu_bool_metadata;
 	var->u.bool = val;
 }
 
-static __inline__ void eu_variant_init_number(struct eu_variant *var,
+static __inline__ void eu_variant_assign_number(struct eu_variant *var,
 					      double val)
 {
+	if (var->metadata)
+		eu_variant_fini(var);
+
 	var->metadata = &eu_number_metadata;
 	var->u.number = val;
 }
 
-static __inline__ void eu_variant_init_string(struct eu_variant *var)
+static __inline__ int eu_variant_assign_string(struct eu_variant *var,
+					       struct eu_string_ref s)
 {
-	var->metadata = &eu_string_metadata;
-	eu_string_init(&var->u.string);
+	if (var->metadata)
+		eu_variant_fini(var);
+
+	if (eu_string_init(&var->u.string, s)) {
+		var->metadata = &eu_string_metadata;
+		return 1;
+	}
+	else {
+		var->metadata = NULL;
+		return 0;
+	}
 }
 
 extern const struct eu_metadata eu_variant_metadata;
@@ -291,7 +324,6 @@ static __inline__ struct eu_value eu_variant_value(struct eu_variant *variant)
 	return eu_value(variant, &eu_variant_metadata);
 }
 
-void eu_variant_fini(struct eu_variant *variant);
 enum eu_json_type eu_value_type(struct eu_value val);
 void *eu_value_extract(struct eu_value val, enum eu_json_type type);
 
