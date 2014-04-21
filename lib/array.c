@@ -40,7 +40,7 @@ static enum eu_result array_parse_aux(const struct eu_metadata *gmetadata,
 
 	ep->input++;
 
-#include "array_sm.c"
+#include "array_parse_sm.c"
 }
 
 static enum eu_result array_parse_resume(struct eu_stack_frame *gframe,
@@ -58,7 +58,7 @@ static enum eu_result array_parse_resume(struct eu_stack_frame *gframe,
 
 	switch (state) {
 #define RESUME
-#include "array_sm.c"
+#include "array_parse_sm.c"
 #undef RESUME
 	}
 

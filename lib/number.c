@@ -72,7 +72,7 @@ static enum eu_result number_parse(const struct eu_metadata *metadata,
 		}
 	}
 
-#include "number_sm.c"
+#include "number_parse_sm.c"
 
  convert:
 	{
@@ -101,7 +101,7 @@ static enum eu_result number_parse_resume(struct eu_stack_frame *gframe,
 
 #define RESUME
 	switch (state) {
-#include "number_sm.c"
+#include "number_parse_sm.c"
 
 	convert:
 		{

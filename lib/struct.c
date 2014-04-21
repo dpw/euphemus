@@ -266,7 +266,7 @@ static enum eu_result struct_parse(const struct eu_metadata *gmetadata,
 	const char *end = ep->input_end;
 
 #define RESUME_ONLY(x)
-#include "struct_sm.c"
+#include "struct_parse_sm.c"
 #undef RESUME_ONLY
 }
 
@@ -311,7 +311,7 @@ static enum eu_result struct_parse_resume(struct eu_stack_frame *gframe,
 
 #define RESUME_ONLY(x) x
 	switch (state) {
-#include "struct_sm.c"
+#include "struct_parse_sm.c"
 
 	case STRUCT_PARSE_IN_MEMBER_NAME:
 		/* The member name was split, so we need to accumulate
