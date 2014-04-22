@@ -654,6 +654,12 @@ void eu_object_fini(struct eu_object *obj)
 		struct_extras_fini(&object_metadata, &obj->members);
 }
 
+struct eu_value eu_object_value(struct eu_object *obj)
+{
+	return eu_value(obj, &object_metadata.base);
+}
+
+
 struct eu_variant *eu_object_get(struct eu_object *obj,
 				 struct eu_string_ref name)
 {

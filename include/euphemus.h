@@ -162,6 +162,7 @@ static __inline__ void eu_object_init(struct eu_object *obj)
 }
 
 void eu_object_fini(struct eu_object *obj);
+struct eu_value eu_object_value(struct eu_object *obj);
 
 struct eu_variant *eu_object_get(struct eu_object *obj,
 				 struct eu_string_ref name);

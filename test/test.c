@@ -217,7 +217,7 @@ static void test_gen(struct eu_value value, const char *expected_cstr)
 
 	/* Test generation in one go. */
 	eg = eu_generate_create(value);
-	len = eu_generate(eg, buf, expected.len + 1);
+	len = eu_generate(eg, buf, expected.len + 100);
 	assert(len <= expected.len);
 	assert(!eu_generate(eg, buf + len, 1));
 	assert(eu_generate_ok(eg));
@@ -314,10 +314,27 @@ static void test_gen_number(void)
 static void test_gen_object(void)
 {
 	struct eu_object obj;
+	struct eu_generate *eg;
+	struct eu_string_ref expected = eu_cstr("{\"foo\":\"bar\"}");
+	char *buf = malloc(1000);
+	struct eu_variant *var;
+	size_t len;
 
 	eu_object_init(&obj);
-	assert(eu_object_get(&obj, eu_cstr("foo")));
+	assert(var = eu_object_get(&obj, eu_cstr("foo")));
+	assert(eu_variant_assign_string(var, eu_cstr("bar")));
+
+	/* Test generation in one go. */
+	eg = eu_generate_create(eu_object_value(&obj));
+	len = eu_generate(eg, buf, 1000);
+	assert(len <= expected.len);
+	assert(!eu_generate(eg, buf + len, 1));
+	assert(eu_generate_ok(eg));
+	eu_generate_destroy(eg);
+	assert(eu_string_ref_equal(eu_string_ref(buf, len), expected));
+
 	eu_object_fini(&obj);
+	free(buf);
 }
 
 static void test_gen_variant(void)
