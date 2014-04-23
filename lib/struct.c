@@ -83,18 +83,17 @@ static void *get_extra(const struct eu_struct_metadata *md,
 		       char *s, struct eu_string_ref name)
 {
 	struct eu_generic_members *extras = (void *)(s + md->extras_offset);
-	char *members = extras->members;
+	char *member;
 	char *name_copy;
 	size_t i;
 
-	for (i = 0; i < extras->len; i++) {
-		char *member = members + i * md->extra_member_size;
-
+	for (i = 0, member = extras->members;
+	     i < extras->len;
+	     i++, member += md->extra_member_size)
 		/* The name is always the first field in the member struct */
 		if (eu_string_ref_equal(*(struct eu_string_ref *)member,
 					name))
 			return member + md->extra_member_value_offset;
-	}
 
 	name_copy = malloc(name.len);
 	if (name_copy) {
@@ -628,12 +627,80 @@ size_t eu_object_size(struct eu_value val)
 	return val.metadata->object_size(val);
 }
 
+static enum eu_result inline_struct_generate(
+					  const struct eu_metadata *gmetadata,
+					  struct eu_generate *eg, void *value)
+{
+	const struct eu_struct_metadata *md
+		= (const struct eu_struct_metadata *)gmetadata;
+	struct eu_generic_members *extras
+		= (void *)((char *)value + md->extras_offset);
+	char *member;
+	size_t i;
+	const struct eu_metadata *extra_md = md->extra_value_metadata;
+
+	/* TODO: non-extra member support */
+	if (md->n_members != 0)
+		return EU_ERROR;
+
+	/* There is always at least one char of space in the output buffer. */
+	*eg->output++ = '{';
+
+	for (i = 0, member = extras->members;
+	     ;
+	     member += md->extra_member_size) {
+		/* TODO: escaping */
+
+		/* The name is always the first field in the member struct */
+		struct eu_string_ref *name = (struct eu_string_ref *)member;
+		size_t space = eg->output_end - eg->output;
+
+		if (space < name->len + 4)
+			goto pause;
+
+		*eg->output++ = '\"';
+		memcpy(eg->output, name->chars, name->len);
+		eg->output += name->len;
+		*eg->output++ = '\"';
+		*eg->output++ = ':';
+
+		switch (extra_md->generate(extra_md, eg,
+				    member + md->extra_member_value_offset)) {
+		case EU_OK:
+			break;
+
+		case EU_PAUSED:
+			goto pause;
+
+		default:
+			return EU_ERROR;
+		}
+
+		if (++i == extras->len)
+			break;
+
+		if (eg->output == eg->output_end)
+			goto pause;
+
+		*eg->output++ = ',';
+	}
+
+	if (eg->output == eg->output_end)
+		goto pause;
+
+	*eg->output++ = '}';
+	return EU_OK;
+
+ pause:
+	return EU_ERROR;
+}
+
 static const struct eu_struct_metadata object_metadata = {
 	{
 		EU_JSON_OBJECT,
 		sizeof(struct eu_object),
 		inline_struct_parse,
-		eu_generate_fail,
+		inline_struct_generate,
 		inline_struct_fini,
 		inline_struct_get,
 		inline_struct_iter_init,
