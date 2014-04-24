@@ -646,43 +646,47 @@ static enum eu_result inline_struct_generate(
 	/* There is always at least one char of space in the output buffer. */
 	*eg->output++ = '{';
 
-	for (i = 0, member = extras->members;
-	     ;
-	     member += md->extra_member_size) {
-		/* TODO: escaping */
+	if (extras->len) {
+		for (i = 0, member = extras->members;
+		     ;
+		     member += md->extra_member_size) {
+			/* TODO: escaping */
 
-		/* The name is always the first field in the member struct */
-		struct eu_string_ref *name = (struct eu_string_ref *)member;
-		size_t space = eg->output_end - eg->output;
+			/* The name is always the first field in the
+			   member struct */
+			struct eu_string_ref *name
+				= (struct eu_string_ref *)member;
+			size_t space = eg->output_end - eg->output;
 
-		if (space < name->len + 4)
-			goto pause;
+			if (space < name->len + 4)
+				goto pause;
 
-		*eg->output++ = '\"';
-		memcpy(eg->output, name->chars, name->len);
-		eg->output += name->len;
-		*eg->output++ = '\"';
-		*eg->output++ = ':';
+			*eg->output++ = '\"';
+			memcpy(eg->output, name->chars, name->len);
+			eg->output += name->len;
+			*eg->output++ = '\"';
+			*eg->output++ = ':';
 
-		switch (extra_md->generate(extra_md, eg,
-				    member + md->extra_member_value_offset)) {
-		case EU_OK:
-			break;
+			switch (extra_md->generate(extra_md, eg,
+				     member + md->extra_member_value_offset)) {
+			case EU_OK:
+				break;
 
-		case EU_PAUSED:
-			goto pause;
+			case EU_PAUSED:
+				goto pause;
 
-		default:
-			return EU_ERROR;
+			default:
+				return EU_ERROR;
+			}
+
+			if (++i == extras->len)
+				break;
+
+			if (eg->output == eg->output_end)
+				goto pause;
+
+			*eg->output++ = ',';
 		}
-
-		if (++i == extras->len)
-			break;
-
-		if (eg->output == eg->output_end)
-			goto pause;
-
-		*eg->output++ = ',';
 	}
 
 	if (eg->output == eg->output_end)
