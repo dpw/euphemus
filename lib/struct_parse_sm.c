@@ -2,8 +2,8 @@
    self-contained C file: it gets included in a couple of places in
    struct.c */
 
-	state = STRUCT_PARSE_OPEN;
-RESUME_ONLY(case STRUCT_PARSE_OPEN:)
+	state = STRUCT_OPEN;
+RESUME_ONLY(case STRUCT_OPEN:)
 	p = skip_whitespace(p, end);
 	if (p == end)
 		goto pause;
@@ -41,8 +41,8 @@ RESUME_ONLY(case STRUCT_PARSE_OPEN:)
 			goto error;
 
 		p++;
-		state = STRUCT_PARSE_MEMBER_NAME;
-RESUME_ONLY(case STRUCT_PARSE_MEMBER_NAME:)
+		state = STRUCT_MEMBER_NAME;
+RESUME_ONLY(case STRUCT_MEMBER_NAME:)
 		p = skip_whitespace(p, end);
 		if (p == end)
 			goto pause;
@@ -51,12 +51,12 @@ RESUME_ONLY(case STRUCT_PARSE_MEMBER_NAME:)
 			goto error;
 
 		p++;
-		state = STRUCT_PARSE_COLON;
-RESUME_ONLY(case STRUCT_PARSE_COLON:)
+		state = STRUCT_COLON;
+RESUME_ONLY(case STRUCT_COLON:)
 		if (p == end)
 			goto pause;
 
-		state = STRUCT_PARSE_MEMBER_VALUE;
+		state = STRUCT_MEMBER_VALUE;
 		ep->input = p;
 		switch (member_metadata->parse(member_metadata, ep,
 					       member_value)) {
@@ -71,7 +71,7 @@ RESUME_ONLY(case STRUCT_PARSE_COLON:)
 		}
 
 		end = ep->input_end;
-RESUME_ONLY(case STRUCT_PARSE_MEMBER_VALUE:)
+RESUME_ONLY(case STRUCT_MEMBER_VALUE:)
 		p = skip_whitespace(ep->input, end);
 		if (p == end)
 			goto pause;
@@ -88,8 +88,8 @@ RESUME_ONLY(case STRUCT_PARSE_MEMBER_VALUE:)
 		}
 
 		p++;
-		state = STRUCT_PARSE_COMMA;
-RESUME_ONLY(case STRUCT_PARSE_COMMA:)
+		state = STRUCT_COMMA;
+RESUME_ONLY(case STRUCT_COMMA:)
 		p = skip_whitespace(p, end);
 		if (p == end)
 			goto pause;
@@ -103,7 +103,7 @@ RESUME_ONLY(case STRUCT_PARSE_COMMA:)
 	return EU_OK;
 
  pause_in_member_name:
-	state = STRUCT_PARSE_IN_MEMBER_NAME;
+	state = STRUCT_IN_MEMBER_NAME;
 	if (!eu_stack_set_scratch(&ep->stack, ep->input, p))
 		goto alloc_error;
 
@@ -167,7 +167,7 @@ pause_unescape_member_name:
 		eu_stack_set_scratch_end(&ep->stack, unescaped_end);
 	}
 
-	state = STRUCT_PARSE_IN_MEMBER_NAME;
+	state = STRUCT_IN_MEMBER_NAME;
 	goto pause;
 
  alloc_error:

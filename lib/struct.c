@@ -185,15 +185,15 @@ static const struct eu_metadata *add_member_2(
 	return NULL;
 }
 
-/* A state name refers to the token that precedes it, except for
-   STRUCT_PARSE_IN_MEMBER_NAME. */
+/* A state name refers to the input token that triggers it, except for
+   STRUCT_IN_MEMBER_NAME. */
 enum struct_parse_state {
-	STRUCT_PARSE_OPEN,
-	STRUCT_PARSE_IN_MEMBER_NAME,
-	STRUCT_PARSE_MEMBER_NAME,
-	STRUCT_PARSE_COLON,
-	STRUCT_PARSE_MEMBER_VALUE,
-	STRUCT_PARSE_COMMA
+	STRUCT_OPEN,
+	STRUCT_IN_MEMBER_NAME,
+	STRUCT_MEMBER_NAME,
+	STRUCT_COLON,
+	STRUCT_MEMBER_VALUE,
+	STRUCT_COMMA
 };
 
 struct struct_parse_frame {
@@ -312,9 +312,9 @@ static enum eu_result struct_parse_resume(struct eu_stack_frame *gframe,
 	switch (state) {
 #include "struct_parse_sm.c"
 
-	case STRUCT_PARSE_IN_MEMBER_NAME:
+	case STRUCT_IN_MEMBER_NAME:
 		/* The member name was split, so we need to accumulate
-		   the compplete member name rather than simply
+		   the complete member name rather than simply
 		   picking up where we left off. */
 		for (;; p++) {
 			if (p != end) {
@@ -627,6 +627,52 @@ size_t eu_object_size(struct eu_value val)
 	return val.metadata->object_size(val);
 }
 
+struct name_gen_frame {
+	struct eu_stack_frame base;
+	struct eu_string_ref name;
+};
+
+static enum eu_result name_gen_resume(struct eu_stack_frame *gframe,
+				      void *eg);
+
+static enum eu_result name_generate(struct eu_generate *eg,
+				    struct eu_string_ref name)
+{
+	struct name_gen_frame *frame;
+	size_t space;
+
+	space = eg->output_end - eg->output;
+	if (name.len < space) {
+		/* TODO escaping */
+
+		memcpy(eg->output, name.chars, name.len);
+		eg->output += name.len;
+		*eg->output++ = '\"';
+		return EU_OK;
+	}
+
+	memcpy(eg->output, name.chars, space);
+	eg->output += space;
+
+	frame = eu_stack_alloc_first(&eg->stack, sizeof *frame);
+	if (frame) {
+		frame->base.resume = name_gen_resume;
+		frame->base.destroy = eu_stack_frame_noop_destroy;
+		frame->name.chars = name.chars + space;
+		frame->name.len = name.len - space;
+		return EU_PAUSED;
+	}
+
+	return EU_ERROR;
+}
+
+static enum eu_result name_gen_resume(struct eu_stack_frame *gframe,
+				      void *eg)
+{
+	struct name_gen_frame *frame = (struct name_gen_frame *)gframe;
+	return name_generate(eg, frame->name);
+}
+
 static enum eu_result inline_struct_generate(
 					  const struct eu_metadata *gmetadata,
 					  struct eu_generate *eg, void *value)
@@ -635,68 +681,24 @@ static enum eu_result inline_struct_generate(
 		= (const struct eu_struct_metadata *)gmetadata;
 	struct eu_generic_members *extras
 		= (void *)((char *)value + md->extras_offset);
-	char *member;
-	size_t i;
+	char *member = extras->members;
+	size_t i = 0;
 	const struct eu_metadata *extra_md = md->extra_value_metadata;
+	enum struct_parse_state state;
 
 	/* TODO: non-extra member support */
-	if (md->n_members != 0)
+	if (unlikely(md->n_members))
 		return EU_ERROR;
+
+	if (!extras->len)
+		return eu_fixed_gen_32(eg, 2, MULTICHAR_2('{','}'), "{}");
 
 	/* There is always at least one char of space in the output buffer. */
 	*eg->output++ = '{';
 
-	if (extras->len) {
-		for (i = 0, member = extras->members;
-		     ;
-		     member += md->extra_member_size) {
-			/* TODO: escaping */
-
-			/* The name is always the first field in the
-			   member struct */
-			struct eu_string_ref *name
-				= (struct eu_string_ref *)member;
-			size_t space = eg->output_end - eg->output;
-
-			if (space < name->len + 4)
-				goto pause;
-
-			*eg->output++ = '\"';
-			memcpy(eg->output, name->chars, name->len);
-			eg->output += name->len;
-			*eg->output++ = '\"';
-			*eg->output++ = ':';
-
-			switch (extra_md->generate(extra_md, eg,
-				     member + md->extra_member_value_offset)) {
-			case EU_OK:
-				break;
-
-			case EU_PAUSED:
-				goto pause;
-
-			default:
-				return EU_ERROR;
-			}
-
-			if (++i == extras->len)
-				break;
-
-			if (eg->output == eg->output_end)
-				goto pause;
-
-			*eg->output++ = ',';
-		}
-	}
-
-	if (eg->output == eg->output_end)
-		goto pause;
-
-	*eg->output++ = '}';
-	return EU_OK;
-
- pause:
-	return EU_ERROR;
+#define RESUME_ONLY(x)
+#include "struct_gen_sm.c"
+#undef RESUME_ONLY
 }
 
 static const struct eu_struct_metadata object_metadata = {

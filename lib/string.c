@@ -356,7 +356,7 @@ struct string_gen_frame {
 };
 
 static enum eu_result string_gen_resume(struct eu_stack_frame *gframe,
-					void *v_ep);
+					void *eg);
 
 static enum eu_result string_generate(const struct eu_metadata *metadata,
 				      struct eu_generate *eg, void *value)

@@ -293,6 +293,7 @@ enum eu_result eu_fixed_gen_slow(struct eu_generate *eg, const char *str,
 #if !(defined(__i386__) || defined(__x86_64__))
 /*#if 1*/
 
+#define MULTICHAR_2(a, b) UNUSED_MULTICHAR
 #define MULTICHAR_3(a, b, c) UNUSED_MULTICHAR
 #define MULTICHAR_4(a, b, c, d) UNUSED_MULTICHAR
 #define MULTICHAR_5(a, b, c, d, e) UNUSED_MULTICHAR
@@ -355,7 +356,8 @@ struct expect {
 };
 
 /* Little-endian multichar constants */
-#define MULTICHAR_3(a, b, c) (a | ((uint32_t)b << 8) | ((uint32_t)c << 16))
+#define MULTICHAR_2(a, b) (a | ((uint32_t)b << 8))
+#define MULTICHAR_3(a, b, c) (MULTICHAR_2(a, b) | ((uint32_t)c << 16))
 #define MULTICHAR_4(a, b, c, d) (MULTICHAR_3(a, b, c) | ((uint32_t)d << 24))
 #define MULTICHAR_5(a, b, c, d, e) (MULTICHAR_4(a, b, c, d) | ((uint64_t)e << 32))
 
