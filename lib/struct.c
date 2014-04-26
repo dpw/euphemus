@@ -186,14 +186,14 @@ static const struct eu_metadata *add_member_2(
 }
 
 /* A state name refers to the input token that triggers it, except for
-   STRUCT_IN_MEMBER_NAME. */
+   STRUCT_PARSE_IN_MEMBER_NAME. */
 enum struct_parse_state {
-	STRUCT_OPEN,
-	STRUCT_IN_MEMBER_NAME,
-	STRUCT_MEMBER_NAME,
-	STRUCT_COLON,
-	STRUCT_MEMBER_VALUE,
-	STRUCT_COMMA
+	STRUCT_PARSE_OPEN,
+	STRUCT_PARSE_IN_MEMBER_NAME,
+	STRUCT_PARSE_MEMBER_NAME,
+	STRUCT_PARSE_COLON,
+	STRUCT_PARSE_MEMBER_VALUE,
+	STRUCT_PARSE_COMMA
 };
 
 struct struct_parse_frame {
@@ -312,7 +312,7 @@ static enum eu_result struct_parse_resume(struct eu_stack_frame *gframe,
 	switch (state) {
 #include "struct_parse_sm.c"
 
-	case STRUCT_IN_MEMBER_NAME:
+	case STRUCT_PARSE_IN_MEMBER_NAME:
 		/* The member name was split, so we need to accumulate
 		   the complete member name rather than simply
 		   picking up where we left off. */
@@ -673,6 +673,25 @@ static enum eu_result name_gen_resume(struct eu_stack_frame *gframe,
 	return name_generate(eg, frame->name);
 }
 
+enum struct_gen_state {
+	STRUCT_GEN_IN_MEMBER_NAME,
+	STRUCT_GEN_MEMBER_NAME,
+	STRUCT_GEN_COLON,
+	STRUCT_GEN_MEMBER_VALUE,
+	STRUCT_GEN_COMMA
+};
+
+struct struct_gen_frame {
+	struct eu_stack_frame base;
+	const struct eu_struct_metadata *md;
+	void *value;
+	size_t i;
+	enum struct_gen_state state;
+};
+
+static enum eu_result struct_gen_resume(struct eu_stack_frame *gframe,
+					void *v_eg);
+
 static enum eu_result inline_struct_generate(
 					  const struct eu_metadata *gmetadata,
 					  struct eu_generate *eg, void *value)
@@ -684,7 +703,8 @@ static enum eu_result inline_struct_generate(
 	char *member = extras->members;
 	size_t i = 0;
 	const struct eu_metadata *extra_md = md->extra_value_metadata;
-	enum struct_parse_state state;
+	enum struct_gen_state state;
+	struct struct_gen_frame *frame;
 
 	/* TODO: non-extra member support */
 	if (unlikely(md->n_members))
@@ -698,6 +718,30 @@ static enum eu_result inline_struct_generate(
 
 #define RESUME_ONLY(x)
 #include "struct_gen_sm.c"
+#undef RESUME_ONLY
+}
+
+static enum eu_result struct_gen_resume(struct eu_stack_frame *gframe,
+					void *v_eg)
+{
+	struct eu_generate *eg = v_eg;
+	struct struct_gen_frame *frame = (struct struct_gen_frame *)gframe;
+	const struct eu_struct_metadata *md = frame->md;
+	void *value = frame->value;
+	struct eu_generic_members *extras
+		= (void *)((char *)value + md->extras_offset);
+	size_t i = frame->i;
+	char *member = (char *)extras->members + i * md->extra_member_size;
+	const struct eu_metadata *extra_md = md->extra_value_metadata;
+	enum struct_gen_state state = frame->state;
+
+#define RESUME_ONLY(x) x
+	switch (state) {
+#include "struct_gen_sm.c"
+
+	default:
+		goto error;
+	}
 #undef RESUME_ONLY
 }
 

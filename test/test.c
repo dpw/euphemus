@@ -311,41 +311,21 @@ static void test_gen_number(void)
 	test_gen(eu_number_value(&num), "-1.234567891234567e-10");
 }
 
-static void test_gen_object_case(struct eu_value value,
-				 const char *expected_cstr)
-{
-	struct eu_string_ref expected = eu_cstr(expected_cstr);
-	struct eu_generate *eg;
-	char *buf = malloc(expected.len + 100);
-	size_t len;
-
-	/* Test generation in one go. */
-	eg = eu_generate_create(value);
-	len = eu_generate(eg, buf, expected.len + 100);
-	assert(len <= expected.len);
-	assert(!eu_generate(eg, buf + len, 1));
-	assert(eu_generate_ok(eg));
-	eu_generate_destroy(eg);
-	assert(eu_string_ref_equal(eu_string_ref(buf, len), expected));
-
-	free(buf);
-}
-
 static void test_gen_object(void)
 {
 	struct eu_object obj;
 	struct eu_variant *var;
 
 	eu_object_init(&obj);
-	test_gen_object_case(eu_object_value(&obj), "{}");
+	test_gen(eu_object_value(&obj), "{}");
 
 	assert(var = eu_object_get(&obj, eu_cstr("foo")));
 	assert(eu_variant_assign_string(var, eu_cstr("bar")));
-	test_gen_object_case(eu_object_value(&obj), "{\"foo\":\"bar\"}");
+	test_gen(eu_object_value(&obj), "{\"foo\":\"bar\"}");
 
 	assert(var = eu_object_get(&obj, eu_cstr("bar")));
 	assert(eu_variant_assign_string(var, eu_cstr("baz")));
-	test_gen_object_case(eu_object_value(&obj),
+	test_gen(eu_object_value(&obj),
 			     "{\"foo\":\"bar\",\"bar\":\"baz\"}");
 
 	eu_object_fini(&obj);
