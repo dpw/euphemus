@@ -311,26 +311,6 @@ static void test_gen_number(void)
 	test_gen(eu_number_value(&num), "-1.234567891234567e-10");
 }
 
-static void test_gen_object(void)
-{
-	struct eu_object obj;
-	struct eu_variant *var;
-
-	eu_object_init(&obj);
-	test_gen(eu_object_value(&obj), "{}");
-
-	assert(var = eu_object_get(&obj, eu_cstr("foo")));
-	assert(eu_variant_assign_string(var, eu_cstr("bar")));
-	test_gen(eu_object_value(&obj), "{\"foo\":\"bar\"}");
-
-	assert(var = eu_object_get(&obj, eu_cstr("bar")));
-	assert(eu_variant_assign_string(var, eu_cstr("baz")));
-	test_gen(eu_object_value(&obj),
-			     "{\"foo\":\"bar\",\"bar\":\"baz\"}");
-
-	eu_object_fini(&obj);
-}
-
 static void test_gen_variant(void)
 {
 	struct eu_variant var;
@@ -352,6 +332,37 @@ static void test_gen_variant(void)
 	eu_variant_fini(&var);
 }
 
+static void test_gen_object(void)
+{
+	struct eu_object obj;
+	struct eu_object *subobj;
+	struct eu_variant *var;
+
+	eu_object_init(&obj);
+	test_gen(eu_object_value(&obj), "{}");
+
+	assert(var = eu_object_get(&obj, eu_cstr("foo")));
+	assert(eu_variant_assign_string(var, eu_cstr("bar")));
+	test_gen(eu_object_value(&obj), "{\"foo\":\"bar\"}");
+
+	assert(var = eu_object_get(&obj, eu_cstr("bar")));
+	eu_variant_assign_number(var, 100);
+	test_gen(eu_object_value(&obj), "{\"foo\":\"bar\",\"bar\":100}");
+
+	assert(var = eu_object_get(&obj, eu_cstr("foo")));
+	eu_variant_assign_bool(var, 1);
+	test_gen(eu_object_value(&obj), "{\"foo\":true,\"bar\":100}");
+
+	assert(var = eu_object_get(&obj, eu_cstr("baz")));
+	subobj = eu_variant_assign_object(var);
+	assert(var = eu_object_get(subobj, eu_cstr("null")));
+	eu_variant_assign_null(var);
+	test_gen(eu_object_value(&obj),
+		 "{\"foo\":true,\"bar\":100,\"baz\":{\"null\":null}}");
+
+	eu_object_fini(&obj);
+}
+
 int main(void)
 {
 	test_parse_string();
@@ -367,8 +378,8 @@ int main(void)
 	test_gen_null();
 	test_gen_bool();
 	test_gen_number();
-	test_gen_object();
 	test_gen_variant();
+	test_gen_object();
 
 	return 0;
 }

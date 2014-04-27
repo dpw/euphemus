@@ -765,6 +765,15 @@ static const struct eu_struct_metadata object_metadata = {
 	&eu_variant_metadata
 };
 
+struct eu_object *eu_variant_assign_object(struct eu_variant *var)
+{
+	if (var->metadata)
+		eu_variant_fini(var);
+
+	var->metadata = &object_metadata.base;
+	return &var->u.object;
+}
+
 void eu_object_fini(struct eu_object *obj)
 {
 	if (obj->members.len)

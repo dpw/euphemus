@@ -318,6 +318,8 @@ static __inline__ int eu_variant_assign_string(struct eu_variant *var,
 	}
 }
 
+struct eu_object *eu_variant_assign_object(struct eu_variant *var);
+
 extern const struct eu_metadata eu_variant_metadata;
 
 static __inline__ struct eu_value eu_variant_value(struct eu_variant *variant)
