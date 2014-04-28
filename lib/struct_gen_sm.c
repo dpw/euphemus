@@ -85,3 +85,5 @@ RESUME_ONLY(case STRUCT_GEN_MEMBER_VALUE:)
  alloc_error:
  error:
 	return EU_ERROR;
+
+#undef RESUME_ONLY

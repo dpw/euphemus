@@ -257,7 +257,7 @@ static enum eu_result struct_parse(const struct eu_metadata *gmetadata,
 	struct struct_parse_frame *frame;
 	const struct eu_struct_metadata *metadata
 		= (const struct eu_struct_metadata *)gmetadata;
-	enum struct_parse_state state;
+	enum struct_parse_state state = STRUCT_PARSE_OPEN;
 	const struct eu_metadata *member_metadata = NULL;
 	void *member_value;
 	eu_unescape_state_t unescape = 0;
@@ -266,7 +266,6 @@ static enum eu_result struct_parse(const struct eu_metadata *gmetadata,
 
 #define RESUME_ONLY(x)
 #include "struct_parse_sm.c"
-#undef RESUME_ONLY
 }
 
 static enum eu_result struct_parse_resume(struct eu_stack_frame *gframe,
@@ -387,7 +386,6 @@ static enum eu_result struct_parse_resume(struct eu_stack_frame *gframe,
 	default:
 		goto error;
 	}
-#undef RESUME_ONLY
 }
 
 static void struct_extras_fini(const struct eu_struct_metadata *md,
@@ -718,7 +716,6 @@ static enum eu_result inline_struct_generate(
 
 #define RESUME_ONLY(x)
 #include "struct_gen_sm.c"
-#undef RESUME_ONLY
 }
 
 static enum eu_result struct_gen_resume(struct eu_stack_frame *gframe,
@@ -742,7 +739,6 @@ static enum eu_result struct_gen_resume(struct eu_stack_frame *gframe,
 	default:
 		goto error;
 	}
-#undef RESUME_ONLY
 }
 
 static const struct eu_struct_metadata object_metadata = {

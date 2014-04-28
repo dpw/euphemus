@@ -30,7 +30,7 @@ static enum eu_result array_parse_aux(const struct eu_metadata *gmetadata,
 	struct array_parse_frame *frame;
 	const struct eu_array_metadata *metadata
 		= (const struct eu_array_metadata *)gmetadata;
-	enum array_parse_state state;
+	enum array_parse_state state = ARRAY_PARSE_OPEN;
 	const struct eu_metadata *el_metadata = metadata->element_metadata;
 	size_t el_size = el_metadata->size;
 	struct eu_array *result = v_result;
@@ -40,6 +40,7 @@ static enum eu_result array_parse_aux(const struct eu_metadata *gmetadata,
 
 	ep->input++;
 
+#define RESUME_ONLY(x)
 #include "array_parse_sm.c"
 }
 
@@ -57,9 +58,8 @@ static enum eu_result array_parse_resume(struct eu_stack_frame *gframe,
 	char *el = (char *)result->a + len * el_size;
 
 	switch (state) {
-#define RESUME
+#define RESUME_ONLY(x) x
 #include "array_parse_sm.c"
-#undef RESUME
 	}
 
 	/* Without -O, gcc incorrectly reports that framerol can reach

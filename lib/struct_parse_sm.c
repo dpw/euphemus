@@ -2,7 +2,6 @@
    self-contained C file: it gets included in a couple of places in
    struct.c */
 
-	state = STRUCT_PARSE_OPEN;
 RESUME_ONLY(case STRUCT_PARSE_OPEN:)
 	p = skip_whitespace(p, end);
 	if (p == end)
@@ -180,3 +179,5 @@ pause_unescape_member_name:
 	}
 
 	return EU_ERROR;
+
+#undef RESUME_ONLY

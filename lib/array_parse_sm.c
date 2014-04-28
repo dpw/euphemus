@@ -2,13 +2,7 @@
    self-contained C file: it gets included in a couple of places in
    array.c */
 
-#ifndef RESUME
-#define RESUME_ONLY(x)
-	state = ARRAY_PARSE_OPEN;
-#else
-#define RESUME_ONLY(x) x
- case ARRAY_PARSE_OPEN:
-#endif
+RESUME_ONLY(case ARRAY_PARSE_OPEN:)
 	ep->input = skip_whitespace(ep->input, ep->input_end);
 	if (ep->input == ep->input_end)
 		goto pause;
