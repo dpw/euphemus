@@ -194,7 +194,6 @@ size_t eu_object_size_fail(struct eu_value val);
 enum eu_result eu_generate_fail(const struct eu_metadata *metadata,
 				struct eu_generate *eg, void *value);
 
-extern const struct eu_array_metadata eu_variant_array_metadata;
 extern const struct eu_metadata eu_null_metadata;
 extern const struct eu_bool_misc eu_bool_true;
 extern const struct eu_bool_misc eu_bool_false;

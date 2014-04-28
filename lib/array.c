@@ -146,7 +146,7 @@ struct eu_value eu_array_get(struct eu_value val, struct eu_string_ref name)
 	return eu_value_none;
 }
 
-const struct eu_array_metadata eu_variant_array_metadata = {
+static const struct eu_array_metadata variant_array_metadata = {
 	{
 		EU_JSON_ARRAY,
 		sizeof(struct eu_array),
@@ -164,8 +164,8 @@ enum eu_result eu_variant_array(const void *unused_metadata,
 				struct eu_parse *ep, struct eu_variant *result)
 {
 	(void)unused_metadata;
-	result->metadata = &eu_variant_array_metadata.base;
-	return array_parse_aux(&eu_variant_array_metadata.base, ep,
+	result->metadata = &variant_array_metadata.base;
+	return array_parse_aux(&variant_array_metadata.base, ep,
 			       &result->u.array);
 }
 
