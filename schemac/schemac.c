@@ -1026,7 +1026,10 @@ static void array_define(struct type_info *ti, struct codegen *codegen)
 	fprintf(codegen->h_out, "struct %s {\n", ti->base_name);
 	declare(ati->element_type, codegen->h_out, "*a", REQUIRED);
 	fprintf(codegen->h_out,
-		"\tsize_t len;\n"
+		"\tsize_t len;\n\n"
+		"\tstruct {\n"
+		"\t\tsize_t capacity;\n"
+		"\t} priv;\n"
 		"};\n\n");
 
 	/* Descriptor definition */

@@ -60,12 +60,14 @@ RESUME_ONLY(case ARRAY_PARSE_COMMA:)
 			capacity *= 2;
 			if (new_a) {
 				result->a = new_a;
-				el = new_a + len * el_size;
-				memset(new_a + sz, 0, sz);
+				el = new_a + sz;
+				memset(el, 0, sz);
 			}
 			else {
 				free(result->a);
 				result->a = NULL;
+				result->len = 0;
+				result->priv.capacity = 0;
 				goto error;
 			}
 		}
@@ -74,11 +76,13 @@ RESUME_ONLY(case ARRAY_PARSE_COMMA:)
  done:
 	ep->input++;
 	result->len = len;
+	result->priv.capacity = capacity;
 	return EU_OK;
 
  empty:
 	ep->input++;
 	result->a = ZERO_LENGTH_PTR;
+	result->priv.capacity = result->len = 0;
 	return EU_OK;
 
  pause:
@@ -92,8 +96,8 @@ RESUME_ONLY(case ARRAY_PARSE_COMMA:)
 		frame->state = state;
 		frame->el_metadata = el_metadata;
 		frame->result = result;
-		frame->capacity = capacity;
 		result->len = len;
+		result->priv.capacity = capacity;
 		return EU_PAUSED;
 	}
 

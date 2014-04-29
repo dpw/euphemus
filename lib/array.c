@@ -17,7 +17,6 @@ struct array_parse_frame {
 	enum array_parse_state state;
 	const struct eu_metadata *el_metadata;
 	struct eu_array *result;
-	size_t capacity;
 };
 
 static enum eu_result array_parse_resume(struct eu_stack_frame *gframe,
@@ -35,7 +34,7 @@ static enum eu_result array_parse_aux(const struct eu_metadata *gmetadata,
 	size_t el_size = el_metadata->size;
 	struct eu_array *result = v_result;
 	size_t len = 0;
-	size_t capacity = 10;
+	size_t capacity = 8;
 	char *el;
 
 	ep->input++;
@@ -53,7 +52,7 @@ static enum eu_result array_parse_resume(struct eu_stack_frame *gframe,
 	const struct eu_metadata *el_metadata = frame->el_metadata;
 	size_t el_size = el_metadata->size;
 	struct eu_array *result = frame->result;
-	size_t capacity = frame->capacity;
+	size_t capacity = result->priv.capacity;
 	size_t len = result->len;
 	char *el = (char *)result->a + len * el_size;
 
@@ -62,7 +61,7 @@ static enum eu_result array_parse_resume(struct eu_stack_frame *gframe,
 #include "array_parse_sm.c"
 	}
 
-	/* Without -O, gcc incorrectly reports that framerol can reach
+	/* Without -O, gcc incorrectly reports that execution can reach
 	   here. */
 	abort();
 }
@@ -91,10 +90,12 @@ static void array_fini(const struct eu_metadata *el_metadata,
 			el_metadata->fini(el_metadata, el);
 			el += el_metadata->size;
 		}
+	}
 
+	if (array->priv.capacity) {
 		free(array->a);
 		array->a = NULL;
-		array->len = 0;
+		array->priv.capacity = array->len = 0;
 	}
 }
 

@@ -219,6 +219,10 @@ struct eu_array_descriptor_v1 {
 struct eu_array {
 	void *a;
 	size_t len;
+
+	struct {
+		size_t capacity;
+	} priv;
 };
 
 void eu_array_fini(const struct eu_metadata *gmetadata, void *value);
@@ -254,6 +258,10 @@ static __inline__ struct eu_value eu_null_value(void)
 struct eu_variant_array {
 	struct eu_variant *a;
 	size_t len;
+
+	struct {
+		size_t capacity;
+	} priv;
 };
 
 struct eu_variant {
