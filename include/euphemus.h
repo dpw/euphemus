@@ -227,6 +227,7 @@ struct eu_array {
 
 void eu_array_fini(const struct eu_metadata *gmetadata, void *value);
 struct eu_value eu_array_get(struct eu_value val, struct eu_string_ref name);
+int eu_array_grow(struct eu_array *array, size_t len, size_t el_size);
 
 /* Others */
 
@@ -327,6 +328,24 @@ static __inline__ int eu_variant_assign_string(struct eu_variant *var,
 }
 
 struct eu_object *eu_variant_assign_object(struct eu_variant *var);
+
+static __inline__ void eu_variant_array_init(struct eu_variant_array *array) {
+	array->a = NULL;
+	array->len = 0;
+	array->priv.capacity = 0;
+}
+
+void eu_variant_array_fini(struct eu_variant_array *array);
+
+static __inline__ struct eu_variant *eu_variant_array_push(
+					       struct eu_variant_array *array) {
+	if (array->len < array->priv.capacity
+	    || eu_array_grow((struct eu_array *)array, array->len + 1,
+			     sizeof(struct eu_variant)))
+		return array->a + array->len++;
+	else
+		return NULL;
+}
 
 extern const struct eu_metadata eu_variant_metadata;
 

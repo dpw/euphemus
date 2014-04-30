@@ -363,6 +363,22 @@ static void test_gen_object(void)
 	eu_object_fini(&obj);
 }
 
+static void test_gen_array(void)
+{
+	struct eu_variant_array a;
+	struct eu_variant *var;
+	int i;
+
+	eu_variant_array_init(&a);
+
+	for (i = 0; i < 10; i++) {
+		assert(var = eu_variant_array_push(&a));
+		eu_variant_assign_number(var, 100);
+	}
+
+	eu_variant_array_fini(&a);
+}
+
 int main(void)
 {
 	test_parse_string();
@@ -380,6 +396,7 @@ int main(void)
 	test_gen_number();
 	test_gen_variant();
 	test_gen_object();
+	test_gen_array();
 
 	return 0;
 }

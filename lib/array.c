@@ -99,6 +99,44 @@ static void array_fini(const struct eu_metadata *el_metadata,
 	}
 }
 
+int eu_array_grow(struct eu_array *array, size_t len, size_t el_size)
+{
+	size_t cap = array->priv.capacity;
+
+	if (cap < len) {
+		char *new_a;
+
+		if (!array->priv.capacity) {
+			cap = 8;
+			new_a = malloc(el_size * cap);
+			if (!new_a)
+				return 0;
+
+			memset(new_a, 0, el_size * 8);
+		}
+		else {
+			size_t sz = array->priv.capacity * el_size;
+			size_t new_sz = sz;
+
+			do {
+				cap *= 2;
+				new_sz *= 2;
+			} while (cap < len);
+
+			new_a = realloc(array->a, new_sz);
+			if (!new_a)
+				return 0;
+
+			memset(new_a + sz, 0, new_sz - sz);
+		}
+
+		array->a = new_a;
+		array->priv.capacity = cap;
+	}
+
+	return 1;
+}
+
 static void array_parse_frame_destroy(struct eu_stack_frame *gframe)
 {
 	struct array_parse_frame *frame = (struct array_parse_frame *)gframe;
@@ -168,6 +206,11 @@ enum eu_result eu_variant_array(const void *unused_metadata,
 	result->metadata = &variant_array_metadata.base;
 	return array_parse_aux(&variant_array_metadata.base, ep,
 			       &result->u.array);
+}
+
+void eu_variant_array_fini(struct eu_variant_array *array)
+{
+	array_fini(&eu_variant_metadata, (struct eu_array *)array);
 }
 
 const struct eu_metadata *eu_introduce_array(const struct eu_type_descriptor *d,
