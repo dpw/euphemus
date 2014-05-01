@@ -185,12 +185,64 @@ struct eu_value eu_array_get(struct eu_value val, struct eu_string_ref name)
 	return eu_value_none;
 }
 
+static enum eu_result array_generate(const struct eu_metadata *gmetadata,
+				     struct eu_generate *eg, void *value)
+{
+	const struct eu_array_metadata *metadata
+		= (const struct eu_array_metadata *)gmetadata;
+	struct eu_array *array = value;
+	size_t i;
+	char *el;
+	const struct eu_metadata *el_md = metadata->element_metadata;
+
+	if (array->len == 0)
+		return eu_fixed_gen_32(eg, 2, MULTICHAR_2('[',']'), "[]");
+
+	/* There is always at least one char of space in the output buffer. */
+	*eg->output++ = '[';
+
+	i = array->len;
+	el = array->a;
+
+	for (;;) {
+		if (eg->output == eg->output_end)
+			goto pause;
+
+		switch (el_md->generate(el_md, eg, el)) {
+		case EU_OK:
+			break;
+
+		case EU_PAUSED:
+			goto pause;
+
+		default:
+			goto error;
+		}
+
+		if (eg->output == eg->output_end)
+			goto pause;
+
+		if (!--i)
+			break;
+
+		*eg->output++ = ',';
+		el += el_md->size;
+	}
+
+	*eg->output++ = ']';
+	return EU_OK;
+
+ pause:
+ error:
+	return EU_ERROR;
+}
+
 static const struct eu_array_metadata variant_array_metadata = {
 	{
 		EU_JSON_ARRAY,
 		sizeof(struct eu_array),
 		array_parse,
-		eu_generate_fail,
+		array_generate,
 		eu_array_fini,
 		eu_array_get,
 		eu_object_iter_init_fail,
@@ -211,6 +263,11 @@ enum eu_result eu_variant_array(const void *unused_metadata,
 void eu_variant_array_fini(struct eu_variant_array *array)
 {
 	array_fini(&eu_variant_metadata, (struct eu_array *)array);
+}
+
+struct eu_value eu_variant_array_value(struct eu_variant_array *array)
+{
+	return eu_value(array, &variant_array_metadata.base);
 }
 
 const struct eu_metadata *eu_introduce_array(const struct eu_type_descriptor *d,

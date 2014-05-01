@@ -370,12 +370,14 @@ static void test_gen_array(void)
 	int i;
 
 	eu_variant_array_init(&a);
+	test_gen(eu_variant_array_value(&a), "[]");
 
 	for (i = 0; i < 10; i++) {
 		assert(var = eu_variant_array_push(&a));
-		eu_variant_assign_number(var, 100);
+		eu_variant_assign_number(var, 7);
 	}
 
+	test_gen(eu_variant_array_value(&a), "[7,7,7,7,7,7,7,7,7,7]");
 	eu_variant_array_fini(&a);
 }
 

@@ -336,6 +336,7 @@ static __inline__ void eu_variant_array_init(struct eu_variant_array *array) {
 }
 
 void eu_variant_array_fini(struct eu_variant_array *array);
+struct eu_value eu_variant_array_value(struct eu_variant_array *array);
 
 static __inline__ struct eu_variant *eu_variant_array_push(
 					       struct eu_variant_array *array) {
