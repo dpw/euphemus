@@ -185,6 +185,22 @@ struct eu_value eu_array_get(struct eu_value val, struct eu_string_ref name)
 	return eu_value_none;
 }
 
+enum array_gen_state {
+	ARRAY_GEN_COMMA,
+	ARRAY_GEN_ELEMENT
+};
+
+struct array_gen_frame {
+	struct eu_stack_frame base;
+	size_t i;
+	char *el;
+	const struct eu_metadata *el_md;
+	enum array_gen_state state;
+};
+
+static enum eu_result array_gen_resume(struct eu_stack_frame *gframe,
+				       void *v_eg);
+
 static enum eu_result array_generate(const struct eu_metadata *gmetadata,
 				     struct eu_generate *eg, void *value)
 {
@@ -194,6 +210,8 @@ static enum eu_result array_generate(const struct eu_metadata *gmetadata,
 	size_t i;
 	char *el;
 	const struct eu_metadata *el_md = metadata->element_metadata;
+	enum array_gen_state state;
+	struct array_gen_frame *frame;
 
 	if (array->len == 0)
 		return eu_fixed_gen_32(eg, 2, MULTICHAR_2('[',']'), "[]");
@@ -204,37 +222,27 @@ static enum eu_result array_generate(const struct eu_metadata *gmetadata,
 	i = array->len;
 	el = array->a;
 
-	for (;;) {
-		if (eg->output == eg->output_end)
-			goto pause;
+#define RESUME_ONLY(x)
+#include "array_gen_sm.c"
+}
 
-		switch (el_md->generate(el_md, eg, el)) {
-		case EU_OK:
-			break;
+static enum eu_result array_gen_resume(struct eu_stack_frame *gframe,
+				       void *v_eg)
+{
+	struct eu_generate *eg = v_eg;
+	struct array_gen_frame *frame = (struct array_gen_frame *)gframe;
+	size_t i = frame->i;
+	char *el = frame->el;
+	const struct eu_metadata *el_md = frame->el_md;
+	enum array_gen_state state = frame->state;
 
-		case EU_PAUSED:
-			goto pause;
+#define RESUME_ONLY(x) x
+	switch (state) {
+#include "array_gen_sm.c"
 
-		default:
-			goto error;
-		}
-
-		if (eg->output == eg->output_end)
-			goto pause;
-
-		if (!--i)
-			break;
-
-		*eg->output++ = ',';
-		el += el_md->size;
+	default:
+		goto error;
 	}
-
-	*eg->output++ = ']';
-	return EU_OK;
-
- pause:
- error:
-	return EU_ERROR;
 }
 
 static const struct eu_array_metadata variant_array_metadata = {
