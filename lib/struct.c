@@ -718,6 +718,13 @@ static enum eu_result inline_struct_generate(
 #include "struct_gen_sm.c"
 }
 
+static enum eu_result struct_ptr_generate(const struct eu_metadata *gmetadata,
+					  struct eu_generate *eg, void *value)
+{
+	void **ptr = value;
+	return inline_struct_generate(gmetadata, eg, *ptr);
+}
+
 static enum eu_result struct_gen_resume(struct eu_stack_frame *gframe,
 					void *v_eg)
 {
@@ -825,7 +832,7 @@ static int introduce_struct(struct eu_struct_descriptor_v1 *d,
 
 	md->base.size = d->struct_size;
 	md->base.parse = inline_struct_parse;
-	md->base.generate = eu_generate_fail;
+	md->base.generate = inline_struct_generate;
 	md->base.fini = inline_struct_fini;
 	md->base.get = inline_struct_get;
 	md->base.object_iter_init = inline_struct_iter_init;
@@ -833,7 +840,7 @@ static int introduce_struct(struct eu_struct_descriptor_v1 *d,
 
 	pmd->base.size = sizeof(void *);
 	pmd->base.parse = struct_ptr_parse;
-	pmd->base.generate = eu_generate_fail;
+	pmd->base.generate = struct_ptr_generate;
 	pmd->base.fini = struct_ptr_fini;
 	pmd->base.get = struct_ptr_get;
 	pmd->base.object_iter_init = struct_ptr_iter_init;
