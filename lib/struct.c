@@ -672,11 +672,12 @@ static enum eu_result name_gen_resume(struct eu_stack_frame *gframe,
 }
 
 enum struct_gen_state {
+	STRUCT_GEN_PREFIX,
 	STRUCT_GEN_IN_MEMBER_NAME,
 	STRUCT_GEN_MEMBER_NAME,
 	STRUCT_GEN_COLON,
 	STRUCT_GEN_MEMBER_VALUE,
-	STRUCT_GEN_COMMA
+	STRUCT_GEN_BEFORE_PREFIX
 };
 
 struct struct_gen_frame {
@@ -685,6 +686,7 @@ struct struct_gen_frame {
 	void *value;
 	size_t i;
 	enum struct_gen_state state;
+	char prefix;
 };
 
 static enum eu_result struct_gen_resume(struct eu_stack_frame *gframe,
@@ -700,6 +702,7 @@ static enum eu_result inline_struct_generate(
 		= (void *)((char *)value + md->extras_offset);
 	char *member = extras->members;
 	size_t i = 0;
+	char prefix = '{';
 	const struct eu_metadata *extra_md = md->extra_value_metadata;
 	enum struct_gen_state state;
 	struct struct_gen_frame *frame;
@@ -707,12 +710,6 @@ static enum eu_result inline_struct_generate(
 	/* TODO: non-extra member support */
 	if (unlikely(md->n_members))
 		return EU_ERROR;
-
-	if (!extras->len)
-		return eu_fixed_gen_32(eg, 2, MULTICHAR_2('{','}'), "{}");
-
-	/* There is always at least one char of space in the output buffer. */
-	*eg->output++ = '{';
 
 #define RESUME_ONLY(x)
 #include "struct_gen_sm.c"
@@ -735,6 +732,7 @@ static enum eu_result struct_gen_resume(struct eu_stack_frame *gframe,
 	struct eu_generic_members *extras
 		= (void *)((char *)value + md->extras_offset);
 	size_t i = frame->i;
+	char prefix = frame->prefix;
 	char *member = (char *)extras->members + i * md->extra_member_size;
 	const struct eu_metadata *extra_md = md->extra_value_metadata;
 	enum struct_gen_state state = frame->state;

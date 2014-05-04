@@ -2,11 +2,12 @@
    self-contained C file: it gets included in a couple of places in
    struct.c */
 
-	for (;;) {
-		/* TODO: escaping */
+	/* TODO: escaping */
 
-		state = STRUCT_GEN_COMMA;
-RESUME_ONLY(case STRUCT_GEN_COMMA:)
+	while (i != extras->len) {
+		*eg->output++ = prefix;
+		state = STRUCT_GEN_PREFIX;
+RESUME_ONLY(case STRUCT_GEN_PREFIX:)
 		if (eg->output == eg->output_end)
 			goto pause_first;
 
@@ -53,18 +54,24 @@ RESUME_ONLY(case STRUCT_GEN_COLON:)
 		}
 
 RESUME_ONLY(case STRUCT_GEN_MEMBER_VALUE:)
+		i++;
+		member += md->extra_member_size;
+		prefix = ',';
+
+		state = STRUCT_GEN_BEFORE_PREFIX;
+RESUME_ONLY(case STRUCT_GEN_BEFORE_PREFIX:)
 		if (eg->output == eg->output_end)
 			goto pause_first;
 
-		if (++i == extras->len)
-			break;
-
-		*eg->output++ = ',';
-		member += md->extra_member_size;
 	}
 
-	*eg->output++ = '}';
-	return EU_OK;
+	if (prefix != '{') {
+		*eg->output++ = '}';
+		return EU_OK;
+	}
+
+	/* Empty object */
+	return eu_fixed_gen_32(eg, 2, MULTICHAR_2('{','}'), "{}");
 
  pause_first:
 	eu_stack_begin_pause(&eg->stack);
@@ -80,6 +87,7 @@ RESUME_ONLY(case STRUCT_GEN_MEMBER_VALUE:)
 	frame->value = value;
 	frame->i = i;
 	frame->state = state;
+	frame->prefix = prefix;
 	return EU_PAUSED;
 
  alloc_error:
