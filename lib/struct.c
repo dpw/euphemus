@@ -672,12 +672,17 @@ static enum eu_result name_gen_resume(struct eu_stack_frame *gframe,
 }
 
 enum struct_gen_state {
-	STRUCT_GEN_PREFIX,
-	STRUCT_GEN_IN_MEMBER_NAME,
-	STRUCT_GEN_MEMBER_NAME,
-	STRUCT_GEN_COLON,
-	STRUCT_GEN_MEMBER_VALUE,
-	STRUCT_GEN_BEFORE_PREFIX
+	STRUCT_MEMBERS_GEN_PREFIX,
+	STRUCT_MEMBERS_GEN_IN_MEMBER_NAME,
+	STRUCT_MEMBERS_GEN_MEMBER_NAME,
+	STRUCT_MEMBERS_GEN_COLON,
+	STRUCT_MEMBERS_GEN_MEMBER_VALUE,
+
+	STRUCT_EXTRAS_GEN_PREFIX,
+	STRUCT_EXTRAS_GEN_IN_MEMBER_NAME,
+	STRUCT_EXTRAS_GEN_MEMBER_NAME,
+	STRUCT_EXTRAS_GEN_COLON,
+	STRUCT_EXTRAS_GEN_MEMBER_VALUE
 };
 
 struct struct_gen_frame {
@@ -698,18 +703,17 @@ static enum eu_result inline_struct_generate(
 {
 	const struct eu_struct_metadata *md
 		= (const struct eu_struct_metadata *)gmetadata;
-	struct eu_generic_members *extras
-		= (void *)((char *)value + md->extras_offset);
-	char *member = extras->members;
 	size_t i = 0;
 	char prefix = '{';
-	const struct eu_metadata *extra_md = md->extra_value_metadata;
 	enum struct_gen_state state;
 	struct struct_gen_frame *frame;
 
-	/* TODO: non-extra member support */
-	if (unlikely(md->n_members))
-		return EU_ERROR;
+	const struct eu_struct_member *member = md->members;
+
+	struct eu_generic_members *extras
+		= (void *)((char *)value + md->extras_offset);
+	char *extra = extras->members;
+	const struct eu_metadata *extra_md = md->extra_value_metadata;
 
 #define RESUME_ONLY(x)
 #include "struct_gen_sm.c"
@@ -729,13 +733,16 @@ static enum eu_result struct_gen_resume(struct eu_stack_frame *gframe,
 	struct struct_gen_frame *frame = (struct struct_gen_frame *)gframe;
 	const struct eu_struct_metadata *md = frame->md;
 	void *value = frame->value;
-	struct eu_generic_members *extras
-		= (void *)((char *)value + md->extras_offset);
 	size_t i = frame->i;
 	char prefix = frame->prefix;
-	char *member = (char *)extras->members + i * md->extra_member_size;
-	const struct eu_metadata *extra_md = md->extra_value_metadata;
 	enum struct_gen_state state = frame->state;
+
+	const struct eu_struct_member *member = md->members + i;
+
+	struct eu_generic_members *extras
+		= (void *)((char *)value + md->extras_offset);
+	char *extra = (char *)extras->members + i * md->extra_member_size;
+	const struct eu_metadata *extra_md = md->extra_value_metadata;
 
 #define RESUME_ONLY(x) x
 	switch (state) {
