@@ -27,7 +27,7 @@ LIB_SRCS=$(foreach S,euphemus.c stack.c parse.c generate.c path.c struct.c array
 
 # Other source files
 SRCS=schemac/schemac.c schemac/schema_schema.c
-SRCS+=$(addprefix test/,test.c test_codegen.c test_schema.c)
+SRCS+=$(addprefix test/,test.c test_codegen.c test_schema.c test_common.c)
 
 # Main exectuables that get built
 EXECUTABLES=schemac/schemac
@@ -45,7 +45,8 @@ TEST_EXECUTABLES=test/test test/test_codegen
 HDROBJS_$(ROOT)include/euphemus.h=$(LIB_SRCS:%.c=%.o)
 HDROBJS_$(ROOT)lib/euphemus_int.h=$(LIB_SRCS:%.c=%.o)
 HDROBJS_$(ROOT)lib/unescape.h=lib/unescape.o
-HDROBJS_$(ROOT)test_parse.h=
+HDROBJS_$(ROOT)test/test_parse.h=
+HDROBJS_$(ROOT)test/test_common.h=test/test_common.o
 HDROBJS_$(ROOT)schemac/schema_schema.h=schemac/schema_schema.o
 
 test/test_codegen.o test/test_codegen.c.dep: test/test_schema.h

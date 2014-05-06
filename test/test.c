@@ -1,8 +1,9 @@
-#include <euphemus.h>
-
 #include <string.h>
 #include <assert.h>
 
+#include <euphemus.h>
+
+#include "test_common.h"
 #include "test_parse.h"
 
 static void test_parse_string(void)
@@ -207,108 +208,43 @@ static void test_size(void)
 	check_size("{\"baz\":{},\"x\":\"y\"}", 2);
 }
 
-static void test_gen(struct eu_value value, const char *expected_cstr)
-{
-	struct eu_string_ref expected = eu_cstr(expected_cstr);
-	struct eu_generate *eg;
-	char *buf = malloc(expected.len + 100);
-	char *buf2 = malloc(expected.len + 100);
-	size_t i, len, len2;
-
-	/* Test generation in one go. */
-	eg = eu_generate_create(value);
-	len = eu_generate(eg, buf, expected.len + 100);
-	assert(len <= expected.len);
-	assert(!eu_generate(eg, buf + len, 1));
-	assert(eu_generate_ok(eg));
-	eu_generate_destroy(eg);
-	assert(eu_string_ref_equal(eu_string_ref(buf, len), expected));
-
-	/* Test generation broken into two chunks */
-	for (i = 0;; i++) {
-		eg = eu_generate_create(value);
-		len = eu_generate(eg, buf, i);
-		assert(len <= i);
-		len2 = eu_generate(eg, buf2, expected.len + 1);
-		assert(len + len2 <= expected.len);
-		assert(eu_generate_ok(eg));
-		eu_generate_destroy(eg);
-
-		memcpy(buf + i, buf2, len2);
-		assert(eu_string_ref_equal(eu_string_ref(buf, len + len2),
-					   expected));
-
-		if (len2 == 0)
-			break;
-	}
-
-	/* Test byte-at-a-time generation */
-	eg = eu_generate_create(value);
-	len = 0;
-
-	while (eu_generate(eg, buf2, 1)) {
-		assert(len < expected.len);
-		buf[len++] = *buf2;
-	}
-
-	assert(eu_generate_ok(eg));
-	eu_generate_destroy(eg);
-	assert(eu_string_ref_equal(eu_string_ref(buf, len), expected));
-
-	/* Test that resources are released after an unfinished generation. */
-	eg = eu_generate_create(value);
-	eu_generate_destroy(eg);
-
-	for (i = 0;; i++) {
-		eg = eu_generate_create(value);
-		len = eu_generate(eg, buf, i);
-		eu_generate_destroy(eg);
-
-		if (len < i)
-			break;
-	}
-
-	free(buf);
-	free(buf2);
-}
-
 static void test_gen_string(void)
 {
 	struct eu_string str;
 
 	assert(eu_string_init(&str, eu_cstr("hello")));
-	test_gen(eu_string_value(&str), "\"hello\"");
+	test_gen(eu_string_value(&str), eu_cstr("\"hello\""));
 	eu_string_fini(&str);
 }
 
 static void test_gen_null(void)
 {
-	test_gen(eu_null_value(), "null");
+	test_gen(eu_null_value(), eu_cstr("null"));
 }
 
 static void test_gen_bool(void)
 {
 	eu_bool_t t = 1, f = 0;
-	test_gen(eu_bool_value(&t), "true");
-	test_gen(eu_bool_value(&f), "false");
+	test_gen(eu_bool_value(&t), eu_cstr("true"));
+	test_gen(eu_bool_value(&f), eu_cstr("false"));
 }
 
 static void test_gen_number(void)
 {
 	double num = 100;
-	test_gen(eu_number_value(&num), "100");
+	test_gen(eu_number_value(&num), eu_cstr("100"));
 
 	num = 0;
-	test_gen(eu_number_value(&num), "0");
+	test_gen(eu_number_value(&num), eu_cstr("0"));
 
 	num = -12345678910;
-	test_gen(eu_number_value(&num), "-12345678910");
+	test_gen(eu_number_value(&num), eu_cstr("-12345678910"));
 
 	num = 1.23;
-	test_gen(eu_number_value(&num), "1.23");
+	test_gen(eu_number_value(&num), eu_cstr("1.23"));
 
 	num = -1.234567891234567e-10;
-	test_gen(eu_number_value(&num), "-1.234567891234567e-10");
+	test_gen(eu_number_value(&num), eu_cstr("-1.234567891234567e-10"));
 }
 
 static void test_gen_variant(void)
@@ -318,16 +254,16 @@ static void test_gen_variant(void)
 	eu_variant_init(&var);
 
 	eu_variant_assign_null(&var);
-	test_gen(eu_variant_value(&var), "null");
+	test_gen(eu_variant_value(&var), eu_cstr("null"));
 
 	eu_variant_assign_bool(&var, 1);
-	test_gen(eu_variant_value(&var), "true");
+	test_gen(eu_variant_value(&var), eu_cstr("true"));
 
 	eu_variant_assign_number(&var, 100);
-	test_gen(eu_variant_value(&var), "100");
+	test_gen(eu_variant_value(&var), eu_cstr("100"));
 
 	assert(eu_variant_assign_string(&var, eu_cstr("hello")));
-	test_gen(eu_variant_value(&var), "\"hello\"");
+	test_gen(eu_variant_value(&var), eu_cstr("\"hello\""));
 
 	eu_variant_fini(&var);
 }
@@ -339,26 +275,27 @@ static void test_gen_object(void)
 	struct eu_variant *var;
 
 	eu_object_init(&obj);
-	test_gen(eu_object_value(&obj), "{}");
+	test_gen(eu_object_value(&obj), eu_cstr("{}"));
 
 	assert(var = eu_object_get(&obj, eu_cstr("foo")));
 	assert(eu_variant_assign_string(var, eu_cstr("bar")));
-	test_gen(eu_object_value(&obj), "{\"foo\":\"bar\"}");
+	test_gen(eu_object_value(&obj), eu_cstr("{\"foo\":\"bar\"}"));
 
 	assert(var = eu_object_get(&obj, eu_cstr("bar")));
 	eu_variant_assign_number(var, 100);
-	test_gen(eu_object_value(&obj), "{\"foo\":\"bar\",\"bar\":100}");
+	test_gen(eu_object_value(&obj),
+		 eu_cstr("{\"foo\":\"bar\",\"bar\":100}"));
 
 	assert(var = eu_object_get(&obj, eu_cstr("foo")));
 	eu_variant_assign_bool(var, 1);
-	test_gen(eu_object_value(&obj), "{\"foo\":true,\"bar\":100}");
+	test_gen(eu_object_value(&obj), eu_cstr("{\"foo\":true,\"bar\":100}"));
 
 	assert(var = eu_object_get(&obj, eu_cstr("baz")));
 	subobj = eu_variant_assign_object(var);
 	assert(var = eu_object_get(subobj, eu_cstr("null")));
 	eu_variant_assign_null(var);
 	test_gen(eu_object_value(&obj),
-		 "{\"foo\":true,\"bar\":100,\"baz\":{\"null\":null}}");
+		 eu_cstr("{\"foo\":true,\"bar\":100,\"baz\":{\"null\":null}}"));
 
 	eu_object_fini(&obj);
 }
@@ -370,14 +307,14 @@ static void test_gen_array(void)
 	int i;
 
 	eu_variant_array_init(&a);
-	test_gen(eu_variant_array_value(&a), "[]");
+	test_gen(eu_variant_array_value(&a), eu_cstr("[]"));
 
 	for (i = 0; i < 10; i++) {
 		assert(var = eu_variant_array_push(&a));
 		eu_variant_assign_number(var, i);
 	}
 
-	test_gen(eu_variant_array_value(&a), "[0,1,2,3,4,5,6,7,8,9]");
+	test_gen(eu_variant_array_value(&a), eu_cstr("[0,1,2,3,4,5,6,7,8,9]"));
 	eu_variant_array_fini(&a);
 }
 

@@ -1,8 +1,9 @@
-#include <euphemus.h>
-
 #include <string.h>
 #include <assert.h>
 
+#include <euphemus.h>
+
+#include "test_common.h"
 #include "test_schema.h"
 #include "test_parse.h"
 
@@ -163,6 +164,21 @@ static void test_size(void)
 	check_size("{\"str\":\"str\"}", 1);
 }
 
+static void test_gen_struct(void)
+{
+	struct eu_string_ref json = eu_cstr("{\"str\":\"x\",\"num\":42,\"bool\":true,\"any\":null,\"bar\":{},\"array\":[{\"str\":\"y\"}]}");
+	struct eu_parse *parse;
+	struct test_schema ts;
+
+	parse = eu_parse_create(test_schema_to_eu_value(&ts));
+	assert(eu_parse(parse, json.chars, json.len));
+	assert(eu_parse_finish(parse));
+	eu_parse_destroy(parse);
+
+	test_gen(test_schema_to_eu_value(&ts), json);
+	test_schema_fini(&ts);
+}
+
 int main(void)
 {
 	test_struct_ptr();
@@ -173,5 +189,6 @@ int main(void)
 	test_path();
 	test_path_extras();
 	test_size();
+	test_gen_struct();
 	return 0;
 }
