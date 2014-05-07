@@ -854,7 +854,18 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 	free(ptr_metadata_ptr_name);
 
 	fprintf(codegen->h_out,
+		"void %.*s_init(struct %.*s *p);\n"
 		"void %.*s_fini(struct %.*s *p);\n",
+		(int)sti->struct_name.len, sti->struct_name.chars,
+		(int)sti->struct_name.len, sti->struct_name.chars,
+		(int)sti->struct_name.len, sti->struct_name.chars,
+		(int)sti->struct_name.len, sti->struct_name.chars);
+
+	fprintf(codegen->c_out,
+		"void %.*s_init(struct %.*s *p)\n"
+		"{\n"
+		"\tmemset(p, 0, sizeof *p);\n"
+		"}\n\n",
 		(int)sti->struct_name.len, sti->struct_name.chars,
 		(int)sti->struct_name.len, sti->struct_name.chars);
 

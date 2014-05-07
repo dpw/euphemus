@@ -200,14 +200,37 @@ static __inline__ void eu_string_fini(struct eu_string *str)
 	str->chars = NULL;
 }
 
+static __inline__ void eu_string_reset(struct eu_string *str)
+{
+	if (str->len)
+		free(str->chars);
+
+	str->chars = NULL;
+	str->len = 0;
+}
+
+static __inline__ int eu_string_assign(struct eu_string *str,
+				       struct eu_string_ref s)
+{
+	if (str->len)
+		free(str->chars);
+
+	if ((str->chars = strdup(s.chars))) {
+		str->len = s.len;
+		return 1;
+	}
+	else {
+		str->len = 0;
+		return 0;
+	}
+}
+
 extern const struct eu_metadata eu_string_metadata;
 
 static __inline__ struct eu_value eu_string_value(struct eu_string *str)
 {
 	return eu_value(str, &eu_string_metadata);
 }
-
-int eu_string_assign(struct eu_string *str, struct eu_string_ref sref);
 
 /* Arrays */
 

@@ -166,6 +166,23 @@ static void test_size(void)
 
 static void test_gen_struct(void)
 {
+	struct test_schema ts;
+
+	test_schema_init(&ts);
+	test_gen(test_schema_to_eu_value(&ts), eu_cstr("{}"));
+
+	eu_string_assign(&ts.str, eu_cstr("hello"));
+	test_gen(test_schema_to_eu_value(&ts), eu_cstr("{\"str\":\"hello\"}"));
+
+	eu_string_reset(&ts.str);
+	eu_variant_assign_number(&ts.any, 123);
+	test_gen(test_schema_to_eu_value(&ts), eu_cstr("{\"any\":123}"));
+
+	test_schema_fini(&ts);
+}
+
+static void test_gen_parsed_struct(void)
+{
 	struct eu_string_ref json = eu_cstr("{\"str\":\"x\",\"num\":42,\"bool\":true,\"any\":null,\"bar\":{},\"array\":[{\"str\":\"y\"}]}");
 	struct eu_parse *parse;
 	struct test_schema ts;
@@ -190,5 +207,6 @@ int main(void)
 	test_path_extras();
 	test_size();
 	test_gen_struct();
+	test_gen_parsed_struct();
 	return 0;
 }
