@@ -126,14 +126,18 @@ struct type_info {
 	/* The basis for constructed C identifiers related to the type */
 	const char *base_name;
 
+	/* The C type name for use in declarations */
+	const char *c_type_name[2];
+
 	/* The C expression for a pointer to the type's metadata */
 	const char *metadata_ptr_expr[2];
 
 	/* The C expression for a pointer to the type's descriptor */
 	const char *descriptor_ptr_expr[2];
 
-	/* The name of the C *_members and *_member structs, or NULL if
-	the definitions were not emitted yet */
+	/* The name of the C *_members and *_member structs containing
+	values of this type, or NULL if the definitions were not
+	emitted yet */
 	const char *members_struct_name;
 	const char *member_struct_name;
 
@@ -149,8 +153,6 @@ struct type_info {
 struct type_info_ops {
 	void (*fill)(struct type_info *ti, struct codegen *codegen,
 		     struct schema *schema);
-	void (*declare)(struct type_info *ti, FILE *out, const char *name,
-			enum optionality optional);
 	void (*define)(struct type_info *ti, struct codegen *codegen);
 	void (*call_fini)(struct type_info *ti, FILE *out,
 			  const char *var_expr);
@@ -168,7 +170,7 @@ static void fill_type(struct type_info *ti, struct codegen *codegen,
 static void declare(struct type_info *ti, FILE *out, const char *name,
 		    enum optionality optional)
 {
-	ti->ops->declare(ti, out, name, optional);
+	fprintf(out, "\t%s %s;\n", ti->c_type_name[optional], name);
 }
 
 static void upcase_print(FILE *out, const char *s)
@@ -271,27 +273,19 @@ static void type_info_init(struct type_info *ti,
 	codegen->type_infos_to_destroy = ti;
 }
 
-static void type_info_fini(struct type_info *ti)
+static void free_expr_pair(const char **exprs)
 {
-	free((void *)ti->members_struct_name);
-	free((void *)ti->member_struct_name);
+	free((char *)exprs[REQUIRED]);
+	if (exprs[OPTIONAL] != exprs[REQUIRED])
+		free((char *)exprs[OPTIONAL]);
 }
 
-/* Simple value types (numbers, etc.) */
-
-struct simple_type_info {
-	struct type_info base;
-	const char *type_name;
-};
-
-static void simple_type_declare(struct type_info *ti, FILE *out,
-				const char *name, enum optionality optional)
-
+static void type_info_fini(struct type_info *ti)
 {
-	struct simple_type_info *sti = (void *)ti;
-
-	(void)optional;
-	fprintf(out, "\t%s %s;\n", sti->type_name, name);
+	free_expr_pair(ti->metadata_ptr_expr);
+	free_expr_pair(ti->descriptor_ptr_expr);
+	free((void *)ti->members_struct_name);
+	free((void *)ti->member_struct_name);
 }
 
 static void noop_fill(struct type_info *ti, struct codegen *codegen,
@@ -310,41 +304,41 @@ static void noop_call_fini(struct type_info *ti, FILE *out,
 	(void)var_expr;
 }
 
+/* Simple value types (numbers, etc.) */
+
 static struct type_info *make_simple_or_builtin_type(struct codegen *codegen,
 						     struct type_info_ops *ops,
 						     const char *c_type_name,
 						     const char *base_name,
 						     eu_bool_t no_presence_bit)
 {
-	struct simple_type_info *sti = xalloc(sizeof *sti);
+	struct type_info *ti = xalloc(sizeof *ti);
 
-	type_info_init(&sti->base, codegen, ops, base_name, no_presence_bit);
+	type_info_init(ti, codegen, ops, base_name, no_presence_bit);
 
-	sti->base.metadata_ptr_expr[REQUIRED]
-		= sti->base.metadata_ptr_expr[OPTIONAL]
+	ti->c_type_name[REQUIRED]
+		= ti->c_type_name[OPTIONAL]
+		= c_type_name;
+
+	ti->metadata_ptr_expr[REQUIRED]
+		= ti->metadata_ptr_expr[OPTIONAL]
 		= xsprintf("&%s_metadata", base_name);
 
-	sti->base.descriptor_ptr_expr[REQUIRED]
-		= sti->base.descriptor_ptr_expr[OPTIONAL]
+	ti->descriptor_ptr_expr[REQUIRED]
+		= ti->descriptor_ptr_expr[OPTIONAL]
 		= xsprintf("&%s_descriptor", base_name);
 
-	sti->type_name = c_type_name;
-	return &sti->base;
+	return ti;
 }
 
 static void simple_type_destroy(struct type_info *ti)
 {
-	struct simple_type_info *sti = (void *)ti;
-
 	type_info_fini(ti);
-	free((void *)sti->base.metadata_ptr_expr[OPTIONAL]);
-	free((void *)sti->base.descriptor_ptr_expr[OPTIONAL]);
-	free(sti);
+	free(ti);
 }
 
 struct type_info_ops simple_type_info_ops = {
 	noop_fill,
-	simple_type_declare,
 	NULL,
 	noop_call_fini,
 	simple_type_destroy
@@ -366,7 +360,6 @@ static void builtin_type_call_fini(struct type_info *ti, FILE *out,
 
 struct type_info_ops builtin_type_info_ops = {
 	noop_fill,
-	simple_type_declare,
 	NULL,
 	builtin_type_call_fini,
 	simple_type_destroy
@@ -557,6 +550,13 @@ static struct type_info *alloc_struct(struct schema *schema,
 			    (int)sti->struct_name.len, sti->struct_name.chars),
 		       1);
 
+	sti->base.c_type_name[REQUIRED]
+		= xsprintf("struct %.*s",
+			   (int)sti->struct_name.len, sti->struct_name.chars);
+	sti->base.c_type_name[OPTIONAL]
+		= xsprintf("struct %.*s *",
+			   (int)sti->struct_name.len, sti->struct_name.chars);
+
 	sti->base.metadata_ptr_expr[REQUIRED]
 		= xsprintf("%s()", sti->metadata_func_name);
 	sti->base.metadata_ptr_expr[OPTIONAL]
@@ -615,17 +615,6 @@ static void struct_fill(struct type_info *ti, struct codegen *codegen,
 		sti->extras_type = resolve_type(codegen,
 						schema->additionalProperties,
 						eu_string_ref_null);
-}
-
-static void struct_declare(struct type_info *ti, FILE *out, const char *name,
-			   enum optionality optional)
-
-{
-	struct struct_type_info *sti = (void *)ti;
-
-	fprintf(out, "\tstruct %.*s %s%s;\n",
-		(int)sti->struct_name.len, sti->struct_name.chars,
-		optional ? "*" : "", name);
 }
 
 static void emit_inlinish_func_decl(struct codegen *codegen, const char *fmt,
@@ -925,10 +914,7 @@ static void struct_destroy(struct type_info *ti)
 	free(sti->ptr_metadata_func_name);
 	free(sti->descriptor_name);
 	free((void *)sti->base.base_name);
-	free((void *)sti->base.metadata_ptr_expr[REQUIRED]);
-	free((void *)sti->base.metadata_ptr_expr[OPTIONAL]);
-	free((void *)sti->base.descriptor_ptr_expr[REQUIRED]);
-	free((void *)sti->base.descriptor_ptr_expr[OPTIONAL]);
+	free_expr_pair(sti->base.c_type_name);
 	free(sti->members);
 	free(sti);
 }
@@ -946,7 +932,6 @@ static void struct_generate_fini(struct type_info *ti, FILE *out,
 
 static struct type_info_ops struct_type_info_ops = {
 	struct_fill,
-	struct_declare,
 	struct_define,
 	struct_generate_fini,
 	struct_destroy
@@ -1002,6 +987,9 @@ static struct type_info *alloc_array(struct schema *schema,
 	type_info_init(&ati->base, codegen, &array_type_info_ops, cname,
 		       1);
 
+	ati->base.c_type_name[REQUIRED]
+		= ati->base.c_type_name[OPTIONAL]
+		= xsprintf("struct %s", cname);
 	ati->base.metadata_ptr_expr[REQUIRED]
 		= ati->base.metadata_ptr_expr[OPTIONAL]
 		= xsprintf("%s()", ati->metadata_func_name);
@@ -1020,13 +1008,6 @@ static void array_fill(struct type_info *ti, struct codegen *codegen,
 	if (!ati->element_type)
 		ati->element_type = resolve_type(codegen, schema->additionalItems,
 						 eu_string_ref_null);
-}
-
-static void array_declare(struct type_info *ti, FILE *out, const char *name,
-			  enum optionality optional)
-{
-	(void)optional;
-	fprintf(out, "\tstruct %s %s;\n", ti->base_name, name);
 }
 
 static void array_define(struct type_info *ti, struct codegen *codegen)
@@ -1084,7 +1065,6 @@ static void array_call_fini(struct type_info *ti, FILE *out, const char *var_exp
 	fprintf(out, "\teu_array_fini(%s, &%s);\n", ti->metadata_ptr_expr[REQUIRED], var_expr);
 }
 
-
 static void array_destroy(struct type_info *ti)
 {
 	struct array_type_info *ati = (void *)ti;
@@ -1093,14 +1073,12 @@ static void array_destroy(struct type_info *ti)
 	free(ati->metadata_func_name);
 	free(ati->descriptor_name);
 	free((void *)ati->base.base_name);
-	free((void *)ati->base.metadata_ptr_expr[REQUIRED]);
-	free((void *)ati->base.descriptor_ptr_expr[REQUIRED]);
+	free_expr_pair(ati->base.c_type_name);
 	free(ati);
 }
 
 static struct type_info_ops array_type_info_ops = {
 	array_fill,
-	array_declare,
 	array_define,
 	array_call_fini,
 	array_destroy
