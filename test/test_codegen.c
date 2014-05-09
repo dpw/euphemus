@@ -178,6 +178,10 @@ static void test_gen_struct(void)
 	eu_variant_assign_number(&ts.any, 123);
 	test_gen(test_schema_to_eu_value(&ts), eu_cstr("{\"any\":123}"));
 
+	eu_variant_reset(&ts.any);
+	assert(struct_bar_array_push(&ts.array));
+	test_gen(test_schema_to_eu_value(&ts), eu_cstr("{\"array\":[{}]}"));
+
 	test_schema_fini(&ts);
 }
 

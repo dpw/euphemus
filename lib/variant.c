@@ -109,6 +109,14 @@ void eu_variant_fini(struct eu_variant *variant)
 		variant->metadata->fini(variant->metadata, &variant->u);
 }
 
+void eu_variant_reset(struct eu_variant *variant)
+{
+	if (variant->metadata) {
+		variant->metadata->fini(variant->metadata, &variant->u);
+		variant->metadata = NULL;
+	}
+}
+
 static void variant_fini(const struct eu_metadata *metadata, void *value)
 {
 	struct eu_variant *var = value;

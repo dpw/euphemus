@@ -1024,6 +1024,19 @@ static void array_define(struct type_info *ti, struct codegen *codegen)
 		"\t} priv;\n"
 		"};\n\n");
 
+	fprintf(codegen->h_out,
+		"static __inline__ %s *%s_push(struct %s *array) {\n"
+		"\tif (array->len < array->priv.capacity\n"
+		"\t    || eu_array_grow((struct eu_array *)array, array->len + 1,\n"
+		"\t                     sizeof(*array->a)))\n"
+		"\t\treturn array->a + array->len++;\n"
+		"\telse\n"
+		"\t\treturn NULL;\n"
+		"\t}\n\n",
+		ati->element_type->c_type_name[REQUIRED],
+		ti->base_name,
+		ti->base_name);
+
 	/* Descriptor definition */
 
 	metadata_ptr_name = xsprintf("%s_metadata_ptr", ti->base_name);

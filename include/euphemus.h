@@ -305,6 +305,7 @@ static __inline__ void eu_variant_init(struct eu_variant *var)
 }
 
 void eu_variant_fini(struct eu_variant *variant);
+void eu_variant_reset(struct eu_variant *variant);
 
 static __inline__ void eu_variant_assign_null(struct eu_variant *var)
 {
