@@ -126,7 +126,8 @@ struct type_info {
 	/* The basis for constructed C identifiers related to the type */
 	const char *base_name;
 
-	/* The C type name for use in declarations */
+	/* The C type name for use in declarations.  Includes a
+	   trailing space if appropriate. */
 	const char *c_type_name[2];
 
 	/* The C expression for a pointer to the type's metadata */
@@ -170,7 +171,7 @@ static void fill_type(struct type_info *ti, struct codegen *codegen,
 static void declare(struct type_info *ti, FILE *out, const char *name,
 		    enum optionality optional)
 {
-	fprintf(out, "\t%s %s;\n", ti->c_type_name[optional], name);
+	fprintf(out, "\t%s%s;\n", ti->c_type_name[optional], name);
 }
 
 static void upcase_print(FILE *out, const char *s)
@@ -282,6 +283,7 @@ static void free_expr_pair(const char **exprs)
 
 static void type_info_fini(struct type_info *ti)
 {
+	free_expr_pair(ti->c_type_name);
 	free_expr_pair(ti->metadata_ptr_expr);
 	free_expr_pair(ti->descriptor_ptr_expr);
 	free((void *)ti->members_struct_name);
@@ -318,7 +320,7 @@ static struct type_info *make_simple_or_builtin_type(struct codegen *codegen,
 
 	ti->c_type_name[REQUIRED]
 		= ti->c_type_name[OPTIONAL]
-		= c_type_name;
+		= xsprintf("%s ", c_type_name);
 
 	ti->metadata_ptr_expr[REQUIRED]
 		= ti->metadata_ptr_expr[OPTIONAL]
@@ -551,7 +553,7 @@ static struct type_info *alloc_struct(struct schema *schema,
 		       1);
 
 	sti->base.c_type_name[REQUIRED]
-		= xsprintf("struct %.*s",
+		= xsprintf("struct %.*s ",
 			   (int)sti->struct_name.len, sti->struct_name.chars);
 	sti->base.c_type_name[OPTIONAL]
 		= xsprintf("struct %.*s *",
@@ -914,7 +916,6 @@ static void struct_destroy(struct type_info *ti)
 	free(sti->ptr_metadata_func_name);
 	free(sti->descriptor_name);
 	free((void *)sti->base.base_name);
-	free_expr_pair(sti->base.c_type_name);
 	free(sti->members);
 	free(sti);
 }
@@ -989,7 +990,7 @@ static struct type_info *alloc_array(struct schema *schema,
 
 	ati->base.c_type_name[REQUIRED]
 		= ati->base.c_type_name[OPTIONAL]
-		= xsprintf("struct %s", cname);
+		= xsprintf("struct %s ", cname);
 	ati->base.metadata_ptr_expr[REQUIRED]
 		= ati->base.metadata_ptr_expr[OPTIONAL]
 		= xsprintf("%s()", ati->metadata_func_name);
@@ -1025,7 +1026,7 @@ static void array_define(struct type_info *ti, struct codegen *codegen)
 		"};\n\n");
 
 	fprintf(codegen->h_out,
-		"static __inline__ %s *%s_push(struct %s *array) {\n"
+		"static __inline__ %s*%s_push(struct %s *array) {\n"
 		"\tif (array->len < array->priv.capacity\n"
 		"\t    || eu_array_grow((struct eu_array *)array, array->len + 1,\n"
 		"\t                     sizeof(*array->a)))\n"
@@ -1086,7 +1087,6 @@ static void array_destroy(struct type_info *ti)
 	free(ati->metadata_func_name);
 	free(ati->descriptor_name);
 	free((void *)ati->base.base_name);
-	free_expr_pair(ati->base.c_type_name);
 	free(ati);
 }
 
