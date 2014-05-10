@@ -99,9 +99,10 @@ static void array_fini(const struct eu_metadata *el_metadata,
 	}
 }
 
-int eu_array_grow(struct eu_array *array, size_t len, size_t el_size)
+int eu_array_grow(struct eu_array *array, size_t el_size)
 {
 	size_t cap = array->priv.capacity;
+	size_t len = array->len + 1;
 
 	if (cap < len) {
 		char *new_a;

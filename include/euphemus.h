@@ -250,7 +250,7 @@ struct eu_array {
 
 void eu_array_fini(const struct eu_metadata *gmetadata, void *value);
 struct eu_value eu_array_get(struct eu_value val, struct eu_string_ref name);
-int eu_array_grow(struct eu_array *array, size_t len, size_t el_size);
+int eu_array_grow(struct eu_array *array, size_t el_size);
 
 /* Others */
 
@@ -365,7 +365,7 @@ struct eu_value eu_variant_array_value(struct eu_variant_array *array);
 static __inline__ struct eu_variant *eu_variant_array_push(
 					       struct eu_variant_array *array) {
 	if (array->len < array->priv.capacity
-	    || eu_array_grow((struct eu_array *)array, array->len + 1,
+	    || eu_array_grow((struct eu_array *)array,
 			     sizeof(struct eu_variant)))
 		return array->a + array->len++;
 	else

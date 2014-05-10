@@ -1028,7 +1028,7 @@ static void array_define(struct type_info *ti, struct codegen *codegen)
 	fprintf(codegen->h_out,
 		"static __inline__ %s*%s_push(struct %s *array) {\n"
 		"\tif (array->len < array->priv.capacity\n"
-		"\t    || eu_array_grow((struct eu_array *)array, array->len + 1,\n"
+		"\t    || eu_array_grow((struct eu_array *)array,\n"
 		"\t                     sizeof(*array->a)))\n"
 		"\t\treturn array->a + array->len++;\n"
 		"\telse\n"
