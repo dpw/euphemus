@@ -171,7 +171,10 @@ static void test_gen_struct(void)
 	test_schema_init(&ts);
 	test_gen(test_schema_to_eu_value(&ts), eu_cstr("{}"));
 
-	eu_string_assign(&ts.str, eu_cstr("hello"));
+	eu_string_assign_empty(&ts.str);
+	test_gen(test_schema_to_eu_value(&ts), eu_cstr("{\"str\":\"\"}"));
+
+	assert(eu_string_assign(&ts.str, eu_cstr("hello")));
 	test_gen(test_schema_to_eu_value(&ts), eu_cstr("{\"str\":\"hello\"}"));
 
 	eu_string_reset(&ts.str);

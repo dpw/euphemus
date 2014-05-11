@@ -94,7 +94,7 @@ static enum eu_result string_parse_common(const struct eu_metadata *metadata,
 	return EU_OK;
 
  empty:
-	result->chars = ZERO_LENGTH_PTR;
+	result->chars = EU_ZERO_LENGTH_PTR;
 
 	ep->input = p + 1;
 	return EU_OK;
@@ -225,7 +225,7 @@ static enum eu_result string_parse_resume(struct eu_stack_frame *gframe,
 
  empty:
 	free(buf);
-	frame->result->chars = ZERO_LENGTH_PTR;
+	frame->result->chars = EU_ZERO_LENGTH_PTR;
 	ep->input = p + 1;
 	return EU_OK;
 

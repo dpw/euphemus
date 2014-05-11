@@ -5,6 +5,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* A non-null invalid pointer value.  This is used to distinguish
+   pointers to empty arrays and strings from NULL, which means "not
+   present". */
+#define EU_ZERO_LENGTH_PTR ((void *)1)
+
 enum eu_json_type {
 	EU_JSON_INVALID,
 	EU_JSON_VARIANT,
@@ -223,6 +228,15 @@ static __inline__ int eu_string_assign(struct eu_string *str,
 		str->len = 0;
 		return 0;
 	}
+}
+
+static __inline__ void eu_string_assign_empty(struct eu_string *str)
+{
+	if (str->len)
+		free(str->chars);
+
+	str->chars = EU_ZERO_LENGTH_PTR;
+	str->len = 0;
 }
 
 extern const struct eu_metadata eu_string_metadata;

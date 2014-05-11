@@ -81,7 +81,7 @@ RESUME_ONLY(case ARRAY_PARSE_COMMA:)
 
  empty:
 	ep->input++;
-	result->a = ZERO_LENGTH_PTR;
+	result->a = EU_ZERO_LENGTH_PTR;
 	result->priv.capacity = result->len = 0;
 	return EU_OK;
 

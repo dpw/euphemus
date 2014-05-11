@@ -26,11 +26,6 @@
         ({ const __typeof__(((type *)0)->member ) *__mptr = (ptr); \
            ((type *)((char *)__mptr - offsetof(type,member))); })
 
-/* A non-null invalid pointer value.  This is used to distinguish
-   pointers to empty arrays and strings from NULL, which means "not
-   present". */
-#define ZERO_LENGTH_PTR ((void *)1)
-
 /* A description of a type of data (including things like how to
    allocate, release etc.) */
 struct eu_metadata {
