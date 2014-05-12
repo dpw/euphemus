@@ -92,11 +92,26 @@ static void array_fini(const struct eu_metadata *el_metadata,
 		}
 	}
 
-	if (array->priv.capacity) {
+	if (array->priv.capacity)
 		free(array->a);
-		array->a = NULL;
-		array->priv.capacity = array->len = 0;
-	}
+}
+
+void eu_array_fini(const struct eu_metadata *gmetadata, void *value)
+{
+	struct eu_array_metadata *metadata
+		= (struct eu_array_metadata *)gmetadata;
+	array_fini(metadata->element_metadata, value);
+}
+
+static void array_parse_frame_destroy(struct eu_stack_frame *gframe)
+{
+	struct array_parse_frame *frame = (struct array_parse_frame *)gframe;
+
+	array_fini(frame->el_metadata, frame->result);
+
+	/* To avoid fini functions being called multiple times. */
+	frame->result->a = NULL;
+	frame->result->priv.capacity = frame->result->len = 0;
 }
 
 int eu_array_grow(struct eu_array *array, size_t el_size)
@@ -136,19 +151,6 @@ int eu_array_grow(struct eu_array *array, size_t el_size)
 	}
 
 	return 1;
-}
-
-static void array_parse_frame_destroy(struct eu_stack_frame *gframe)
-{
-	struct array_parse_frame *frame = (struct array_parse_frame *)gframe;
-	array_fini(frame->el_metadata, frame->result);
-}
-
-void eu_array_fini(const struct eu_metadata *gmetadata, void *value)
-{
-	struct eu_array_metadata *metadata
-		= (struct eu_array_metadata *)gmetadata;
-	array_fini(metadata->element_metadata, value);
 }
 
 struct eu_value eu_array_get(struct eu_value val, struct eu_string_ref name)

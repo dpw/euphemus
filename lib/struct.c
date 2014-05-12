@@ -403,8 +403,6 @@ static void struct_extras_fini(const struct eu_struct_metadata *md,
 	}
 
 	free(extras->members);
-	extras->members = NULL;
-	extras->len = 0;
 }
 
 static void inline_struct_fini(const struct eu_metadata *gmetadata, void *s)
@@ -446,6 +444,10 @@ static void struct_parse_frame_destroy(struct eu_stack_frame *gframe)
 	struct struct_parse_frame *frame = (struct struct_parse_frame *)gframe;
 
 	inline_struct_fini(&frame->metadata->base, frame->result);
+
+	/* To avoid fini functions being called multiple times. */
+	memset(frame->result, 0, frame->metadata->base.size);
+
 	if (frame->result_ptr) {
 		free(frame->result);
 		*frame->result_ptr = NULL;

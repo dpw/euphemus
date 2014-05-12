@@ -201,15 +201,11 @@ static __inline__ void eu_string_fini(struct eu_string *str)
 {
 	if (str->len)
 		free(str->chars);
-
-	str->chars = NULL;
 }
 
 static __inline__ void eu_string_reset(struct eu_string *str)
 {
-	if (str->len)
-		free(str->chars);
-
+	eu_string_fini(str);
 	str->chars = NULL;
 	str->len = 0;
 }

@@ -408,6 +408,10 @@ static void string_fini(const struct eu_metadata *metadata, void *value)
 	(void)metadata;
 
 	eu_string_fini(str);
+
+	/* To avoid fini functions being called multiple times. */
+	str->chars = NULL;
+	str->len = 0;
 }
 
 const struct eu_metadata eu_string_metadata = {
