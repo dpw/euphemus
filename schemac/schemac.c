@@ -687,6 +687,35 @@ static void struct_define_converters(struct struct_type_info *sti,
 				sti->metadata_func_name);
 }
 
+static void struct_define_presence_accessors(struct struct_type_info *sti,
+					     struct codegen *codegen)
+{
+	size_t i;
+	int presence_count;
+
+	for (i = 0, presence_count = 0; i < sti->members_len; i++) {
+		struct member_info *mi = &sti->members[i];
+		if (mi->type->no_presence_bit)
+			continue;
+
+		fprintf(codegen->h_out,
+			"static __inline__ void %.*s_set_%s_present(struct %.*s *p, int present) {\n"
+			"\tif (present)\n"
+			"\t\tp->presence_bits[%d / CHAR_BIT] |= 1 << (%d %% CHAR_BIT);\n"
+			"\telse\n"
+			"\t\tp->presence_bits[%d / CHAR_BIT] &= ~(1 << (%d %% CHAR_BIT));\n"
+			"}\n\n",
+			(int)sti->struct_name.len, sti->struct_name.chars,
+			mi->c_name,
+			(int)sti->struct_name.len, sti->struct_name.chars,
+			presence_count, presence_count,
+			presence_count, presence_count);
+
+		presence_count++;
+	}
+}
+
+
 static void struct_define(struct type_info *ti, struct codegen *codegen)
 {
 	struct struct_type_info *sti = (void *)ti;
@@ -899,6 +928,7 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 		(int)sti->struct_name.len, sti->struct_name.chars);
 
 	struct_define_converters(sti, codegen);
+	struct_define_presence_accessors(sti, codegen);
 }
 
 static void struct_destroy(struct type_info *ti)

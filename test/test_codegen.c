@@ -176,8 +176,13 @@ static void test_gen_struct(void)
 
 	assert(eu_string_assign(&ts.str, eu_cstr("hello")));
 	test_gen(test_schema_to_eu_value(&ts), eu_cstr("{\"str\":\"hello\"}"));
-
 	eu_string_reset(&ts.str);
+
+	ts.num = 42;
+	test_schema_set_num_present(&ts, 1);
+	test_gen(test_schema_to_eu_value(&ts), eu_cstr("{\"num\":42}"));
+	test_schema_set_num_present(&ts, 0);
+
 	eu_variant_assign_number(&ts.any, 123);
 	test_gen(test_schema_to_eu_value(&ts), eu_cstr("{\"any\":123}"));
 
