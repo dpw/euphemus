@@ -711,6 +711,19 @@ static void struct_define_presence_accessors(struct struct_type_info *sti,
 			presence_count, presence_count,
 			presence_count, presence_count);
 
+		fprintf(codegen->h_out,
+			"static __inline__ void %.*s_set_%s(struct %.*s *p, %sval) {\n"
+			"\tp->%s = val;\n"
+			"\t%.*s_set_%s_present(p, 1);\n"
+			"}\n\n",
+			(int)sti->struct_name.len, sti->struct_name.chars,
+			mi->c_name,
+			(int)sti->struct_name.len, sti->struct_name.chars,
+			mi->type->c_type_name[REQUIRED],
+			mi->c_name,
+			(int)sti->struct_name.len, sti->struct_name.chars,
+			mi->c_name);
+
 		presence_count++;
 	}
 }
