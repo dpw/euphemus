@@ -10,7 +10,8 @@
                 "array": {
                         "type": "array",
                         "additionalItems": { "$ref": "#/definitions/bar" }
-                }
+                },
+                "hello Εὔφημος": { "type": "boolean" }
         },
 
         "definitions": {

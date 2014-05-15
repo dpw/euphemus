@@ -195,15 +195,30 @@ static void test_gen_struct(void)
 static void test_gen_parsed_struct(void)
 {
 	struct eu_string_ref json = eu_cstr("{\"str\":\"x\",\"num\":42,\"bool\":true,\"any\":null,\"bar\":{},\"array\":[{\"str\":\"y\"}]}");
-	struct eu_parse *parse;
 	struct test_schema ts;
+	struct eu_parse *parse;
 
-	parse = eu_parse_create(test_schema_to_eu_value(&ts));
+	assert(parse = eu_parse_create(test_schema_to_eu_value(&ts)));
 	assert(eu_parse(parse, json.chars, json.len));
 	assert(eu_parse_finish(parse));
 	eu_parse_destroy(parse);
 
 	test_gen(test_schema_to_eu_value(&ts), json);
+	test_schema_fini(&ts);
+}
+
+static void test_escaped_member_names(void)
+{
+	struct eu_string_ref json = eu_cstr("{\"hello \\u0395\\u1f54\\u03c6\\u03b7\\u03bc\\u03bf\\u03c2\":true}");
+	struct test_schema ts;
+	struct eu_parse *parse;
+
+	assert(parse = eu_parse_create(test_schema_to_eu_value(&ts)));
+	assert(eu_parse(parse, json.chars, json.len));
+	assert(eu_parse_finish(parse));
+	eu_parse_destroy(parse);
+
+	/*test_gen(test_schema_to_eu_value(&ts), json);*/
 	test_schema_fini(&ts);
 }
 
@@ -219,5 +234,6 @@ int main(void)
 	test_size();
 	test_gen_struct();
 	test_gen_parsed_struct();
+	test_escaped_member_names();
 	return 0;
 }

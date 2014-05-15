@@ -728,6 +728,25 @@ static void struct_define_presence_accessors(struct struct_type_info *sti,
 	}
 }
 
+static void print_escaped(FILE *out, struct eu_string_ref str)
+{
+	const char *p = str.chars;
+	size_t len = str.len;
+
+	while (len--) {
+		unsigned char c = *p++;
+
+		if (c >= 32 && c < 127) {
+			putc(c, out);
+		}
+		else {
+			putc('\\', out);
+			putc('0' + (c >> 6), out);
+			putc('0' + (c >> 3 & 7), out);
+			putc('0' + (c & 7), out);
+		}
+	}
+}
 
 static void struct_define(struct type_info *ti, struct codegen *codegen)
 {
@@ -806,12 +825,12 @@ static void struct_define(struct type_info *ti, struct codegen *codegen)
 			presence_count++;
 		}
 
-		/* TODO need to escape member name */
+		fputs("\t\t\"", codegen->c_out);
+		print_escaped(codegen->c_out, mi->json_name);
 		fprintf(codegen->c_out,
-			"\t\t\"%.*s\",\n" /* name */
+			"\",\n" /* name */
 			"\t\t%s\n" /* metadata */
 			"\t},\n",
-			(int)mi->json_name.len, mi->json_name.chars,
 			mi->type->descriptor_ptr_expr[OPTIONAL]);
 	}
 
