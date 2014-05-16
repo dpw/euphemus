@@ -627,61 +627,13 @@ size_t eu_object_size(struct eu_value val)
 	return val.metadata->object_size(val);
 }
 
-struct name_gen_frame {
-	struct eu_stack_frame base;
-	struct eu_string_ref name;
-};
-
-static enum eu_result name_gen_resume(struct eu_stack_frame *gframe,
-				      void *eg);
-
-static enum eu_result name_generate(struct eu_generate *eg,
-				    struct eu_string_ref name)
-{
-	struct name_gen_frame *frame;
-	size_t space;
-
-	space = eg->output_end - eg->output;
-	if (name.len < space) {
-		/* TODO escaping */
-
-		memcpy(eg->output, name.chars, name.len);
-		eg->output += name.len;
-		*eg->output++ = '\"';
-		return EU_OK;
-	}
-
-	memcpy(eg->output, name.chars, space);
-	eg->output += space;
-
-	frame = eu_stack_alloc_first(&eg->stack, sizeof *frame);
-	if (frame) {
-		frame->base.resume = name_gen_resume;
-		frame->base.destroy = eu_stack_frame_noop_destroy;
-		frame->name.chars = name.chars + space;
-		frame->name.len = name.len - space;
-		return EU_PAUSED;
-	}
-
-	return EU_ERROR;
-}
-
-static enum eu_result name_gen_resume(struct eu_stack_frame *gframe,
-				      void *eg)
-{
-	struct name_gen_frame *frame = (struct name_gen_frame *)gframe;
-	return name_generate(eg, frame->name);
-}
-
 enum struct_gen_state {
 	STRUCT_MEMBERS_GEN_PREFIX,
-	STRUCT_MEMBERS_GEN_IN_MEMBER_NAME,
 	STRUCT_MEMBERS_GEN_MEMBER_NAME,
 	STRUCT_MEMBERS_GEN_COLON,
 	STRUCT_MEMBERS_GEN_MEMBER_VALUE,
 
 	STRUCT_EXTRAS_GEN_PREFIX,
-	STRUCT_EXTRAS_GEN_IN_MEMBER_NAME,
 	STRUCT_EXTRAS_GEN_MEMBER_NAME,
 	STRUCT_EXTRAS_GEN_COLON,
 	STRUCT_EXTRAS_GEN_MEMBER_VALUE

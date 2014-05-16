@@ -350,56 +350,15 @@ static enum eu_result string_parse(const struct eu_metadata *metadata,
 		return res;
 }
 
-struct string_gen_frame {
-	struct eu_stack_frame base;
-	struct eu_string str;
-};
-
-static enum eu_result string_gen_resume(struct eu_stack_frame *gframe,
-					void *eg);
-
 static enum eu_result string_generate(const struct eu_metadata *metadata,
 				      struct eu_generate *eg, void *value)
 {
 	struct eu_string *str = value;
-	struct string_gen_frame *frame;
-	size_t space;
+	(void)metadata;
 
-	/* metadata is NULL when resuming */
-	if (metadata)
-		/* We always get called with at least a byte of space. */
-		*eg->output++ = '\"';
-
-	space = eg->output_end - eg->output;
-	if (str->len < space) {
-		/* TODO escaping */
-
-		memcpy(eg->output, str->chars, str->len);
-		eg->output += str->len;
-		*eg->output++ = '\"';
-		return EU_OK;
-	}
-
-	memcpy(eg->output, str->chars, space);
-	eg->output += space;
-
-	frame = eu_stack_alloc_first(&eg->stack, sizeof *frame);
-	if (frame) {
-		frame->base.resume = string_gen_resume;
-		frame->base.destroy = eu_stack_frame_noop_destroy;
-		frame->str.chars = str->chars + space;
-		frame->str.len = str->len - space;
-		return EU_PAUSED;
-	}
-
-	return EU_ERROR;
-}
-
-static enum eu_result string_gen_resume(struct eu_stack_frame *gframe,
-					void *eg)
-{
-	struct string_gen_frame *frame = (struct string_gen_frame *)gframe;
-	return string_generate(NULL, eg, &frame->str);
+	/* We always get called with at least a byte of space. */
+	*eg->output++ = '\"';
+	return eu_escape(eg, eu_string_to_ref(str));
 }
 
 static void string_fini(const struct eu_metadata *metadata, void *value)

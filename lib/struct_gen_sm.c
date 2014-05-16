@@ -23,15 +23,10 @@ RESUME_ONLY(case STRUCT_MEMBERS_GEN_PREFIX:)
 			goto pause_first;
 
 		*eg->output++ = '\"';
-		state = STRUCT_MEMBERS_GEN_IN_MEMBER_NAME;
-RESUME_ONLY(case STRUCT_MEMBERS_GEN_IN_MEMBER_NAME:)
-		if (eg->output == eg->output_end)
-			goto pause_first;
-
 		state = STRUCT_MEMBERS_GEN_MEMBER_NAME;
 		/* The name is always the first field in the member struct */
-		switch (name_generate(eg, eu_string_ref(member->name,
-							member->name_len))) {
+		switch (eu_escape(eg, eu_string_ref(member->name,
+						    member->name_len))) {
 		case EU_OK:
 			break;
 
@@ -85,14 +80,9 @@ RESUME_ONLY(case STRUCT_EXTRAS_GEN_PREFIX:)
 			goto pause_first;
 
 		*eg->output++ = '\"';
-		state = STRUCT_EXTRAS_GEN_IN_MEMBER_NAME;
-RESUME_ONLY(case STRUCT_EXTRAS_GEN_IN_MEMBER_NAME:)
-		if (eg->output == eg->output_end)
-			goto pause_first;
-
 		state = STRUCT_EXTRAS_GEN_MEMBER_NAME;
 		/* The name is always the first field in the member struct */
-		switch (name_generate(eg, *(struct eu_string_ref *)extra)) {
+		switch (eu_escape(eg, *(struct eu_string_ref *)extra)) {
 		case EU_OK:
 			break;
 

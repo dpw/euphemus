@@ -423,4 +423,9 @@ static __inline__ enum eu_result eu_fixed_gen_64(struct eu_generate *eg,
 
 #endif
 
+/* Generate an escaped string.  Does not generate the leading '"'
+   char, but does generate the terminating '"'.  And does not require
+   the caller to ensure a byte of space in the output buffer. */
+enum eu_result eu_escape(struct eu_generate *eg, struct eu_string_ref str);
+
 #endif
