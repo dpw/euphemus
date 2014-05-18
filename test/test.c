@@ -214,6 +214,11 @@ static void test_gen_string(void)
 
 	assert(eu_string_init(&str, eu_cstr("hello")));
 	test_gen(eu_string_value(&str), eu_cstr("\"hello\""));
+
+	assert(eu_string_assign(&str, eu_cstr("\\\"\b\t\n\f\r\036")));
+	test_gen(eu_string_value(&str),
+		 eu_cstr("\"\\\\\\\"\\b\\t\\n\\f\\r\\u001e\""));
+
 	eu_string_fini(&str);
 }
 
@@ -290,12 +295,13 @@ static void test_gen_object(void)
 	eu_variant_assign_bool(var, 1);
 	test_gen(eu_object_value(&obj), eu_cstr("{\"foo\":true,\"bar\":100}"));
 
-	assert(var = eu_object_get(&obj, eu_cstr("baz")));
+	assert(var = eu_object_get(&obj, eu_cstr("\\\"\b\t\n\f\r\036")));
 	subobj = eu_variant_assign_object(var);
 	assert(var = eu_object_get(subobj, eu_cstr("null")));
 	eu_variant_assign_null(var);
 	test_gen(eu_object_value(&obj),
-		 eu_cstr("{\"foo\":true,\"bar\":100,\"baz\":{\"null\":null}}"));
+		 eu_cstr("{\"foo\":true,\"bar\":100,"
+		       "\"\\\\\\\"\\b\\t\\n\\f\\r\\u001e\":{\"null\":null}}"));
 
 	eu_object_fini(&obj);
 }
