@@ -11,7 +11,7 @@
                         "type": "array",
                         "additionalItems": { "$ref": "#/definitions/bar" }
                 },
-                "hello Εὔφημος": { "type": "boolean" }
+                "hello \"Εὔφημος\"": { "type": "boolean" }
         },
 
         "definitions": {

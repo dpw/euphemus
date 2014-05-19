@@ -209,7 +209,7 @@ static void test_gen_parsed_struct(void)
 
 static void test_escaped_member_names(void)
 {
-	struct eu_string_ref json = eu_cstr("{\"hello \\u0395\\u1f54\\u03c6\\u03b7\\u03bc\\u03bf\\u03c2\":true}");
+	struct eu_string_ref json = eu_cstr("{\"hello \\\"\\u0395\\u1f54\\u03c6\\u03b7\\u03bc\\u03bf\\u03c2\\\"\":true}");
 	struct test_schema ts;
 	struct eu_parse *parse;
 
@@ -218,7 +218,8 @@ static void test_escaped_member_names(void)
 	assert(eu_parse_finish(parse));
 	eu_parse_destroy(parse);
 
-	/*test_gen(test_schema_to_eu_value(&ts), json);*/
+	test_gen(test_schema_to_eu_value(&ts),
+		 eu_cstr("{\"hello \\\"\316\225\341\275\224\317\206\316\267\316\274\316\277\317\202\\\"\":true}"));
 	test_schema_fini(&ts);
 }
 

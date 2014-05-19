@@ -736,7 +736,7 @@ static void print_escaped(FILE *out, struct eu_string_ref str)
 	while (len--) {
 		unsigned char c = *p++;
 
-		if (c >= 32 && c < 127) {
+		if (c >= 32 && c < 127 && c != '\"' && c != '\\') {
 			putc(c, out);
 		}
 		else {
