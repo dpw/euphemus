@@ -1,16 +1,42 @@
 # Euphemus
 
-A JSON parser.  In C.
+A JSON parser in C.
 
-There are several JSON parsers in C out there already.  Euphemus is
-different because it supports schema-assisted parsing: You give it a
-JSON schema, and it will generate C source files defining the
-corresponding structs, and produce instances of those structs during
-parsing.  So code in C can access JSON data almost as easily as code
-in a dynamic language.
+There are several JSON parsers in C out there already.  The
+distinctive feature of Euphemus is that it supports schema-assisted
+parsing: You give it a [http://json-schema.org/](JSON schema), and it
+will generate C source files defining the corresponding structs, and
+produce instances of those structs during parsing.  So code in C can
+access JSON data almost as easily as code in a dynamic language.
+E.g., with a schema like
 
-But Euphemus isn't finished yet.  It only supports a limited subset of
-JSON schema for parsing.  And it can't generate JSON, And some
-optimization is needed.  And the API is not stable.
+    {
+      "type": "object",
+      "euphemusStructName": "foo",
+      "properties": {
+        "bool": { "type": "boolean" },
+        "str": { "type": "string" },
+        "num": { "type": "number" }
+      }
+    }
+
+you might parse a corresponding JSON document with
+
+    struct foo s;
+    struct eu_parse *parse = eu_parse_create(foo_to_eu_value(&foo));
+
+    assert(eu_parse(parse, json, json_len));
+    assert(eu_parse_finish(parse));
+    eu_parse_destroy(parse);
+
+    if (s.bool)
+            printf("str = %.*s, num = %f\n", (int)s.str.len, s.str.chars, s.num);
+
+Euphemus also supports schema-less parsing, so it is not necessary to
+have a full schema for a document, or any schema at all, in order to
+parse it.
+
+Euphemus is a work in progress.  It can parse and generate JSON, but
+currently only supports a subset of JSON schema.
 
 Euphemus was the helmsman on the voyage of the Argonauts.
