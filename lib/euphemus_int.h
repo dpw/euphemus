@@ -210,12 +210,11 @@ enum eu_result eu_variant_bool(const void *misc, struct eu_parse *ep,
 enum eu_result eu_variant_n(const void *null_metadata, struct eu_parse *ep,
 			    struct eu_variant *result);
 
+/* The JSON spec only allows ASCII whitespace chars */
 #define WHITESPACE_CASES ' ': case '\t': case '\n': case '\r'
 
 static __inline__ const char *skip_whitespace(const char *p, const char *end)
 {
-	/* Not doing UTF-8 yet, so no error or pause returns */
-
 	for (; p != end; p++) {
 		switch (*p) {
 		case WHITESPACE_CASES:

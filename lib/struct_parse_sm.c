@@ -3,19 +3,23 @@
    struct.c */
 
 RESUME_ONLY(case STRUCT_PARSE_OPEN:)
-	p = skip_whitespace(p, end);
 	if (p == end)
 		goto pause;
 
-	switch (*p) {
-	case '\"':
-		break;
+	if (unlikely(*p != '\"')) {
+		if (*p == '}')
+			goto done;
 
-	case '}':
-		goto done;
+		p = skip_whitespace(p, end);
+		if (p == end)
+			goto pause;
 
-	default:
-		goto error;
+		if (unlikely(*p != '\"')) {
+			if (*p != '}')
+				goto error;
+			else
+				goto done;
+		}
 	}
 
 	for (;;) {
@@ -42,12 +46,17 @@ RESUME_ONLY(case STRUCT_PARSE_OPEN:)
 		p++;
 		state = STRUCT_PARSE_MEMBER_NAME;
 RESUME_ONLY(case STRUCT_PARSE_MEMBER_NAME:)
-		p = skip_whitespace(p, end);
 		if (p == end)
 			goto pause;
 
-		if (*p != ':')
-			goto error;
+		if (unlikely(*p != ':')) {
+			p = skip_whitespace(p, end);
+			if (p == end)
+				goto pause;
+
+			if (*p != ':')
+				goto error;
+		}
 
 		p++;
 		state = STRUCT_PARSE_COLON;
@@ -71,30 +80,40 @@ RESUME_ONLY(case STRUCT_PARSE_COLON:)
 
 		end = ep->input_end;
 RESUME_ONLY(case STRUCT_PARSE_MEMBER_VALUE:)
-		p = skip_whitespace(ep->input, end);
+		p = ep->input;
 		if (p == end)
 			goto pause;
 
-		switch (*p) {
-		case ',':
-			break;
+		if (unlikely(*p != ',')) {
+			if (*p == '}')
+				goto done;
 
-		case '}':
-			goto done;
+			p = skip_whitespace(p, end);
+			if (p == end)
+				goto pause;
 
-		default:
-			goto error;
+			if (unlikely(*p != ',')) {
+				if (*p != '}')
+					goto error;
+				else
+					goto done;
+			}
 		}
 
 		p++;
 		state = STRUCT_PARSE_COMMA;
 RESUME_ONLY(case STRUCT_PARSE_COMMA:)
-		p = skip_whitespace(p, end);
 		if (p == end)
 			goto pause;
 
-		if (*p != '\"')
-			goto error;
+		 if (unlikely(*p != '\"')) {
+			 p = skip_whitespace(p, end);
+			 if (p == end)
+				 goto pause;
+
+			 if (*p != '\"')
+				 goto error;
+		 }
 	}
 
  done:
