@@ -32,19 +32,23 @@ RESUME_ONLY(case ARRAY_PARSE_OPEN:)
 		el += el_size;
 
 RESUME_ONLY(case ARRAY_PARSE_ELEMENT:)
-		ep->input = skip_whitespace(ep->input, ep->input_end);
 		if (ep->input == ep->input_end)
 			goto pause;
 
-		switch (*ep->input) {
-		case ',':
-			break;
+		if (unlikely(*ep->input != ',')) {
+			if (*ep->input == ']')
+				goto done;
 
-		case ']':
-			goto done;
+			ep->input = skip_whitespace(ep->input, ep->input_end);
+			if (ep->input == ep->input_end)
+				goto pause;
 
-		default:
-			goto error;
+			if (unlikely(*ep->input != ',')) {
+				if (*ep->input == ']')
+					goto done;
+				else
+					goto error;
+			}
 		}
 
 		ep->input++;
