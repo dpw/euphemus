@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <stdint.h>
+#include <locale.h>
 
 #ifdef __GNUC__
 #define likely(x) __builtin_expect(!!(x), 1)
@@ -168,6 +169,48 @@ int eu_stack_append_scratch_with_nul(struct eu_stack *st, const char *start,
 
 void eu_stack_frame_noop_destroy(struct eu_stack_frame *frame);
 
+/* Locale ugliness */
+
+struct eu_locale {
+	locale_t c_locale;
+	locale_t old_locale;
+};
+
+static __inline__ void eu_locale_init(struct eu_locale *el)
+{
+	el->c_locale = el->old_locale = 0;
+}
+
+static __inline__ void eu_locale_fini(struct eu_locale *el)
+{
+	if (el->c_locale)
+		freelocale(el->c_locale);
+}
+
+static __inline__ int eu_locale_c(struct eu_locale *el)
+{
+	if (el->old_locale) {
+		return 1;
+	}
+	else {
+		if (!el->c_locale) {
+			el->c_locale = newlocale(LC_ALL, "C", (locale_t)0);
+			if (!el->c_locale)
+				return 0;
+		}
+
+		el->old_locale = uselocale(el->c_locale);
+		return !!el->old_locale;
+	}
+}
+
+static __inline__ void eu_locale_restore(struct eu_locale *el)
+{
+	if (el->old_locale) {
+		uselocale(el->old_locale);
+		el->old_locale = 0;
+	}
+}
 
 /* JSON parsing */
 
@@ -179,6 +222,7 @@ struct eu_parse {
 	const char *input;
 	const char *input_end;
 
+	struct eu_locale locale;
 	int error;
 };
 
@@ -277,6 +321,7 @@ struct eu_generate {
 	char *output;
 	char *output_end;
 
+	struct eu_locale locale;
 	eu_bool_t error;
 };
 

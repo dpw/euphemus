@@ -35,6 +35,7 @@ struct eu_generate *eu_generate_create(struct eu_value value)
 	frame->base.destroy = eu_stack_frame_noop_destroy;
 	frame->value = value;
 
+	eu_locale_init(&eg->locale);
 	eg->error = 0;
 	return eg;
 
@@ -47,25 +48,27 @@ struct eu_generate *eu_generate_create(struct eu_value value)
 void eu_generate_destroy(struct eu_generate *eg)
 {
 	eu_stack_fini(&eg->stack);
+	eu_locale_fini(&eg->locale);
 	free(eg);
 }
 
 size_t eu_generate(struct eu_generate *eg, char *output, size_t len)
 {
+	enum eu_result res;
+
 	if (unlikely(eg->error))
 		return 0;
 
 	eg->output = output;
 	eg->output_end = output + len;
 
-	switch (eu_stack_run(&eg->stack, eg)) {
-	case EU_ERROR:
+	res = eu_stack_run(&eg->stack, eg);
+	eu_locale_restore(&eg->locale);
+
+	if (res == EU_ERROR)
 		eg->error = 1;
 
-		/* fall through */
-	default:
-		return eg->output - output;
-	}
+	return eg->output - output;
 }
 
 int eu_generate_ok(struct eu_generate *eg)

@@ -77,6 +77,10 @@ static enum eu_result number_parse(const struct eu_metadata *metadata,
  convert:
 	{
 		char *strtod_end;
+
+		if (!eu_locale_c(&ep->locale))
+			goto error;
+
 		*result = strtod(ep->input, &strtod_end);
 		if (strtod_end != p)
 			abort();
@@ -204,6 +208,9 @@ static enum eu_result number_generate(const struct eu_metadata *metadata,
 	return EU_PAUSED;
 
  non_integer:
+	if (!eu_locale_c(&eg->locale))
+		goto error;
+
 	space = eg->output_end - eg->output;
 	if (space >= MAX_DOUBLE_CHARS) {
 		/* Print into the output buffer */

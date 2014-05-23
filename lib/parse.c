@@ -50,6 +50,7 @@ struct eu_parse *eu_parse_create(struct eu_value result)
 	ep->metadata = result.metadata;
 	ep->result = result.value;
 	ep->error = 0;
+	eu_locale_init(&ep->locale);
 
 	memset(ep->result, 0, ep->metadata->size);
 	return ep;
@@ -69,18 +70,23 @@ void eu_parse_destroy(struct eu_parse *ep)
 	if (ep->result)
 		ep->metadata->fini(ep->metadata, ep->result);
 
+	eu_locale_fini(&ep->locale);
 	free(ep);
 }
 
 int eu_parse(struct eu_parse *ep, const char *input, size_t len)
 {
+	enum eu_result res;
+
 	if (unlikely(ep->error))
 		return 0;
 
 	ep->input = input;
 	ep->input_end = input + len;
 
-	switch (eu_stack_run(&ep->stack, ep)) {
+	res = eu_stack_run(&ep->stack, ep);
+	eu_locale_restore(&ep->locale);
+	switch (res) {
 	case EU_PAUSED:
 		return 1;
 
