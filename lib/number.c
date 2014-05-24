@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <math.h>
 
 #include <euphemus.h>
 #include "euphemus_int.h"
@@ -77,13 +78,19 @@ static enum eu_result number_parse(const struct eu_metadata *metadata,
  convert:
 	{
 		char *strtod_end;
+		double res;
 
 		if (!eu_locale_c(&ep->locale))
 			goto error;
 
-		*result = strtod(ep->input, &strtod_end);
+		res = strtod(ep->input, &strtod_end);
 		if (strtod_end != p)
 			abort();
+
+		if (res == HUGE_VAL || res == -HUGE_VAL)
+			goto error;
+
+		*result = res;
 	}
 
  done:
@@ -110,16 +117,20 @@ static enum eu_result number_parse_resume(struct eu_stack_frame *gframe,
 	convert:
 		{
 			char *strtod_end;
+			double res;
 
 			if (!eu_stack_append_scratch_with_nul(&ep->stack,
 							      ep->input, p))
 				goto error;
 
-			*result = strtod(eu_stack_scratch(&ep->stack),
-					 &strtod_end);
+			res = strtod(eu_stack_scratch(&ep->stack), &strtod_end);
 			if (strtod_end != eu_stack_scratch_end(&ep->stack) - 1)
 				abort();
 
+			if (res == HUGE_VAL || res == -HUGE_VAL)
+				goto error;
+
+			*result = res;
 			eu_stack_reset_scratch(&ep->stack);
 		}
 
@@ -208,6 +219,9 @@ static enum eu_result number_generate(const struct eu_metadata *metadata,
 	return EU_PAUSED;
 
  non_integer:
+	if (!isfinite(dvalue))
+		goto error;
+
 	if (!eu_locale_c(&eg->locale))
 		goto error;
 
