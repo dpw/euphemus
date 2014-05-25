@@ -54,9 +54,9 @@ test/test_codegen.o test/test_codegen.c.dep: test/test_schema.h
 # Even with .DELETE_ON_ERROR, make will only delete one of the
 # targets, hence the 'rm' here.
 test/test_schema.c test/test_schema.h: test/test_schema.json schemac/schemac
-	schemac/schemac $< || (rm -f test/test_schema.c test/test_schema.h ; false)
+	schemac/schemac -c test/test_schema.c -i test/test_schema.h $< || (rm -f test/test_schema.c test/test_schema.h ; false)
 
-HDROBJS_$(ROOT)test/test_schema.h=test/test_schema.o
+HDROBJS_test/test_schema.h=test/test_schema.o
 
 clean::
 	rm -f test/test_schema.c test/test_schema.h
@@ -92,7 +92,7 @@ clean::
 
 %.o %.c.dep: %.c
 	@mkdir -p $(@D)
-	$(COMPILE.c) $(PROJECT_CFLAGS) -MD -o $*.o $<
+	$(COMPILE.c) $(PROJECT_CFLAGS) -MD -iquote $(@D) -o $*.o $<
 	@sed -e 's|^\([^:]*\):|$*.o $*.c.dep:|' <$*.d >>$*.c.dep
 	@sed -e 's/#.*//;s/^[^:]*://;s/ *\\$$//;s/^ *//;/^$$/d;s/$$/ :/' <$*.d >>$*.c.dep
 	@sed -e 's/#.*//;s/ [^ ]*\.c//g;s/^\([^ ][^ ]*\):/OBJNEEDS_\1=/;s/\([^ ]*\.h\)/\$$(HDROBJS_\1)/g' <$*.d >>$*.c.dep

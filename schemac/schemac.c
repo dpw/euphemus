@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <libgen.h>
+#include <unistd.h>
 
 #include <euphemus.h>
 
@@ -396,17 +397,10 @@ static char *remove_extension(const char *path)
 
 static void codegen_init(struct codegen *codegen, const char *source_path)
 {
-	char *base_path;
-
 	codegen->inline_funcs = 1;
 	codegen->error_count = 0;
-
 	codegen->source_path = source_path;
-	base_path = remove_extension(source_path);
-	codegen->c_out_path = xsprintf("%s.c", base_path);
-	codegen->h_out_path = xsprintf("%s.h", base_path);
-	free(base_path);
-
+	codegen->c_out_path = codegen->h_out_path = NULL;
 	codegen->c_out = codegen->h_out = NULL;
 	codegen->type_infos_to_destroy = NULL;
 	codegen->defs = NULL;
@@ -458,6 +452,15 @@ static void codegen_error(struct codegen *codegen, const char *fmt, ...)
 
 static void codegen_open_output_files(struct codegen *codegen)
 {
+	char *base_path = remove_extension(codegen->source_path);
+
+	if (!codegen->c_out_path)
+		codegen->c_out_path = xsprintf("%s.c", base_path);
+	if (!codegen->h_out_path)
+		codegen->h_out_path = xsprintf("%s.h", base_path);
+
+	free(base_path);
+
 	codegen->c_out = fopen(codegen->c_out_path, "w");
 	if (!codegen->c_out) {
 		codegen_error(codegen, "error opening \"%s\": %s",
@@ -1465,30 +1468,61 @@ static void parse_schema_file(struct codegen *codegen, struct eu_value dest)
 	eu_parse_destroy(parse);
 }
 
+static void usage(char *cmd)
+{
+	fprintf(stderr,
+		"Usage: %s [ -c <path> ] [ -i <path> ] <JSON schema file>\n"
+		"Options\n"
+		"\t-c\tSet the path at which to generate the C source file\n"
+		"\t-i\tSet the path at which to generate the H header file\n"
+		"\t-h\tShow this message\n\n",
+		cmd);
+	exit(1);
+}
+
 int main(int argc, char **argv)
 {
-	int i;
+	int c, ok;
 	struct codegen codegen;
-	int all_ok = 1;
+	struct schema schema;
+	char *c_out_path = NULL;
+	char *h_out_path = NULL;
 
-	for (i = 1; i < argc; i++) {
-		struct schema schema;
+	while ((c = getopt(argc, argv, "c:i:h")) != -1) {
+		switch (c) {
+		case 'c':
+			c_out_path = xstrdup(optarg);
+			break;
 
-		codegen_init(&codegen, argv[i]);
+		case 'i':
+			h_out_path = xstrdup(optarg);
+			break;
 
-		parse_schema_file(&codegen, schema_to_eu_value(&schema));
-		if (!codegen.error_count) {
-			do_codegen(&codegen, &schema);
-			schema_fini(&schema);
+		case 'h':
+			usage(argv[0]);
 		}
-
-		if (codegen.error_count) {
-			codegen_delete_output_files(&codegen);
-			all_ok = 0;
-		}
-
-		codegen_fini(&codegen);
 	}
 
-	return !all_ok;
+	if (optind != argc - 1)
+		usage(argv[0]);
+
+	codegen_init(&codegen, argv[argc-1]);
+
+	if (c_out_path)
+		codegen.c_out_path = c_out_path;
+	if (h_out_path)
+		codegen.h_out_path = h_out_path;
+
+	parse_schema_file(&codegen, schema_to_eu_value(&schema));
+	if (!codegen.error_count) {
+		do_codegen(&codegen, &schema);
+		if (codegen.error_count)
+			codegen_delete_output_files(&codegen);
+	}
+
+	ok = !codegen.error_count;
+	codegen_fini(&codegen);
+	schema_fini(&schema);
+
+	return !ok;
 }
