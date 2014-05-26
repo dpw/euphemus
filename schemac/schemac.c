@@ -406,12 +406,14 @@ static void codegen_init(struct codegen *codegen, const char *source_path)
 	codegen->defs = NULL;
 	codegen->n_defs = 0;
 
-	codegen->number_type = make_simple_type(codegen, "double", "eu_number");
-	codegen->bool_type = make_simple_type(codegen, "eu_bool_t", "eu_bool");
-	codegen->string_type = make_builtin_type(codegen, "struct eu_string",
-						"eu_string");
-	codegen->variant_type = make_builtin_type(codegen, "struct eu_variant",
-						  "eu_variant");
+	codegen->number_type
+		= make_simple_type(codegen, "eu_number_t", "eu_number");
+	codegen->bool_type
+		= make_simple_type(codegen, "eu_bool_t", "eu_bool");
+	codegen->string_type
+		= make_builtin_type(codegen, "struct eu_string", "eu_string");
+	codegen->variant_type
+		= make_builtin_type(codegen, "struct eu_variant", "eu_variant");
 }
 
 static void codegen_fini(struct codegen *codegen)

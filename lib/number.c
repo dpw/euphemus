@@ -24,7 +24,7 @@ enum number_parse_state {
 struct number_parse_frame {
 	struct eu_stack_frame base;
 	enum number_parse_state state;
-	double *result;
+	eu_number_t *result;
 	int64_t int_value;
 	signed char negate;
 };
@@ -37,7 +37,7 @@ static enum eu_result number_parse(const struct eu_metadata *metadata,
 {
 	const char *p = ep->input;
 	const char *end = ep->input_end;
-	double *result = v_result;
+	eu_number_t *result = v_result;
 	enum number_parse_state state;
 	signed char negate;
 	int64_t int_value;
@@ -78,7 +78,7 @@ static enum eu_result number_parse(const struct eu_metadata *metadata,
  convert:
 	{
 		char *strtod_end;
-		double res;
+		eu_number_t res;
 
 		if (!eu_locale_c(&ep->locale))
 			goto error;
@@ -106,7 +106,7 @@ static enum eu_result number_parse_resume(struct eu_stack_frame *gframe,
 	enum number_parse_state state = frame->state;
 	signed char negate = frame->negate;
 	int64_t int_value = frame->int_value;
-	double *result = frame->result;
+	eu_number_t *result = frame->result;
 	const char *p = ep->input;
 	const char *end = ep->input_end;
 
@@ -117,7 +117,7 @@ static enum eu_result number_parse_resume(struct eu_stack_frame *gframe,
 	convert:
 		{
 			char *strtod_end;
-			double res;
+			eu_number_t res;
 
 			if (!eu_stack_append_scratch_with_nul(&ep->stack,
 							      ep->input, p))
@@ -160,7 +160,7 @@ static enum eu_result number_gen_resume(struct eu_stack_frame *gframe,
 static enum eu_result number_generate(const struct eu_metadata *metadata,
 				      struct eu_generate *eg, void *value)
 {
-	double dvalue = *(double *)value;
+	eu_number_t dvalue = *(eu_number_t *)value;
 	int64_t ivalue = (int64_t)dvalue;
 	uint64_t uvalue;
 	size_t space;
@@ -170,7 +170,7 @@ static enum eu_result number_generate(const struct eu_metadata *metadata,
 
 	(void)metadata;
 
-	if ((double)ivalue != dvalue)
+	if ((eu_number_t)ivalue != dvalue)
 		goto non_integer;
 
 	if (ivalue == 0) {
@@ -280,7 +280,7 @@ static enum eu_result number_gen_resume(struct eu_stack_frame *gframe,
 
 const struct eu_metadata eu_number_metadata = {
 	EU_JSON_NUMBER,
-	sizeof(double),
+	sizeof(eu_number_t),
 	number_parse,
 	number_generate,
 	eu_noop_fini,

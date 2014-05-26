@@ -25,29 +25,29 @@ static void test_parse_string(void)
 static void test_parse_number(void)
 {
 	TEST_PARSE("  123456789.0123456789e0  ",
-		   double,
+		   eu_number_t,
 		   eu_number_value,
-		   assert(result == (double)123456789.0123456789e0),);
+		   assert(result == (eu_number_t)123456789.0123456789e0),);
 	TEST_PARSE("  -0.0123456789e-10  ",
-		   double,
+		   eu_number_t,
 		   eu_number_value,
-		   assert(result == (double)-0.0123456789e-10),);
+		   assert(result == (eu_number_t)-0.0123456789e-10),);
 	TEST_PARSE("  0  ",
-		   double,
+		   eu_number_t,
 		   eu_number_value,
 		   assert(result == 0),);
 	TEST_PARSE("  123456789  ",
-		   double,
+		   eu_number_t,
 		   eu_number_value,
-		   assert(result == (double)123456789),);
+		   assert(result == (eu_number_t)123456789),);
 	TEST_PARSE("  -123456789  ",
-		   double,
+		   eu_number_t,
 		   eu_number_value,
-		   assert(result == (double)-123456789),);
+		   assert(result == (eu_number_t)-123456789),);
 	TEST_PARSE("  1000000000000000000000000  ",
-		   double,
+		   eu_number_t,
 		   eu_number_value,
-		   assert(result == (double)1000000000000000000000000.0),);
+		   assert(result == (eu_number_t)1000000000000000000000000.0),);
 }
 
 static void test_parse_bool(void)
@@ -236,7 +236,7 @@ static void test_gen_bool(void)
 
 static void test_gen_number(void)
 {
-	double num = 100;
+	eu_number_t num = 100;
 	test_gen(eu_number_value(&num), eu_cstr("100"));
 
 	num = 0;

@@ -266,7 +266,9 @@ int eu_array_grow(struct eu_array *array, size_t el_size);
 
 extern const struct eu_metadata eu_number_metadata;
 
-static __inline__ struct eu_value eu_number_value(double *number)
+typedef double eu_number_t;
+
+static __inline__ struct eu_value eu_number_value(eu_number_t *number)
 {
 	return eu_value(number, &eu_number_metadata);
 }
@@ -304,7 +306,7 @@ struct eu_variant {
 		struct eu_string string;
 		struct eu_object object;
 		struct eu_variant_array array;
-		double number;
+		eu_number_t number;
 		eu_bool_t bool;
 	} u;
 };
@@ -336,7 +338,7 @@ static __inline__ void eu_variant_assign_bool(struct eu_variant *var,
 }
 
 static __inline__ void eu_variant_assign_number(struct eu_variant *var,
-					      double val)
+						eu_number_t val)
 {
 	if (var->metadata)
 		eu_variant_fini(var);
@@ -398,7 +400,7 @@ static __inline__ struct eu_string_ref eu_value_to_string_ref(
 	return eu_string_to_ref(eu_value_extract(val, EU_JSON_STRING));
 }
 
-static __inline__ double *eu_value_to_number(struct eu_value val)
+static __inline__ eu_number_t *eu_value_to_number(struct eu_value val)
 {
 	return eu_value_extract(val, EU_JSON_NUMBER);
 }
