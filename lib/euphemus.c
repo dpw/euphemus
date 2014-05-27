@@ -98,19 +98,20 @@ const struct eu_metadata *eu_introduce_aux(const struct eu_type_descriptor *d,
 	}
 }
 
-#define DEFINE_SHIM_DESCRIPTOR(name)                                  \
-static const struct eu_metadata *name##_metadata_ptr                  \
-	= &eu_##name##_metadata;                                      \
+#define DEFINE_SHIM_DESCRIPTOR(name, md)                              \
+static const struct eu_metadata *name##_metadata_ptr = md;            \
 const struct eu_type_descriptor eu_##name##_descriptor = {            \
 	&name##_metadata_ptr,                                         \
 	EU_TDESC_SHIM                                                 \
 };
 
-DEFINE_SHIM_DESCRIPTOR(string)
-DEFINE_SHIM_DESCRIPTOR(number)
-DEFINE_SHIM_DESCRIPTOR(bool)
-DEFINE_SHIM_DESCRIPTOR(null)
-DEFINE_SHIM_DESCRIPTOR(variant)
+DEFINE_SHIM_DESCRIPTOR(string, &eu_string_metadata)
+DEFINE_SHIM_DESCRIPTOR(number, (const struct eu_metadata *)&eu_number_metadata)
+DEFINE_SHIM_DESCRIPTOR(integer,
+		       (const struct eu_metadata *)&eu_integer_metadata)
+DEFINE_SHIM_DESCRIPTOR(bool, &eu_bool_metadata)
+DEFINE_SHIM_DESCRIPTOR(null, &eu_null_metadata)
+DEFINE_SHIM_DESCRIPTOR(variant, &eu_variant_metadata)
 
 struct eu_value eu_value_get(struct eu_value val, struct eu_string_ref name)
 {

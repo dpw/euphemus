@@ -4,6 +4,11 @@
 #include <euphemus.h>
 #include "euphemus_int.h"
 
+struct eu_number_metadata {
+	struct eu_metadata base;
+	eu_bool_t integer;
+};
+
 #define ONE_TO_9                                                      \
 	'1': case '2': case '3': case '4': case '5':                  \
 	case '6': case '7': case '8': case '9'
@@ -23,27 +28,27 @@ enum number_parse_state {
 
 struct number_parse_frame {
 	struct eu_stack_frame base;
+	const struct eu_number_metadata *metadata;
+	void *result;
+	uint64_t int_value;
 	enum number_parse_state state;
-	eu_number_t *result;
-	int64_t int_value;
 	signed char negate;
 };
 
 static enum eu_result number_parse_resume(struct eu_stack_frame *gframe,
 					  void *v_ep);
 
-static enum eu_result number_parse(const struct eu_metadata *metadata,
-				   struct eu_parse *ep, void *v_result)
+static enum eu_result number_parse(const struct eu_metadata *gmetadata,
+				   struct eu_parse *ep, void *result)
 {
+	const struct eu_number_metadata *metadata
+		= (const struct eu_number_metadata *)gmetadata;
 	const char *p = ep->input;
 	const char *end = ep->input_end;
-	eu_number_t *result = v_result;
 	enum number_parse_state state;
 	signed char negate;
-	int64_t int_value;
+	uint64_t int_value;
 	struct number_parse_frame *frame;
-
-	(void)metadata;
 
 	for (;;) {
 		switch (*p) {
@@ -60,7 +65,7 @@ static enum eu_result number_parse(const struct eu_metadata *metadata,
 
 		case WHITESPACE_CASES: {
 			enum eu_result res
-				= eu_consume_whitespace(metadata, ep, result);
+				= eu_consume_whitespace(gmetadata, ep, result);
 			if (res != EU_OK)
 				return res;
 
@@ -78,7 +83,7 @@ static enum eu_result number_parse(const struct eu_metadata *metadata,
  convert:
 	{
 		char *strtod_end;
-		eu_number_t res;
+		double res;
 
 		if (!eu_locale_c(&ep->locale))
 			goto error;
@@ -90,7 +95,16 @@ static enum eu_result number_parse(const struct eu_metadata *metadata,
 		if (res == HUGE_VAL || res == -HUGE_VAL)
 			goto error;
 
-		*result = res;
+		if (!metadata->integer) {
+			*(eu_number_t *)result = res;
+		}
+		else {
+			eu_integer_t ires = res;
+			if (ires != res)
+				goto error;
+
+			*(eu_integer_t *)result = ires;
+		}
 	}
 
  done:
@@ -103,10 +117,11 @@ static enum eu_result number_parse_resume(struct eu_stack_frame *gframe,
 {
 	struct number_parse_frame *frame = (struct number_parse_frame *)gframe;
 	struct eu_parse *ep = v_ep;
+	const struct eu_number_metadata *metadata = frame->metadata;
 	enum number_parse_state state = frame->state;
 	signed char negate = frame->negate;
 	int64_t int_value = frame->int_value;
-	eu_number_t *result = frame->result;
+	void *result = frame->result;
 	const char *p = ep->input;
 	const char *end = ep->input_end;
 
@@ -130,7 +145,17 @@ static enum eu_result number_parse_resume(struct eu_stack_frame *gframe,
 			if (res == HUGE_VAL || res == -HUGE_VAL)
 				goto error;
 
-			*result = res;
+			if (!metadata->integer) {
+				*(eu_number_t *)result = res;
+			}
+			else {
+				eu_integer_t ires = res;
+				if (ires != res)
+					goto error;
+
+				*(eu_integer_t *)result = ires;
+			}
+
 			eu_stack_reset_scratch(&ep->stack);
 		}
 
@@ -152,26 +177,42 @@ struct number_gen_frame {
 static enum eu_result number_gen_resume(struct eu_stack_frame *gframe,
 					void *eg);
 
-
 /* 30 characters ought to be safe for an IEEE754 double, including the
    trailing 0 byte. */
-#define MAX_DOUBLE_CHARS 30
-
-static enum eu_result number_generate(const struct eu_metadata *metadata,
-				      struct eu_generate *eg, void *value)
+static enum eu_result output_scratch(struct eu_generate *eg, char *p,
+				     size_t len)
 {
-	eu_number_t dvalue = *(eu_number_t *)value;
-	int64_t ivalue = (int64_t)dvalue;
-	uint64_t uvalue;
-	size_t space;
-	char *p;
+	size_t space = eg->output_end - eg->output;
+	size_t pos;
 	struct number_gen_frame *frame;
-	unsigned int len, scratch_size, pos;
+
+	if (space >= len) {
+		memcpy(eg->output, p, len);
+		eg->output += len;
+		return EU_OK;
+	}
+
+	memcpy(eg->output, p, space);
+	eg->output = eg->output_end;
+
+	pos = p - eu_stack_scratch(&eg->stack);
+	eg->stack.scratch_size = pos + len;
+	frame = eu_stack_alloc_first(&eg->stack, sizeof *frame);
+	frame->base.resume = number_gen_resume;
+	frame->base.destroy = eu_stack_frame_noop_destroy;
+	frame->pos = pos + space;
+	return EU_PAUSED;
+}
+
+static enum eu_result integer_generate(const struct eu_metadata *metadata,
+				       struct eu_generate *eg, void *value)
+{
+	int64_t ivalue = *(eu_integer_t *)value;
+	uint64_t uvalue;
+	char *p;
+	size_t len;
 
 	(void)metadata;
-
-	if ((eu_number_t)ivalue != dvalue)
-		goto non_integer;
 
 	if (ivalue == 0) {
 		*eg->output++ = '0';
@@ -187,11 +228,10 @@ static enum eu_result number_generate(const struct eu_metadata *metadata,
 	}
 
 	/* A 63-bit integer needs at most 19 digits */
-	scratch_size = 19;
-	if (!eu_stack_reserve_scratch(&eg->stack, scratch_size))
+	if (!eu_stack_reserve_scratch(&eg->stack, 19))
 		goto error;
 
-	for (p = eu_stack_scratch(&eg->stack) + scratch_size, len = 1;; len++) {
+	for (p = eu_stack_scratch(&eg->stack) + 19, len = 1;; len++) {
 		*--p = '0' + uvalue % 10;
 		uvalue /= 10;
 
@@ -199,26 +239,25 @@ static enum eu_result number_generate(const struct eu_metadata *metadata,
 			break;
 	}
 
- output_scratch:
-	space = eg->output_end - eg->output;
-	if (space >= len) {
-		memcpy(eg->output, p, len);
-		eg->output += len;
-		return EU_OK;
-	}
+	return output_scratch(eg, p, len);
 
-	memcpy(eg->output, p, space);
-	eg->output = eg->output_end;
-	pos = p + space - eu_stack_scratch(&eg->stack);
+ error:
+	return EU_ERROR;
+}
 
-	eg->stack.scratch_size = scratch_size;
-	frame = eu_stack_alloc_first(&eg->stack, sizeof *frame);
-	frame->base.resume = number_gen_resume;
-	frame->base.destroy = eu_stack_frame_noop_destroy;
-	frame->pos = pos;
-	return EU_PAUSED;
+#define MAX_DOUBLE_CHARS 30
 
- non_integer:
+static enum eu_result number_generate(const struct eu_metadata *metadata,
+				      struct eu_generate *eg, void *value)
+{
+	eu_number_t dvalue = *(eu_number_t *)value;
+	int64_t ivalue = (int64_t)dvalue;
+	int len;
+	size_t space;
+
+	if ((eu_number_t)ivalue == dvalue)
+		return integer_generate(metadata, eg, &ivalue);
+
 	if (!isfinite(dvalue))
 		goto error;
 
@@ -228,28 +267,26 @@ static enum eu_result number_generate(const struct eu_metadata *metadata,
 	space = eg->output_end - eg->output;
 	if (space >= MAX_DOUBLE_CHARS) {
 		/* Print into the output buffer */
-		int plen = snprintf(eg->output, MAX_DOUBLE_CHARS, "%.16g",
-				    dvalue);
-		if (plen < 0 || plen >= MAX_DOUBLE_CHARS)
+		len = snprintf(eg->output, MAX_DOUBLE_CHARS, "%.16g", dvalue);
+		if (len < 0 || len >= MAX_DOUBLE_CHARS)
 			goto error;
 
-		eg->output += plen;
+		eg->output += len;
 		return EU_OK;
 	}
 	else {
-		/* Print into the scratch space */
-		int plen;
+		char *p;
 
+		/* Print into the scratch space */
 		if (!eu_stack_reserve_scratch(&eg->stack, MAX_DOUBLE_CHARS))
 			goto error;
 
 		p = eu_stack_scratch(&eg->stack);
-		plen = snprintf(p, MAX_DOUBLE_CHARS, "%.16g", dvalue);
-		if (plen < 0 || plen >= MAX_DOUBLE_CHARS)
+		len = snprintf(p, MAX_DOUBLE_CHARS, "%.16g", dvalue);
+		if (len < 0 || len >= MAX_DOUBLE_CHARS)
 			goto error;
 
-		scratch_size = len = plen;
-		goto output_scratch;
+		return output_scratch(eg, p, len);
 	}
 
  error:
@@ -278,15 +315,32 @@ static enum eu_result number_gen_resume(struct eu_stack_frame *gframe,
 	return EU_REINSTATE_PAUSED;
 }
 
-const struct eu_metadata eu_number_metadata = {
-	EU_JSON_NUMBER,
-	sizeof(eu_number_t),
-	number_parse,
-	number_generate,
-	eu_noop_fini,
-	eu_get_fail,
-	eu_object_iter_init_fail,
-	eu_object_size_fail
+const struct eu_number_metadata eu_number_metadata = {
+	{
+		EU_JSON_NUMBER,
+		sizeof(eu_number_t),
+		number_parse,
+		number_generate,
+		eu_noop_fini,
+		eu_get_fail,
+		eu_object_iter_init_fail,
+		eu_object_size_fail
+	},
+	0
+};
+
+const struct eu_number_metadata eu_integer_metadata = {
+	{
+		EU_JSON_NUMBER,
+		sizeof(eu_integer_t),
+		number_parse,
+		integer_generate,
+		eu_noop_fini,
+		eu_get_fail,
+		eu_object_iter_init_fail,
+		eu_object_size_fail
+	},
+	1
 };
 
 enum eu_result eu_variant_number(const void *number_metadata,

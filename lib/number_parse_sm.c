@@ -49,7 +49,11 @@ RESUME_ONLY(case NUMBER_PARSE_LEADING_ZERO:)
 		goto e;
 
 	default:
-		*result = 0;
+		if (metadata->integer)
+			*(eu_integer_t *)result = 0;
+		else
+			*(eu_number_t *)result = 0;
+
 		goto done;
 	}
 
@@ -78,7 +82,15 @@ RESUME_ONLY(case NUMBER_PARSE_INT_DIGITS:)
 	default:
 		/* Negate is 0 or -1, so this gives
 		   negate ? -int_value : int_value */
-		*result = (int_value ^ negate) - negate;
+		{
+			eu_integer_t res
+				= ((eu_integer_t)int_value ^ negate) - negate;
+			if (metadata->integer)
+				*(eu_integer_t *)result = res;
+			else
+				*(eu_number_t *)result = res;
+		}
+
 		goto done;
 	}
 
@@ -193,10 +205,11 @@ RESUME_ONLY(case NUMBER_PARSE_E_DIGITS:)
 
 	frame->base.resume = number_parse_resume;
 	frame->base.destroy = eu_stack_frame_noop_destroy;
+	frame->metadata = metadata;
+	frame->result = result;
+	frame->int_value = int_value;
 	frame->state = state;
 	frame->negate = negate;
-	frame->int_value = int_value;
-	frame->result = result;
 	return EU_PAUSED;
 
  error:
