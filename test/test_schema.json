@@ -4,6 +4,7 @@
 	"properties": {
 		"str": { "type": "string" },
 		"num": { "type": "number" },
+		"int_": { "type": "integer" },
 		"bool": { "type": "boolean" },
 		"any": {},
 		"bar": { "$ref": "#/definitions/bar" },

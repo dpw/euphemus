@@ -110,6 +110,7 @@ struct codegen {
 	size_t n_defs;
 
 	struct type_info *number_type;
+	struct type_info *integer_type;
 	struct type_info *bool_type;
 	struct type_info *string_type;
 	struct type_info *variant_type;
@@ -408,6 +409,8 @@ static void codegen_init(struct codegen *codegen, const char *source_path)
 
 	codegen->number_type
 		= make_simple_type(codegen, "eu_number_t", "eu_number");
+	codegen->integer_type
+		= make_simple_type(codegen, "eu_integer_t", "eu_integer");
 	codegen->bool_type
 		= make_simple_type(codegen, "eu_bool_t", "eu_bool");
 	codegen->string_type
@@ -585,8 +588,9 @@ static char *sanitize_name(struct eu_string_ref name)
 	char *p;
 
 	for (i = 0, p = res; i < name.len; i++) {
-		if (isalnum(name.chars[i]))
-			*p++ = name.chars[i];
+		char ch = name.chars[i];
+		if (isalnum(ch) || ch == '_')
+			*p++ = ch;
 	}
 
 	*p = 0;
@@ -1243,6 +1247,8 @@ static struct type_info *alloc_type(struct codegen *codegen,
 		res = codegen->string_type;
 	else if (eu_string_ref_equal(type, eu_cstr("number")))
 		res = codegen->number_type;
+	else if (eu_string_ref_equal(type, eu_cstr("integer")))
+		res = codegen->integer_type;
 	else if (eu_string_ref_equal(type, eu_cstr("boolean")))
 		res = codegen->bool_type;
 	else {

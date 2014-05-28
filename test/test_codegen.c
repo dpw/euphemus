@@ -11,7 +11,8 @@ static void check_test_schema(struct test_schema *test_schema)
 {
 	assert(eu_string_ref_equal(eu_string_to_ref(&test_schema->str),
 				   eu_cstr("x")));
-	assert(test_schema->num == 42);
+	assert(test_schema->num == 42.1);
+	assert(test_schema->int_ == 42);
 	assert(test_schema->bool);
 	assert(eu_value_type(eu_variant_value(&test_schema->any)) == EU_JSON_NULL);
 	assert(test_schema->bar);
@@ -20,9 +21,11 @@ static void check_test_schema(struct test_schema *test_schema)
 				   eu_cstr("y")));
 }
 
+static char test_schema_json[] = "{\"str\":\"x\",\"num\":42.1,\"int_\":42,\"bool\":true,\"any\":null,\"bar\":{},\"array\":[{\"str\":\"y\"}]}";
+
 static void test_struct_ptr(void)
 {
-	TEST_PARSE("{\"str\":\"x\",\"any\":null,\"bar\":{},\"num\":42,\"bool\":true,\"array\":[{\"str\":\"y\"}]}",
+	TEST_PARSE(test_schema_json,
 		   struct test_schema *,
 		   test_schema_ptr_to_eu_value,
 		   check_test_schema(result),
@@ -58,7 +61,7 @@ static void test_bad_struct_ptr(void)
 
 static void test_inline_struct(void)
 {
-	TEST_PARSE("{\"str\":\"x\",\"any\":null,\"bar\":{},\"num\":42,\"bool\":true,\"array\":[{\"str\":\"y\"}]}",
+	TEST_PARSE(test_schema_json,
 		   struct test_schema,
 		   test_schema_to_eu_value,
 		   check_test_schema(&result),
@@ -178,9 +181,13 @@ static void test_gen_struct(void)
 	test_gen(test_schema_to_eu_value(&ts), eu_cstr("{\"str\":\"hello\"}"));
 	eu_string_reset(&ts.str);
 
-	test_schema_set_num(&ts, 42);
-	test_gen(test_schema_to_eu_value(&ts), eu_cstr("{\"num\":42}"));
+	test_schema_set_num(&ts, 42.1);
+	test_gen(test_schema_to_eu_value(&ts), eu_cstr("{\"num\":42.1}"));
 	test_schema_set_num_present(&ts, 0);
+
+	test_schema_set_int_(&ts, 42);
+	test_gen(test_schema_to_eu_value(&ts), eu_cstr("{\"int_\":42}"));
+	test_schema_set_int__present(&ts, 0);
 
 	eu_variant_assign_number(&ts.any, 123);
 	test_gen(test_schema_to_eu_value(&ts), eu_cstr("{\"any\":123}"));
@@ -194,7 +201,7 @@ static void test_gen_struct(void)
 
 static void test_gen_parsed_struct(void)
 {
-	struct eu_string_ref json = eu_cstr("{\"str\":\"x\",\"num\":42,\"bool\":true,\"any\":null,\"bar\":{},\"array\":[{\"str\":\"y\"}]}");
+	struct eu_string_ref json = eu_cstr(test_schema_json);
 	struct test_schema ts;
 	struct eu_parse *parse;
 
