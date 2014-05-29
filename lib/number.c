@@ -38,6 +38,42 @@ struct number_parse_frame {
 static enum eu_result number_parse_resume(struct eu_stack_frame *gframe,
 					  void *v_ep);
 
+static enum eu_result convert(const struct eu_number_metadata *metadata,
+			      struct eu_parse *ep, const char *start,
+			      const char *end, void *result)
+{
+	char *strtod_end;
+	double res;
+
+	if (!eu_locale_c(&ep->locale))
+		goto error;
+
+	res = strtod(start, &strtod_end);
+	if (strtod_end != end)
+		/* We have already checked the syntax of the number,
+		   so this should never happen. */
+		abort();
+
+	if (res == HUGE_VAL || res == -HUGE_VAL)
+		goto error;
+
+	if (!metadata->integer) {
+		*(eu_number_t *)result = res;
+	}
+	else {
+		eu_integer_t ires = res;
+		if (ires != res)
+			goto error;
+
+		*(eu_integer_t *)result = ires;
+	}
+
+	return EU_OK;
+
+ error:
+	return EU_ERROR;
+}
+
 static enum eu_result number_parse(const struct eu_metadata *gmetadata,
 				   struct eu_parse *ep, void *result)
 {
@@ -82,29 +118,10 @@ static enum eu_result number_parse(const struct eu_metadata *gmetadata,
 
  convert:
 	{
-		char *strtod_end;
-		double res;
-
-		if (!eu_locale_c(&ep->locale))
-			goto error;
-
-		res = strtod(ep->input, &strtod_end);
-		if (strtod_end != p)
-			abort();
-
-		if (res == HUGE_VAL || res == -HUGE_VAL)
-			goto error;
-
-		if (!metadata->integer) {
-			*(eu_number_t *)result = res;
-		}
-		else {
-			eu_integer_t ires = res;
-			if (ires != res)
-				goto error;
-
-			*(eu_integer_t *)result = ires;
-		}
+		enum eu_result res
+			= convert(metadata, ep, ep->input, p, result);
+		ep->input = p;
+		return res;
 	}
 
  done:
@@ -131,32 +148,19 @@ static enum eu_result number_parse_resume(struct eu_stack_frame *gframe,
 
 	convert:
 		{
-			char *strtod_end;
-			eu_number_t res;
+			enum eu_result res;
 
 			if (!eu_stack_append_scratch_with_nul(&ep->stack,
 							      ep->input, p))
 				goto error;
 
-			res = strtod(eu_stack_scratch(&ep->stack), &strtod_end);
-			if (strtod_end != eu_stack_scratch_end(&ep->stack) - 1)
-				abort();
-
-			if (res == HUGE_VAL || res == -HUGE_VAL)
-				goto error;
-
-			if (!metadata->integer) {
-				*(eu_number_t *)result = res;
-			}
-			else {
-				eu_integer_t ires = res;
-				if (ires != res)
-					goto error;
-
-				*(eu_integer_t *)result = ires;
-			}
-
+			res = convert(metadata, ep,
+				      eu_stack_scratch(&ep->stack),
+				      eu_stack_scratch_end(&ep->stack) - 1,
+				      result);
 			eu_stack_reset_scratch(&ep->stack);
+			ep->input = p;
+			return res;
 		}
 
 	done:
