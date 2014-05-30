@@ -384,10 +384,19 @@ static __inline__ void eu_variant_array_init(struct eu_variant_array *array) {
 }
 
 void eu_variant_array_fini(struct eu_variant_array *array);
-struct eu_value eu_variant_array_value(struct eu_variant_array *array);
+
+extern const struct eu_array_metadata eu_variant_array_metadata;
+
+static __inline__ struct eu_value eu_variant_array_value(
+					       struct eu_variant_array *array)
+{
+	return eu_value(array,
+			(const struct eu_metadata *)&eu_variant_array_metadata);
+}
 
 static __inline__ struct eu_variant *eu_variant_array_push(
-					       struct eu_variant_array *array) {
+					       struct eu_variant_array *array)
+{
 	if (array->len < array->priv.capacity
 	    || eu_array_grow((struct eu_array *)array,
 			     sizeof(struct eu_variant)))

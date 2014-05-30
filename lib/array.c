@@ -248,7 +248,7 @@ static enum eu_result array_gen_resume(struct eu_stack_frame *gframe,
 	}
 }
 
-static const struct eu_array_metadata variant_array_metadata = {
+const struct eu_array_metadata eu_variant_array_metadata = {
 	{
 		EU_JSON_ARRAY,
 		sizeof(struct eu_array),
@@ -266,19 +266,14 @@ enum eu_result eu_variant_array(const void *unused_metadata,
 				struct eu_parse *ep, struct eu_variant *result)
 {
 	(void)unused_metadata;
-	result->metadata = &variant_array_metadata.base;
-	return array_parse_aux(&variant_array_metadata.base, ep,
+	result->metadata = &eu_variant_array_metadata.base;
+	return array_parse_aux(&eu_variant_array_metadata.base, ep,
 			       &result->u.array);
 }
 
 void eu_variant_array_fini(struct eu_variant_array *array)
 {
 	array_fini(&eu_variant_metadata, (struct eu_array *)array);
-}
-
-struct eu_value eu_variant_array_value(struct eu_variant_array *array)
-{
-	return eu_value(array, &variant_array_metadata.base);
 }
 
 const struct eu_metadata *eu_introduce_array(const struct eu_type_descriptor *d,
