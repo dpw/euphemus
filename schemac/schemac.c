@@ -132,9 +132,6 @@ struct type_info {
 	   trailing space if appropriate. */
 	const char *c_type_name[2];
 
-	/* The C expression for a pointer to the type's metadata */
-	const char *metadata_ptr_expr[2];
-
 	/* The C expression for a pointer to the type's descriptor */
 	const char *descriptor_ptr_expr[2];
 
@@ -286,7 +283,6 @@ static void free_expr_pair(const char **exprs)
 static void type_info_fini(struct type_info *ti)
 {
 	free_expr_pair(ti->c_type_name);
-	free_expr_pair(ti->metadata_ptr_expr);
 	free_expr_pair(ti->descriptor_ptr_expr);
 	free((void *)ti->members_struct_name);
 	free((void *)ti->member_struct_name);
@@ -323,10 +319,6 @@ static struct type_info *make_simple_or_builtin_type(struct codegen *codegen,
 	ti->c_type_name[REQUIRED]
 		= ti->c_type_name[OPTIONAL]
 		= xsprintf("%s ", c_type_name);
-
-	ti->metadata_ptr_expr[REQUIRED]
-		= ti->metadata_ptr_expr[OPTIONAL]
-		= xsprintf("&%s_metadata", base_name);
 
 	ti->descriptor_ptr_expr[REQUIRED]
 		= ti->descriptor_ptr_expr[OPTIONAL]
@@ -566,11 +558,6 @@ static struct type_info *alloc_struct(struct schema *schema,
 	sti->base.c_type_name[OPTIONAL]
 		= xsprintf("struct %.*s *",
 			   (int)sti->struct_name.len, sti->struct_name.chars);
-
-	sti->base.metadata_ptr_expr[REQUIRED]
-		= xsprintf("%s()", sti->metadata_func_name);
-	sti->base.metadata_ptr_expr[OPTIONAL]
-		= xsprintf("%s()", sti->ptr_metadata_func_name);
 
 	sti->base.descriptor_ptr_expr[REQUIRED]
 		= xsprintf("&%s.struct_base", sti->descriptor_name);
@@ -1062,9 +1049,6 @@ static struct type_info *alloc_array(struct schema *schema,
 	ati->base.c_type_name[REQUIRED]
 		= ati->base.c_type_name[OPTIONAL]
 		= xsprintf("struct %s ", cname);
-	ati->base.metadata_ptr_expr[REQUIRED]
-		= ati->base.metadata_ptr_expr[OPTIONAL]
-		= xsprintf("%s()", ati->metadata_func_name);
 	ati->base.descriptor_ptr_expr[REQUIRED]
 		= ati->base.descriptor_ptr_expr[OPTIONAL]
 		= xsprintf("&%s.base", ati->descriptor_name);
@@ -1147,7 +1131,9 @@ static void array_define(struct type_info *ti, struct codegen *codegen)
 
 static void array_call_fini(struct type_info *ti, FILE *out, const char *var_expr)
 {
-	fprintf(out, "\teu_array_fini(%s, &%s);\n", ti->metadata_ptr_expr[REQUIRED], var_expr);
+	struct array_type_info *ati = (void *)ti;
+	fprintf(out, "\teu_array_fini(%s(), &%s);\n", ati->metadata_func_name,
+		var_expr);
 }
 
 static void array_destroy(struct type_info *ti)
