@@ -60,18 +60,39 @@ RESUME_ONLY(case NUMBER_PARSE_LEADING_ZERO:)
  int_digits:
 	p++;
 	state = NUMBER_PARSE_INT_DIGITS;
-RESUME_ONLY(case NUMBER_PARSE_INT_DIGITS:)
-	if (p == end)
-		goto pause;
 
-	switch (*p) {
-	case ZERO_TO_9:
-		int_value = int_value * 10 + (*p - '0');
-		if (int_value <= (INT64_MAX-9)/10)
-			goto int_digits;
-		else
+#ifndef RESUME
+	/* 18 decimal digits is always less than 2^63.  So we can
+	   process 18 digits without checking for overflow. The resume
+	   case is excluded from this fast path - it's probably not
+	   worth it.  We have read one digit already, so 17 left. */
+	if (end - p >= 17) {
+		int i;
+
+		for (i = 0; i < 17; i++) {
+			if (*p >= '0' && *p <= '9')
+				int_value = int_value * 10 + (*p++ - '0');
+			else
+				break;
+		}
+	}
+#endif
+
+RESUME_ONLY(case NUMBER_PARSE_INT_DIGITS:)
+	for (;;) {
+		if (p == end)
+			goto pause;
+
+		if (int_value > (INT64_MAX-9)/10)
 			goto overflow_digits;
 
+		if (*p >= '0' && *p <= '9')
+			int_value = int_value * 10 + (*p++ - '0');
+		else
+			break;
+	}
+
+	switch (*p) {
 	case '.':
 		goto point;
 
