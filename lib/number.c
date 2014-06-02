@@ -137,7 +137,7 @@ static enum eu_result number_parse_resume(struct eu_stack_frame *gframe,
 	const struct eu_number_metadata *metadata = frame->metadata;
 	enum number_parse_state state = frame->state;
 	signed char negate = frame->negate;
-	int64_t int_value = frame->int_value;
+	uint64_t int_value = frame->int_value;
 	void *result = frame->result;
 	const char *p = ep->input;
 	const char *end = ep->input_end;

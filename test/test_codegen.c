@@ -230,6 +230,47 @@ static void test_escaped_member_names(void)
 	test_schema_fini(&ts);
 }
 
+static void test_int(struct eu_string_ref json, eu_integer_t i)
+{
+	struct test_schema ts;
+	struct eu_parse *parse;
+
+	assert(parse = eu_parse_create(test_schema_to_eu_value(&ts)));
+	assert(eu_parse(parse, json.chars, json.len));
+	assert(eu_parse_finish(parse));
+	eu_parse_destroy(parse);
+	assert(ts.int_ == i);
+
+	test_gen(test_schema_to_eu_value(&ts), json);
+	test_schema_fini(&ts);
+}
+
+static void test_int_overflow(struct eu_string_ref json)
+{
+	struct test_schema ts;
+	struct eu_parse *parse;
+
+	assert(parse = eu_parse_create(test_schema_to_eu_value(&ts)));
+	assert(!eu_parse(parse, json.chars, json.len));
+	eu_parse_destroy(parse);
+	test_schema_fini(&ts);
+}
+
+static void test_big_ints(void)
+{
+	test_int(eu_cstr("{\"int_\":9223372036854775806}"),
+		 9223372036854775806);
+	test_int(eu_cstr("{\"int_\":9223372036854775807}"),
+		 9223372036854775807);
+	test_int_overflow(eu_cstr("{\"int_\":9223372036854775808}"));
+
+	test_int(eu_cstr("{\"int_\":-9223372036854775807}"),
+		 -9223372036854775807);
+	test_int(eu_cstr("{\"int_\":-9223372036854775808}"),
+		 -9223372036854775807-1);
+	test_int_overflow(eu_cstr("{\"int_\":-9223372036854775809}"));
+}
+
 int main(void)
 {
 	test_struct_ptr();
@@ -243,5 +284,6 @@ int main(void)
 	test_gen_struct();
 	test_gen_parsed_struct();
 	test_escaped_member_names();
+	test_big_ints();
 	return 0;
 }

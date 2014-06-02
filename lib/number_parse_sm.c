@@ -70,10 +70,10 @@ RESUME_ONLY(case NUMBER_PARSE_LEADING_ZERO:)
 		int i;
 
 		for (i = 0; i < 17; i++) {
-			if (*p >= '0' && *p <= '9')
-				int_value = int_value * 10 + (*p++ - '0');
-			else
-				break;
+			if (!(*p >= '0' && *p <= '9'))
+				goto done_int_digits;
+
+			int_value = int_value * 10 + (*p++ - '0');
 		}
 	}
 #endif
@@ -83,15 +83,18 @@ RESUME_ONLY(case NUMBER_PARSE_INT_DIGITS:)
 		if (p == end)
 			goto pause;
 
-		if (int_value > (INT64_MAX-9)/10)
+		if (!(*p >= '0' && *p <= '9'))
+			break;
+
+		if (int_value > (UINT64_MAX-9)/10)
 			goto overflow_digits;
 
-		if (*p >= '0' && *p <= '9')
-			int_value = int_value * 10 + (*p++ - '0');
-		else
-			break;
+		int_value = int_value * 10 + (*p++ - '0');
 	}
 
+#ifndef RESUME
+ done_int_digits:
+#endif
 	switch (*p) {
 	case '.':
 		goto point;
@@ -101,15 +104,22 @@ RESUME_ONLY(case NUMBER_PARSE_INT_DIGITS:)
 		goto e;
 
 	default:
-		/* Negate is 0 or -1, so this gives
-		   negate ? -int_value : int_value */
 		{
-			eu_integer_t res
-				= ((eu_integer_t)int_value ^ negate) - negate;
-			if (metadata->integer)
-				*(eu_integer_t *)result = res;
-			else
-				*(eu_number_t *)result = res;
+			/* Note that negate is 0 or -1, and that
+			   int_value is non-zero. */
+			if (metadata->integer) {
+				int_value += negate;
+				if (int_value > INT64_MAX)
+					/* Overflows an int64_t */
+					goto error;
+
+				*(eu_integer_t *)result = int_value ^ negate;
+			}
+			else {
+				*(eu_number_t *)result
+					= !negate ? (eu_number_t)int_value
+					          : -(eu_number_t)int_value;
+			}
 		}
 
 		goto done;
