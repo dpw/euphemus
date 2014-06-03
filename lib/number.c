@@ -167,6 +167,7 @@ static enum eu_result number_parse_resume(struct eu_stack_frame *gframe,
 		}
 
 	done:
+		eu_stack_reset_scratch(&ep->stack);
 		ep->input = p;
 		return EU_OK;
 	}
