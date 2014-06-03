@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <math.h>
+#include <errno.h>
 
 #include <euphemus.h>
 #include "euphemus_int.h"
@@ -48,13 +49,15 @@ static enum eu_result convert(const struct eu_number_metadata *metadata,
 	if (!eu_locale_c(&ep->locale))
 		goto error;
 
+	errno = 0;
 	res = strtod(start, &strtod_end);
 	if (strtod_end != end)
 		/* We have already checked the syntax of the number,
 		   so this should never happen. */
 		abort();
 
-	if (res == HUGE_VAL || res == -HUGE_VAL)
+	if ((res == HUGE_VAL || res == -HUGE_VAL)
+	    && errno == ERANGE)
 		goto error;
 
 	if (!metadata->integer) {
