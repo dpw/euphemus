@@ -4,16 +4,42 @@
 
 #ifndef RESUME
 #define RESUME_ONLY(x)
+#else
+#define RESUME_ONLY(x) x
+#endif
+
+	state = NUMBER_PARSE_START;
+RESUME_ONLY(case NUMBER_PARSE_START:)
+
+	for (;;) {
+		switch (*p) {
+		case '-':
+			goto leading_minus;
+
+		case '0':
+			goto leading_zero;
+
+		case ONE_TO_9:
+			goto int_digits;
+
+		case WHITESPACE_CASES: {
+			p = ep->input = skip_whitespace(p, end);
+			if (p == end)
+				goto pause_whitespace;
+
+			break;
+		}
+
+		default:
+			goto error;
+		}
+	}
 
  leading_minus:
 	negate = -1;
-	int_value = 0;
 	p++;
 	state = NUMBER_PARSE_LEADING_MINUS;
-#else
-#define RESUME_ONLY(x) x
- case NUMBER_PARSE_LEADING_MINUS:
-#endif
+RESUME_ONLY(case NUMBER_PARSE_LEADING_MINUS:)
 	if (p == end)
 		goto pause;
 
@@ -29,11 +55,9 @@
 		goto error;
 	}
 
-#ifndef RESUME
  leading_zero:
 	negate = 0;
 	int_value = 0;
-#endif
 	p++;
 	state = NUMBER_PARSE_LEADING_ZERO;
 RESUME_ONLY(case NUMBER_PARSE_LEADING_ZERO:)
@@ -49,19 +73,16 @@ RESUME_ONLY(case NUMBER_PARSE_LEADING_ZERO:)
 		goto e;
 
 	default:
-		if (metadata->integer)
-			*(eu_integer_t *)result = 0;
-		else
-			*(eu_number_t *)result = 0;
-
+		res.type = PARSED_INTEGER;
+		res.u.integer = 0;
+		ep->input = p;
 		goto done;
 	}
 
  int_digits:
-	p++;
+	int_value = *p++ - '0';
 	state = NUMBER_PARSE_INT_DIGITS;
 
-#ifndef RESUME
 	/* 18 decimal digits is always less than 2^63.  So we can
 	   process 18 digits without checking for overflow. The resume
 	   case is excluded from this fast path - it's probably not
@@ -76,7 +97,6 @@ RESUME_ONLY(case NUMBER_PARSE_LEADING_ZERO:)
 			int_value = int_value * 10 + (*p++ - '0');
 		}
 	}
-#endif
 
 RESUME_ONLY(case NUMBER_PARSE_INT_DIGITS:)
 	for (;;) {
@@ -92,9 +112,7 @@ RESUME_ONLY(case NUMBER_PARSE_INT_DIGITS:)
 		int_value = int_value * 10 + (*p++ - '0');
 	}
 
-#ifndef RESUME
  done_int_digits:
-#endif
 	switch (*p) {
 	case '.':
 		goto point;
@@ -104,22 +122,17 @@ RESUME_ONLY(case NUMBER_PARSE_INT_DIGITS:)
 		goto e;
 
 	default:
-		{
-			/* Note that negate is 0 or -1, and that
-			   int_value is non-zero. */
-			if (metadata->integer) {
-				int_value += negate;
-				if (int_value > INT64_MAX)
-					/* Overflows an int64_t */
-					goto error;
-
-				*(eu_integer_t *)result = int_value ^ negate;
-			}
-			else {
-				*(eu_number_t *)result
-					= !negate ? (eu_number_t)int_value
-					          : -(eu_number_t)int_value;
-			}
+		/* Note that negate is 0 or -1, and that int_value is
+		   non-zero. */
+		int_value += negate;
+		if (int_value <= INT64_MAX) {
+			res.type = PARSED_INTEGER;
+			res.u.integer = int_value ^ negate;
+			ep->input = p;
+		}
+		else {
+			res.type = PARSED_HUGE_INTEGER;
+			res.u.p = p;
 		}
 
 		goto done;
@@ -144,7 +157,9 @@ RESUME_ONLY(case NUMBER_PARSE_OVERFLOW_DIGITS:)
 		goto e;
 
 	default:
-		goto convert;
+		res.type = PARSED_HUGE_INTEGER;
+		res.u.p = p;
+		goto done;
 	}
 
  point:
@@ -178,7 +193,9 @@ RESUME_ONLY(case NUMBER_PARSE_FRAC_DIGITS:)
 			goto e;
 
 		default:
-			goto convert;
+			res.type = PARSED_NON_INTEGER;
+			res.u.p = p;
+			goto done;
 		}
 
 		p++;
@@ -214,7 +231,9 @@ RESUME_ONLY(case NUMBER_PARSE_E_DIGITS:)
 			break;
 
 		default:
-			goto convert;
+			res.type = PARSED_NON_INTEGER;
+			res.u.p = p;
+			goto done;
 		}
 
 		p++;
@@ -230,22 +249,28 @@ RESUME_ONLY(case NUMBER_PARSE_E_DIGITS:)
 
 	ep->input = p;
 
-	frame = eu_stack_alloc_first(&ep->stack, sizeof *frame);
-	if (!frame)
-		goto error;
+ pause_whitespace:
+	{
+		struct number_parse_frame *frame
+			= eu_stack_alloc_first(&ep->stack, sizeof *frame);
+		if (!frame)
+			goto error;
 
-	frame->base.resume = number_parse_resume;
-	frame->base.destroy = eu_stack_frame_noop_destroy;
-	frame->metadata = metadata;
-	frame->result = result;
-	frame->int_value = int_value;
-	frame->state = state;
-	frame->negate = negate;
-	return EU_PAUSED;
+		frame->base.destroy = eu_stack_frame_noop_destroy;
+		frame->metadata = metadata;
+		frame->int_value = int_value;
+		frame->state = state;
+		frame->negate = negate;
+
+		res.type = PAUSE;
+		res.u.frame = frame;
+		return res;
+	}
 
  error:
 	ep->input = p;
-	return EU_ERROR;
+	res.type = ERROR;
+	return res;
 
 #undef RESUME_ONLY
 #undef RESUME

@@ -17,6 +17,7 @@ struct eu_number_metadata {
 #define ZERO_TO_9 '0': case ONE_TO_9
 
 enum number_parse_state {
+	NUMBER_PARSE_START,
 	NUMBER_PARSE_LEADING_MINUS,
 	NUMBER_PARSE_LEADING_ZERO,
 	NUMBER_PARSE_INT_DIGITS,
@@ -36,146 +37,208 @@ struct number_parse_frame {
 	signed char negate;
 };
 
-static enum eu_result number_parse_resume(struct eu_stack_frame *gframe,
-					  void *v_ep);
+struct number_parse_result {
+	enum {
+		PARSED_INTEGER,
+		PARSED_HUGE_INTEGER,
+		PARSED_NON_INTEGER,
+		PAUSE,
+		ERROR
+	} type;
+	union {
+		eu_integer_t integer;
+		const char *p;
+		struct number_parse_frame *frame;
+	} u;
+};
 
-static enum eu_result convert(const struct eu_number_metadata *metadata,
-			      struct eu_parse *ep, const char *start,
-			      const char *end, void *result)
-{
-	char *strtod_end;
-	double res;
-
-	if (!eu_locale_c(&ep->locale))
-		goto error;
-
-	errno = 0;
-	res = strtod(start, &strtod_end);
-	if (strtod_end != end)
-		/* We have already checked the syntax of the number,
-		   so this should never happen. */
-		abort();
-
-	if ((res == HUGE_VAL || res == -HUGE_VAL)
-	    && errno == ERANGE)
-		goto error;
-
-	if (!metadata->integer) {
-		*(eu_number_t *)result = res;
-	}
-	else {
-		eu_integer_t ires = res;
-		if (ires != res)
-			goto error;
-
-		*(eu_integer_t *)result = ires;
-	}
-
-	return EU_OK;
-
- error:
-	return EU_ERROR;
-}
-
-static enum eu_result number_parse(const struct eu_metadata *gmetadata,
-				   struct eu_parse *ep, void *result)
+static struct number_parse_result number_parse(
+				      const struct eu_metadata *gmetadata,
+				      struct eu_parse *ep)
 {
 	const struct eu_number_metadata *metadata
 		= (const struct eu_number_metadata *)gmetadata;
 	const char *p = ep->input;
 	const char *end = ep->input_end;
 	enum number_parse_state state;
-	signed char negate;
-	uint64_t int_value;
-	struct number_parse_frame *frame;
-
-	for (;;) {
-		switch (*p) {
-		case '-':
-			goto leading_minus;
-
-		case '0':
-			goto leading_zero;
-
-		case ONE_TO_9:
-			int_value = *p - '0';
-			negate = 0;
-			goto int_digits;
-
-		case WHITESPACE_CASES: {
-			enum eu_result res
-				= eu_consume_whitespace(gmetadata, ep, result);
-			if (res != EU_OK)
-				return res;
-
-			p = ep->input;
-			break;
-		}
-
-		default:
-			goto error;
-		}
-	}
+	signed char negate = 0;
+	uint64_t int_value = 0;
+	struct number_parse_result res;
 
 #include "number_parse_sm.c"
 
- convert:
-	{
-		enum eu_result res
-			= convert(metadata, ep, ep->input, p, result);
-		ep->input = p;
-		return res;
-	}
-
  done:
-	ep->input = p;
-	return EU_OK;
+	return res;
 }
 
-static enum eu_result number_parse_resume(struct eu_stack_frame *gframe,
-					  void *v_ep)
+static struct number_parse_result number_parse_resume(
+					  struct number_parse_frame *frame,
+					  struct eu_parse *ep)
 {
-	struct number_parse_frame *frame = (struct number_parse_frame *)gframe;
-	struct eu_parse *ep = v_ep;
 	const struct eu_number_metadata *metadata = frame->metadata;
 	enum number_parse_state state = frame->state;
 	signed char negate = frame->negate;
 	uint64_t int_value = frame->int_value;
-	void *result = frame->result;
 	const char *p = ep->input;
 	const char *end = ep->input_end;
+	struct number_parse_result res;
 
 #define RESUME
 	switch (state) {
 #include "number_parse_sm.c"
 
-	convert:
-		{
-			enum eu_result res;
-
-			if (!eu_stack_append_scratch_with_nul(&ep->stack,
-							      ep->input, p))
-				goto error;
-
-			res = convert(metadata, ep,
-				      eu_stack_scratch(&ep->stack),
-				      eu_stack_scratch_end(&ep->stack) - 1,
-				      result);
-			eu_stack_reset_scratch(&ep->stack);
-			ep->input = p;
-			return res;
-		}
-
 	done:
-		eu_stack_reset_scratch(&ep->stack);
-		ep->input = p;
-		return EU_OK;
+		return res;
 	}
 
 	/* Without -O, gcc incorrectly reports that control can reach
 	   here. */
 	abort();
 }
+
+static enum eu_result int_parse_resume(struct eu_stack_frame *gframe,
+				       void *ep);
+
+static enum eu_result int_parse(const struct eu_metadata *metadata,
+				struct eu_parse *ep, void *result)
+{
+	struct number_parse_result res = number_parse(metadata, ep);
+
+	if (res.type == PARSED_INTEGER) {
+		*(eu_integer_t *)result = res.u.integer;
+		return EU_OK;
+	}
+	else if (res.type == PAUSE) {
+		res.u.frame->base.resume = int_parse_resume;
+		res.u.frame->result = result;
+		return EU_PAUSED;
+	}
+	else {
+		return EU_ERROR;
+	}
+}
+
+static enum eu_result int_parse_resume(struct eu_stack_frame *gframe,
+				       void *ep)
+{
+	struct number_parse_frame *frame = (struct number_parse_frame *)gframe;
+	void *result = frame->result;
+	struct number_parse_result res = number_parse_resume(frame, ep);
+
+	if (res.type == PARSED_INTEGER) {
+		*(eu_integer_t *)result = res.u.integer;
+		return EU_OK;
+	}
+	else if (res.type == PAUSE) {
+		res.u.frame->base.resume = int_parse_resume;
+		res.u.frame->result = result;
+		return EU_PAUSED;
+	}
+	else {
+		return EU_ERROR;
+	}
+}
+
+static int convert(struct eu_parse *ep, const char *start,
+		   const char *end, eu_number_t *result)
+{
+	char *strtod_end;
+	double val;
+
+	if (!eu_locale_c(&ep->locale))
+		return 0;
+
+	errno = 0;
+	val = strtod(start, &strtod_end);
+	if (strtod_end != end)
+		/* We have already checked the syntax of the number,
+		   so this should never happen. */
+		abort();
+
+	if ((val == HUGE_VAL || val == -HUGE_VAL)
+	    && errno == ERANGE)
+		return 0;
+
+	*result = val;
+	return 1;
+}
+
+static enum eu_result nonint_parse_resume(struct eu_stack_frame *gframe,
+					  void *v_ep);
+
+static enum eu_result nonint_parse(const struct eu_metadata *metadata,
+				   struct eu_parse *ep, void *result)
+{
+	struct number_parse_result res = number_parse(metadata, ep);
+
+	switch (res.type) {
+	case PARSED_INTEGER:
+		*(eu_number_t *)result = res.u.integer;
+		return EU_OK;
+
+	case PARSED_HUGE_INTEGER:
+	case PARSED_NON_INTEGER:
+		if (convert(ep, ep->input, res.u.p, result)) {
+			ep->input = res.u.p;
+			return EU_OK;
+		}
+		else {
+			return EU_ERROR;
+		}
+
+	case PAUSE:
+		res.u.frame->base.resume = nonint_parse_resume;
+		res.u.frame->result = result;
+		return EU_PAUSED;
+
+	case ERROR:
+		return EU_ERROR;
+	}
+
+	abort();
+}
+
+static enum eu_result nonint_parse_resume(struct eu_stack_frame *gframe,
+					  void *v_ep)
+{
+	struct number_parse_frame *frame = (struct number_parse_frame *)gframe;
+	struct eu_parse *ep = v_ep;
+	void *result = frame->result;
+	struct number_parse_result res = number_parse_resume(frame, ep);
+
+	switch (res.type) {
+	case PARSED_INTEGER:
+		*(eu_number_t *)result = res.u.integer;
+		return EU_OK;
+
+	case PARSED_HUGE_INTEGER:
+	case PARSED_NON_INTEGER:
+		if (!eu_stack_append_scratch_with_nul(&ep->stack,
+						      ep->input, res.u.p))
+			return EU_ERROR;
+
+		if (convert(ep, eu_stack_scratch(&ep->stack),
+			    eu_stack_scratch_end(&ep->stack) - 1, result)) {
+			ep->input = res.u.p;
+			eu_stack_reset_scratch(&ep->stack);
+			return EU_OK;
+		}
+		else {
+			return EU_ERROR;
+		}
+
+	case PAUSE:
+		res.u.frame->base.resume = nonint_parse_resume;
+		res.u.frame->result = result;
+		return EU_PAUSED;
+
+	case ERROR:
+		return EU_ERROR;
+	}
+
+	abort();
+}
+
 
 struct number_gen_frame {
 	struct eu_stack_frame base;
@@ -327,7 +390,7 @@ const struct eu_number_metadata eu_number_metadata = {
 	{
 		EU_JSON_NUMBER,
 		sizeof(eu_number_t),
-		number_parse,
+		nonint_parse,
 		number_generate,
 		eu_noop_fini,
 		eu_get_fail,
@@ -341,7 +404,7 @@ const struct eu_number_metadata eu_integer_metadata = {
 	{
 		EU_JSON_NUMBER,
 		sizeof(eu_integer_t),
-		number_parse,
+		int_parse,
 		integer_generate,
 		eu_noop_fini,
 		eu_get_fail,
@@ -355,5 +418,5 @@ enum eu_result eu_variant_number(const void *number_metadata,
 				 struct eu_parse *ep, struct eu_variant *result)
 {
 	result->metadata = number_metadata;
-	return number_parse(number_metadata, ep, &result->u.number);
+	return nonint_parse(number_metadata, ep, &result->u.number);
 }
