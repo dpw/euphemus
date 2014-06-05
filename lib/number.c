@@ -66,9 +66,6 @@ static struct number_parse_result number_parse(
 	struct number_parse_result res;
 
 #include "number_parse_sm.c"
-
- done:
-	return res;
 }
 
 static struct number_parse_result number_parse_resume(
@@ -86,9 +83,6 @@ static struct number_parse_result number_parse_resume(
 #define RESUME
 	switch (state) {
 #include "number_parse_sm.c"
-
-	done:
-		return res;
 	}
 
 	/* Without -O, gcc incorrectly reports that control can reach

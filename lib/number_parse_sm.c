@@ -73,10 +73,10 @@ RESUME_ONLY(case NUMBER_PARSE_LEADING_ZERO:)
 		goto e;
 
 	default:
+		ep->input = p;
 		res.type = PARSED_INTEGER;
 		res.u.integer = 0;
-		ep->input = p;
-		goto done;
+		return res;
 	}
 
  int_digits:
@@ -135,7 +135,7 @@ RESUME_ONLY(case NUMBER_PARSE_INT_DIGITS:)
 			res.u.p = p;
 		}
 
-		goto done;
+		return res;
 	}
 
  overflow_digits:
@@ -159,7 +159,7 @@ RESUME_ONLY(case NUMBER_PARSE_OVERFLOW_DIGITS:)
 	default:
 		res.type = PARSED_HUGE_INTEGER;
 		res.u.p = p;
-		goto done;
+		return res;
 	}
 
  point:
@@ -195,7 +195,7 @@ RESUME_ONLY(case NUMBER_PARSE_FRAC_DIGITS:)
 		default:
 			res.type = PARSED_NON_INTEGER;
 			res.u.p = p;
-			goto done;
+			return res;
 		}
 
 		p++;
@@ -233,7 +233,7 @@ RESUME_ONLY(case NUMBER_PARSE_E_DIGITS:)
 		default:
 			res.type = PARSED_NON_INTEGER;
 			res.u.p = p;
-			goto done;
+			return res;
 		}
 
 		p++;
