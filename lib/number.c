@@ -5,11 +5,6 @@
 #include <euphemus.h>
 #include "euphemus_int.h"
 
-struct eu_number_metadata {
-	struct eu_metadata base;
-	eu_bool_t integer;
-};
-
 #define ONE_TO_9                                                      \
 	'1': case '2': case '3': case '4': case '5':                  \
 	case '6': case '7': case '8': case '9'
@@ -30,7 +25,6 @@ enum number_parse_state {
 
 struct number_parse_frame {
 	struct eu_stack_frame base;
-	const struct eu_number_metadata *metadata;
 	void *result;
 	uint64_t int_value;
 	enum number_parse_state state;
@@ -52,12 +46,8 @@ struct number_parse_result {
 	} u;
 };
 
-static struct number_parse_result number_parse(
-				      const struct eu_metadata *gmetadata,
-				      struct eu_parse *ep)
+static struct number_parse_result number_parse(struct eu_parse *ep)
 {
-	const struct eu_number_metadata *metadata
-		= (const struct eu_number_metadata *)gmetadata;
 	const char *p = ep->input;
 	const char *end = ep->input_end;
 	enum number_parse_state state;
@@ -72,7 +62,6 @@ static struct number_parse_result number_parse_resume(
 					  struct number_parse_frame *frame,
 					  struct eu_parse *ep)
 {
-	const struct eu_number_metadata *metadata = frame->metadata;
 	enum number_parse_state state = frame->state;
 	signed char negate = frame->negate;
 	uint64_t int_value = frame->int_value;
@@ -96,7 +85,9 @@ static enum eu_result int_parse_resume(struct eu_stack_frame *gframe,
 static enum eu_result int_parse(const struct eu_metadata *metadata,
 				struct eu_parse *ep, void *result)
 {
-	struct number_parse_result res = number_parse(metadata, ep);
+	struct number_parse_result res = number_parse(ep);
+
+	(void)metadata;
 
 	if (res.type == PARSED_INTEGER) {
 		*(eu_integer_t *)result = res.u.integer;
@@ -163,7 +154,9 @@ static enum eu_result nonint_parse_resume(struct eu_stack_frame *gframe,
 static enum eu_result nonint_parse(const struct eu_metadata *metadata,
 				   struct eu_parse *ep, void *result)
 {
-	struct number_parse_result res = number_parse(metadata, ep);
+	struct number_parse_result res = number_parse(ep);
+
+	(void)metadata;
 
 	switch (res.type) {
 	case PARSED_INTEGER:
@@ -380,32 +373,26 @@ static enum eu_result number_gen_resume(struct eu_stack_frame *gframe,
 	return EU_REINSTATE_PAUSED;
 }
 
-const struct eu_number_metadata eu_number_metadata = {
-	{
-		EU_JSON_NUMBER,
-		sizeof(eu_number_t),
-		nonint_parse,
-		number_generate,
-		eu_noop_fini,
-		eu_get_fail,
-		eu_object_iter_init_fail,
-		eu_object_size_fail
-	},
-	0
+const struct eu_metadata eu_number_metadata = {
+	EU_JSON_NUMBER,
+	sizeof(eu_number_t),
+	nonint_parse,
+	number_generate,
+	eu_noop_fini,
+	eu_get_fail,
+	eu_object_iter_init_fail,
+	eu_object_size_fail
 };
 
-const struct eu_number_metadata eu_integer_metadata = {
-	{
-		EU_JSON_NUMBER,
-		sizeof(eu_integer_t),
-		int_parse,
-		integer_generate,
-		eu_noop_fini,
-		eu_get_fail,
-		eu_object_iter_init_fail,
-		eu_object_size_fail
-	},
-	1
+const struct eu_metadata eu_integer_metadata = {
+	EU_JSON_NUMBER,
+	sizeof(eu_integer_t),
+	int_parse,
+	integer_generate,
+	eu_noop_fini,
+	eu_get_fail,
+	eu_object_iter_init_fail,
+	eu_object_size_fail
 };
 
 enum eu_result eu_variant_number(const void *number_metadata,

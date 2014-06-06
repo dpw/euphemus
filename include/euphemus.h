@@ -269,20 +269,17 @@ int eu_array_grow(struct eu_array *array, size_t el_size);
 typedef double eu_number_t;
 typedef int64_t eu_integer_t;
 
-struct eu_number_metadata;
-extern const struct eu_number_metadata eu_number_metadata;
-extern const struct eu_number_metadata eu_integer_metadata;
+extern const struct eu_metadata eu_number_metadata;
+extern const struct eu_metadata eu_integer_metadata;
 
 static __inline__ struct eu_value eu_number_value(eu_number_t *number)
 {
-	return eu_value(number,
-			(const struct eu_metadata *)&eu_number_metadata);
+	return eu_value(number, &eu_number_metadata);
 }
 
 static __inline__ struct eu_value eu_integer_value(eu_integer_t *integer)
 {
-	return eu_value(integer,
-			(const struct eu_metadata *)&eu_integer_metadata);
+	return eu_value(integer, &eu_integer_metadata);
 }
 
 
@@ -355,7 +352,7 @@ static __inline__ void eu_variant_assign_number(struct eu_variant *var,
 	if (var->metadata)
 		eu_variant_fini(var);
 
-	var->metadata = (const struct eu_metadata *)&eu_number_metadata;
+	var->metadata = &eu_number_metadata;
 	var->u.number = val;
 }
 

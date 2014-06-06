@@ -257,7 +257,6 @@ RESUME_ONLY(case NUMBER_PARSE_E_DIGITS:)
 			goto error;
 
 		frame->base.destroy = eu_stack_frame_noop_destroy;
-		frame->metadata = metadata;
 		frame->int_value = int_value;
 		frame->state = state;
 		frame->negate = negate;
