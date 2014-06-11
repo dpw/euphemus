@@ -75,7 +75,8 @@ static void check_variant(struct eu_variant *var)
 	assert(eu_value_type(val) == EU_JSON_OBJECT);
 	val = eu_value_get_cstr(val, "num");
 	assert(eu_value_type(val) == EU_JSON_NUMBER);
-	assert(*eu_value_to_number(val) = 42);
+	assert(eu_value_to_double(val).ok);
+	assert(eu_value_to_double(val).value == 4.2);
 
 	val = eu_value_get_cstr(var_val, "bool");
 	assert(eu_value_type(val) == EU_JSON_BOOL);
@@ -92,7 +93,7 @@ static void check_variant(struct eu_variant *var)
 static void test_parse_variant(void)
 {
 	TEST_PARSE("  {  \"str\\\\\\\"\":  \"hello, world!\","
-		   "  \"obj\"  :  {  \"num\"  :  42  },"
+		   "  \"obj\"  :  {  \"num\"  :  4.2  },"
 		   "  \"bool\"  :  true  ,"
 		   "  \"null\"  :  null  ,"
 		   "  \"array\"  :  [  \"element\"  ,  [  ]  ]  }  ",
@@ -155,7 +156,8 @@ static void test_parse_deep(void)
 		assert(eu_value_ok(val = eu_value_get_cstr(val, "ab")));
 	}
 
-	assert(*eu_value_to_number(val) == 100);
+	assert(eu_value_to_double(val).ok);
+	assert(eu_value_to_double(val).value == 100);
 	eu_variant_fini(&var);
 	free(s);
 }
@@ -187,7 +189,8 @@ static void test_path(void)
 	val = eu_variant_value(&var);
 	val = eu_get_path(val, eu_cstr("/1"));
 	assert(eu_value_type(val) == EU_JSON_NUMBER);
-	assert(*eu_value_to_number(val) == 20);
+	assert(eu_value_to_double(val).ok);
+	assert(eu_value_to_double(val).value == 20);
 	eu_variant_fini(&var);
 }
 

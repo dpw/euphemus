@@ -716,7 +716,8 @@ static const struct eu_struct_metadata object_metadata = {
 		inline_struct_fini,
 		inline_struct_get,
 		inline_struct_iter_init,
-		inline_struct_size
+		inline_struct_size,
+		eu_to_double_fail,
 	},
 	-1,
 	0,
@@ -796,6 +797,7 @@ static int introduce_struct(struct eu_struct_descriptor_v1 *d,
 	md->base.get = inline_struct_get;
 	md->base.object_iter_init = inline_struct_iter_init;
 	md->base.object_size = inline_struct_size;
+	md->base.to_double = eu_to_double_fail;
 
 	pmd->base.size = sizeof(void *);
 	pmd->base.parse = struct_ptr_parse;
@@ -804,6 +806,7 @@ static int introduce_struct(struct eu_struct_descriptor_v1 *d,
 	pmd->base.get = struct_ptr_get;
 	pmd->base.object_iter_init = struct_ptr_iter_init;
 	pmd->base.object_size = struct_ptr_size;
+	pmd->base.to_double = eu_to_double_fail;
 
 	md->struct_size = pmd->struct_size = d->struct_size;
 	md->extras_offset = pmd->extras_offset = d->extras_offset;

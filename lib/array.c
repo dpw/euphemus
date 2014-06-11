@@ -257,7 +257,8 @@ const struct eu_array_metadata eu_variant_array_metadata = {
 		eu_array_fini,
 		eu_array_get,
 		eu_object_iter_init_fail,
-		eu_object_size_fail
+		eu_object_size_fail,
+		eu_to_double_fail,
 	},
 	&eu_variant_metadata
 };
@@ -299,6 +300,7 @@ const struct eu_metadata *eu_introduce_array(const struct eu_type_descriptor *d,
 	md->base.get = eu_array_get;
 	md->base.object_iter_init = eu_object_iter_init_fail;
 	md->base.object_size = eu_object_size_fail;
+	md->base.to_double = eu_to_double_fail;
 	md->element_metadata = eu_introduce_aux(ad->element_descriptor,
 						&chain_head);
 

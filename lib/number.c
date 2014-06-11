@@ -373,6 +373,12 @@ static enum eu_result number_gen_resume(struct eu_stack_frame *gframe,
 	return EU_REINSTATE_PAUSED;
 }
 
+static struct eu_maybe_double number_to_double(struct eu_value val)
+{
+	struct eu_maybe_double res = { 1, *(double *)val.value };
+	return res;
+}
+
 const struct eu_metadata eu_number_metadata = {
 	EU_JSON_NUMBER,
 	sizeof(eu_number_t),
@@ -381,7 +387,8 @@ const struct eu_metadata eu_number_metadata = {
 	eu_noop_fini,
 	eu_get_fail,
 	eu_object_iter_init_fail,
-	eu_object_size_fail
+	eu_object_size_fail,
+	number_to_double,
 };
 
 const struct eu_metadata eu_integer_metadata = {
@@ -392,7 +399,8 @@ const struct eu_metadata eu_integer_metadata = {
 	eu_noop_fini,
 	eu_get_fail,
 	eu_object_iter_init_fail,
-	eu_object_size_fail
+	eu_object_size_fail,
+	eu_to_double_fail,
 };
 
 enum eu_result eu_variant_number(const void *number_metadata,

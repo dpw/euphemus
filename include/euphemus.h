@@ -418,11 +418,6 @@ static __inline__ struct eu_string_ref eu_value_to_string_ref(
 	return eu_string_to_ref(eu_value_extract(val, EU_JSON_STRING));
 }
 
-static __inline__ eu_number_t *eu_value_to_number(struct eu_value val)
-{
-	return eu_value_extract(val, EU_JSON_NUMBER);
-}
-
 static __inline__ eu_bool_t *eu_value_to_bool(struct eu_value val)
 {
 	return eu_value_extract(val, EU_JSON_BOOL);
@@ -432,6 +427,13 @@ static __inline__ struct eu_array *eu_value_to_array(struct eu_value val)
 {
 	return eu_value_extract(val, EU_JSON_ARRAY);
 }
+
+struct eu_maybe_double {
+	eu_bool_t ok;
+	double value;
+};
+
+struct eu_maybe_double eu_value_to_double(struct eu_value val);
 
 struct eu_variant_member {
 	struct eu_string_ref name;
