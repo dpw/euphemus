@@ -316,6 +316,7 @@ struct eu_variant {
 		struct eu_object object;
 		struct eu_variant_array array;
 		eu_number_t number;
+		eu_integer_t integer;
 		eu_bool_t bool;
 	} u;
 };

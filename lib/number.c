@@ -226,6 +226,89 @@ static enum eu_result nonint_parse_resume(struct eu_stack_frame *gframe,
 	abort();
 }
 
+static enum eu_result variant_number_resume(struct eu_stack_frame *gframe,
+					    void *v_ep);
+
+enum eu_result eu_variant_number(const void *unused, struct eu_parse *ep,
+				 struct eu_variant *variant)
+{
+	struct number_parse_result res = number_parse(ep);
+
+	(void)unused;
+
+	switch (res.type) {
+	case PARSED_INTEGER:
+		variant->metadata = &eu_integer_metadata;
+		variant->u.integer = res.u.integer;
+		return EU_OK;
+
+	case PARSED_HUGE_INTEGER:
+	case PARSED_NON_INTEGER:
+		if (convert(ep, ep->input, res.u.p, &variant->u.number)) {
+			variant->metadata = &eu_number_metadata;
+			ep->input = res.u.p;
+			return EU_OK;
+		}
+		else {
+			return EU_ERROR;
+		}
+
+	case PAUSE:
+		res.u.frame->base.resume = variant_number_resume;
+		res.u.frame->result = variant;
+		return EU_PAUSED;
+
+	case ERROR:
+		return EU_ERROR;
+	}
+
+	abort();
+}
+
+static enum eu_result variant_number_resume(struct eu_stack_frame *gframe,
+					    void *v_ep)
+{
+	struct number_parse_frame *frame = (struct number_parse_frame *)gframe;
+	struct eu_parse *ep = v_ep;
+	struct eu_variant *variant = frame->result;
+	struct number_parse_result res = number_parse_resume(frame, ep);
+
+	switch (res.type) {
+	case PARSED_INTEGER:
+		variant->metadata = &eu_integer_metadata;
+		variant->u.integer = res.u.integer;
+		return EU_OK;
+
+	case PARSED_HUGE_INTEGER:
+	case PARSED_NON_INTEGER:
+		if (!eu_stack_append_scratch_with_nul(&ep->stack,
+						      ep->input, res.u.p))
+			return EU_ERROR;
+
+		if (convert(ep, eu_stack_scratch(&ep->stack),
+			    eu_stack_scratch_end(&ep->stack) - 1,
+			    &variant->u.number)) {
+			variant->metadata = &eu_number_metadata;
+			ep->input = res.u.p;
+			eu_stack_reset_scratch(&ep->stack);
+			return EU_OK;
+		}
+		else {
+			return EU_ERROR;
+		}
+
+	case PAUSE:
+		res.u.frame->base.resume = variant_number_resume;
+		res.u.frame->result = variant;
+		return EU_PAUSED;
+
+	case ERROR:
+		return EU_ERROR;
+	}
+
+	abort();
+}
+
 
 struct number_gen_frame {
 	struct eu_stack_frame base;
@@ -375,7 +458,7 @@ static enum eu_result number_gen_resume(struct eu_stack_frame *gframe,
 
 static struct eu_maybe_double number_to_double(struct eu_value val)
 {
-	struct eu_maybe_double res = { 1, *(double *)val.value };
+	struct eu_maybe_double res = { 1, *(eu_number_t *)val.value };
 	return res;
 }
 
@@ -391,6 +474,12 @@ const struct eu_metadata eu_number_metadata = {
 	number_to_double,
 };
 
+static struct eu_maybe_double integer_to_double(struct eu_value val)
+{
+	struct eu_maybe_double res = { 1, *(eu_integer_t *)val.value };
+	return res;
+}
+
 const struct eu_metadata eu_integer_metadata = {
 	EU_JSON_NUMBER,
 	sizeof(eu_integer_t),
@@ -400,12 +489,5 @@ const struct eu_metadata eu_integer_metadata = {
 	eu_get_fail,
 	eu_object_iter_init_fail,
 	eu_object_size_fail,
-	eu_to_double_fail,
+	integer_to_double,
 };
-
-enum eu_result eu_variant_number(const void *number_metadata,
-				 struct eu_parse *ep, struct eu_variant *result)
-{
-	result->metadata = number_metadata;
-	return nonint_parse(number_metadata, ep, &result->u.number);
-}
