@@ -133,6 +133,15 @@ static int convert(struct eu_parse *ep, const char *start,
 	if (!eu_locale_c(&ep->locale))
 		return 0;
 
+	/* We are running strtod here on a string that is not
+	   necessarily NUL-terminated (start and end may point into
+	   the input buffer), which might seem dangerous.  But it's
+	   ok: If we didn't pause, then the number parsing state
+	   machine guarantees that we have a character terminating the
+	   number, so strtod will stop before the end of the string.
+	   If we did pause, then start and end point into the scratch
+	   area, and the string is NUL-terminated. */
+
 	errno = 0;
 	val = strtod(start, &strtod_end);
 	if (strtod_end != end)

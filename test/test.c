@@ -50,6 +50,19 @@ static void test_parse_number(void)
 		   assert(result == (eu_number_t)1000000000000000000000000.0),);
 }
 
+static void test_parse_number_truncated(void)
+{
+	struct eu_parse *parse;
+	eu_number_t result;
+
+	parse = eu_parse_create(eu_number_value(&result));
+	assert(eu_parse(parse, "1234.567", 6));
+	assert(eu_parse_finish(parse));
+	eu_parse_destroy(parse);
+	assert(result == 1234.5);
+}
+
+
 static void test_parse_bool(void)
 {
 	TEST_PARSE("  true  ", eu_bool_t, eu_bool_value,
@@ -331,6 +344,7 @@ int main(void)
 {
 	test_parse_string();
 	test_parse_number();
+	test_parse_number_truncated();
 	test_parse_bool();
 	test_parse_variant();
 	test_parse_deep();

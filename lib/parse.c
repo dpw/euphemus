@@ -106,8 +106,21 @@ int eu_parse(struct eu_parse *ep, const char *input, size_t len)
 
 int eu_parse_finish(struct eu_parse *ep)
 {
-	if (ep->error || !eu_stack_empty(&ep->stack))
+	if (ep->error)
 		return 0;
+
+	if (unlikely(!eu_stack_empty(&ep->stack))) {
+		/* The clean way to handle this case would be to
+		   resume the stack frames, telling them that we are
+		   at the end of the input.  But in fact, numbers are
+		   the only place in the JSON syntax which would care
+		   (i.e. we need to look ahead to decide whether a
+		   number is complete or not.  So we take a short cut:
+		   We parse a space character, in order to force the
+		   end of the current token. */
+		if (!eu_parse(ep, " ", 1) || !eu_stack_empty(&ep->stack))
+			return 0;
+	}
 
 	/* The client now has responsiblity for the result */
 	ep->result = NULL;
