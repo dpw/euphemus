@@ -128,7 +128,7 @@ static void variant_fini(const struct eu_metadata *metadata, void *value)
 	}
 }
 
-static struct eu_value eu_variant_peek(struct eu_variant *variant)
+static struct eu_value peek(struct eu_variant *variant)
 {
 	return eu_value(&variant->u, variant->metadata);
 }
@@ -136,27 +136,23 @@ static struct eu_value eu_variant_peek(struct eu_variant *variant)
 static struct eu_value variant_get(struct eu_value val,
 				   struct eu_string_ref name)
 {
-	struct eu_variant *var = val.value;
-	return eu_value_get(eu_variant_peek(var), name);
+	return eu_value_get(peek(val.value), name);
 }
 
 static int variant_object_iter_init(struct eu_value val,
 				    struct eu_object_iter *iter)
 {
-	struct eu_variant *var = val.value;
-	return eu_object_iter_init(iter, eu_variant_peek(var));
+	return eu_object_iter_init(iter, peek(val.value));
 }
 
 static size_t variant_object_size(struct eu_value val)
 {
-	struct eu_variant *var = val.value;
-	return eu_object_size(eu_variant_peek(var));
+	return eu_object_size(peek(val.value));
 }
 
 static struct eu_maybe_double variant_to_double(struct eu_value val)
 {
-	struct eu_variant *var = val.value;
-	return eu_value_to_double(eu_variant_peek(var));
+	return eu_value_to_double(peek(val.value));
 }
 
 const struct eu_metadata eu_variant_metadata = {
