@@ -357,6 +357,16 @@ static __inline__ void eu_variant_assign_number(struct eu_variant *var,
 	var->u.number = val;
 }
 
+static __inline__ void eu_variant_assign_integer(struct eu_variant *var,
+						 eu_integer_t val)
+{
+	if (var->metadata)
+		eu_variant_fini(var);
+
+	var->metadata = &eu_integer_metadata;
+	var->u.integer = val;
+}
+
 static __inline__ int eu_variant_assign_string(struct eu_variant *var,
 					       struct eu_string_ref s)
 {

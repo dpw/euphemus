@@ -283,6 +283,12 @@ static void test_gen_variant(void)
 	eu_variant_assign_number(&var, 100);
 	test_gen(eu_variant_value(&var), eu_cstr("100"));
 
+	eu_variant_assign_number(&var, 123.456);
+	test_gen(eu_variant_value(&var), eu_cstr("123.456"));
+
+	eu_variant_assign_integer(&var, 100);
+	test_gen(eu_variant_value(&var), eu_cstr("100"));
+
 	assert(eu_variant_assign_string(&var, eu_cstr("hello")));
 	test_gen(eu_variant_value(&var), eu_cstr("\"hello\""));
 
