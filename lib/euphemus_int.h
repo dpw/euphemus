@@ -57,8 +57,9 @@ struct eu_metadata {
 				struct eu_object_iter *iter);
 	size_t (*object_size)(struct eu_value val);
 
-	/* Get the value of a number as a double */
+	/* Get the value of a number */
 	struct eu_maybe_double (*to_double)(struct eu_value val);
+	struct eu_maybe_integer (*to_integer)(struct eu_value val);
 };
 
 struct eu_introduce_chain {
@@ -235,6 +236,7 @@ size_t eu_object_size_fail(struct eu_value val);
 enum eu_result eu_generate_fail(const struct eu_metadata *metadata,
 				struct eu_generate *eg, void *value);
 struct eu_maybe_double eu_to_double_fail(struct eu_value val);
+struct eu_maybe_integer eu_to_integer_fail(struct eu_value val);
 
 extern const struct eu_metadata eu_null_metadata;
 extern const struct eu_bool_misc eu_bool_true;

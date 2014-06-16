@@ -471,6 +471,14 @@ static struct eu_maybe_double number_to_double(struct eu_value val)
 	return res;
 }
 
+static struct eu_maybe_integer number_to_integer(struct eu_value val)
+{
+	eu_number_t d = *(eu_number_t *)val.value;
+	eu_integer_t i = d;
+	struct eu_maybe_integer res = { i == d, i };
+	return res;
+}
+
 const struct eu_metadata eu_number_metadata = {
 	EU_JSON_NUMBER,
 	sizeof(eu_number_t),
@@ -481,11 +489,18 @@ const struct eu_metadata eu_number_metadata = {
 	eu_object_iter_init_fail,
 	eu_object_size_fail,
 	number_to_double,
+	number_to_integer,
 };
 
 static struct eu_maybe_double integer_to_double(struct eu_value val)
 {
 	struct eu_maybe_double res = { 1, *(eu_integer_t *)val.value };
+	return res;
+}
+
+static struct eu_maybe_integer integer_to_integer(struct eu_value val)
+{
+	struct eu_maybe_integer res = { 1, *(eu_integer_t *)val.value };
 	return res;
 }
 
@@ -499,4 +514,5 @@ const struct eu_metadata eu_integer_metadata = {
 	eu_object_iter_init_fail,
 	eu_object_size_fail,
 	integer_to_double,
+	integer_to_integer,
 };

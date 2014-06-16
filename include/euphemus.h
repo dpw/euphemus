@@ -446,6 +446,13 @@ struct eu_maybe_double {
 
 struct eu_maybe_double eu_value_to_double(struct eu_value val);
 
+struct eu_maybe_integer {
+	eu_bool_t ok;
+	eu_integer_t value;
+};
+
+struct eu_maybe_integer eu_value_to_integer(struct eu_value val);
+
 struct eu_variant_member {
 	struct eu_string_ref name;
 	struct eu_variant value;

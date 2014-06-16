@@ -62,6 +62,7 @@ const struct eu_metadata eu_bool_metadata = {
 	eu_object_iter_init_fail,
 	eu_object_size,
 	eu_to_double_fail,
+	eu_to_integer_fail,
 };
 
 struct eu_bool_misc {

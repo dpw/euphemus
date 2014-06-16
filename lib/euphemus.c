@@ -58,6 +58,13 @@ struct eu_maybe_double eu_to_double_fail(struct eu_value val)
 	return res;
 }
 
+struct eu_maybe_integer eu_to_integer_fail(struct eu_value val)
+{
+	struct eu_maybe_integer res = { 0, 0 };
+	(void)val;
+	return res;
+}
+
 static struct eu_metadata fail_metadata = {
 	EU_JSON_INVALID,
 	0,
@@ -68,6 +75,7 @@ static struct eu_metadata fail_metadata = {
 	eu_object_iter_init_fail,
 	eu_object_size_fail,
 	eu_to_double_fail,
+	eu_to_integer_fail,
 };
 
 const struct eu_metadata *eu_introduce(const struct eu_type_descriptor *d)
@@ -159,6 +167,11 @@ void *eu_value_extract(struct eu_value val, enum eu_json_type type)
 struct eu_maybe_double eu_value_to_double(struct eu_value val)
 {
 	return val.metadata->to_double(val);
+}
+
+struct eu_maybe_integer eu_value_to_integer(struct eu_value val)
+{
+	return val.metadata->to_integer(val);
 }
 
 

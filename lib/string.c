@@ -383,4 +383,5 @@ const struct eu_metadata eu_string_metadata = {
 	eu_object_iter_init_fail,
 	eu_object_size_fail,
 	eu_to_double_fail,
+	eu_to_integer_fail,
 };

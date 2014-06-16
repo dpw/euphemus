@@ -155,6 +155,11 @@ static struct eu_maybe_double variant_to_double(struct eu_value val)
 	return eu_value_to_double(peek(val.value));
 }
 
+static struct eu_maybe_integer variant_to_integer(struct eu_value val)
+{
+	return eu_value_to_integer(peek(val.value));
+}
+
 const struct eu_metadata eu_variant_metadata = {
 	EU_JSON_VARIANT,
 	sizeof(struct eu_variant),
@@ -165,4 +170,5 @@ const struct eu_metadata eu_variant_metadata = {
 	variant_object_iter_init,
 	variant_object_size,
 	variant_to_double,
+	variant_to_integer,
 };

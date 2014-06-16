@@ -75,7 +75,7 @@ static void test_parse_bool(void)
 static void check_variant(struct eu_variant *var)
 {
 	struct eu_value var_val = eu_variant_value(var);
-	struct eu_value val;
+	struct eu_value val, num, int_;
 
 	assert(eu_value_type(var_val) == EU_JSON_OBJECT);
 
@@ -86,10 +86,19 @@ static void check_variant(struct eu_variant *var)
 
 	val = eu_value_get_cstr(var_val, "obj");
 	assert(eu_value_type(val) == EU_JSON_OBJECT);
-	val = eu_value_get_cstr(val, "num");
-	assert(eu_value_type(val) == EU_JSON_NUMBER);
-	assert(eu_value_to_double(val).ok);
-	assert(eu_value_to_double(val).value == 4.2);
+
+	num = eu_value_get_cstr(val, "num");
+	assert(eu_value_type(num) == EU_JSON_NUMBER);
+	assert(eu_value_to_double(num).ok);
+	assert(eu_value_to_double(num).value == 4.2);
+	assert(!eu_value_to_integer(num).ok);
+
+	int_ = eu_value_get_cstr(val, "int");
+	assert(eu_value_type(int_) == EU_JSON_NUMBER);
+	assert(eu_value_to_integer(int_).ok);
+	assert(eu_value_to_integer(int_).value == 100);
+	assert(eu_value_to_double(int_).ok);
+	assert(eu_value_to_double(int_).value == 100);
 
 	val = eu_value_get_cstr(var_val, "bool");
 	assert(eu_value_type(val) == EU_JSON_BOOL);
@@ -106,7 +115,7 @@ static void check_variant(struct eu_variant *var)
 static void test_parse_variant(void)
 {
 	TEST_PARSE("  {  \"str\\\\\\\"\":  \"hello, world!\","
-		   "  \"obj\"  :  {  \"num\"  :  4.2  },"
+		   "  \"obj\"  :  {  \"num\"  :  4.2,  \"int\"  :  100  },"
 		   "  \"bool\"  :  true  ,"
 		   "  \"null\"  :  null  ,"
 		   "  \"array\"  :  [  \"element\"  ,  [  ]  ]  }  ",
