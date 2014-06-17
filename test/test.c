@@ -194,6 +194,26 @@ static void parse_variant(const char *json, struct eu_variant *var)
 	eu_parse_destroy(parse);
 }
 
+static void test_non_numbers(void)
+{
+	const char *cases[6] = {
+		"{}",
+		"[]",
+		"null",
+		"true",
+		"false",
+		"\"\""
+	};
+	int i;
+
+	for (i = 0; i < 6; i++) {
+		struct eu_variant var;
+		parse_variant(cases[i], &var);
+		assert(!eu_value_to_double(eu_variant_value(&var)).ok);
+		assert(!eu_value_to_integer(eu_variant_value(&var)).ok);
+	}
+}
+
 static void test_path(void)
 {
 	struct eu_variant var;
@@ -363,6 +383,7 @@ int main(void)
 	test_parse_bool();
 	test_parse_variant();
 	test_parse_deep();
+	test_non_numbers();
 
 	test_path();
 	test_size();
