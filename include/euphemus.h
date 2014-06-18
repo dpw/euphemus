@@ -83,7 +83,7 @@ struct eu_type_descriptor {
 const struct eu_metadata *eu_introduce(const struct eu_type_descriptor *d);
 
 extern const struct eu_type_descriptor eu_string_descriptor;
-extern const struct eu_type_descriptor eu_number_descriptor;
+extern const struct eu_type_descriptor eu_double_descriptor;
 extern const struct eu_type_descriptor eu_integer_descriptor;
 extern const struct eu_type_descriptor eu_bool_descriptor;
 extern const struct eu_type_descriptor eu_null_descriptor;
@@ -266,15 +266,14 @@ int eu_array_grow(struct eu_array *array, size_t el_size);
 
 /* Others */
 
-typedef double eu_number_t;
 typedef int64_t eu_integer_t;
 
-extern const struct eu_metadata eu_number_metadata;
+extern const struct eu_metadata eu_double_metadata;
 extern const struct eu_metadata eu_integer_metadata;
 
-static __inline__ struct eu_value eu_number_value(eu_number_t *number)
+static __inline__ struct eu_value eu_double_value(double *number)
 {
-	return eu_value(number, &eu_number_metadata);
+	return eu_value(number, &eu_double_metadata);
 }
 
 static __inline__ struct eu_value eu_integer_value(eu_integer_t *integer)
@@ -315,7 +314,7 @@ struct eu_variant {
 		struct eu_string string;
 		struct eu_object object;
 		struct eu_variant_array array;
-		eu_number_t number;
+		double number;
 		eu_integer_t integer;
 		eu_bool_t bool;
 	} u;
@@ -348,12 +347,12 @@ static __inline__ void eu_variant_assign_bool(struct eu_variant *var,
 }
 
 static __inline__ void eu_variant_assign_number(struct eu_variant *var,
-						eu_number_t val)
+						double val)
 {
 	if (var->metadata)
 		eu_variant_fini(var);
 
-	var->metadata = &eu_number_metadata;
+	var->metadata = &eu_double_metadata;
 	var->u.number = val;
 }
 

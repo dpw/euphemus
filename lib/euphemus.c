@@ -122,9 +122,8 @@ const struct eu_type_descriptor eu_##name##_descriptor = {            \
 };
 
 DEFINE_SHIM_DESCRIPTOR(string, &eu_string_metadata)
-DEFINE_SHIM_DESCRIPTOR(number, (const struct eu_metadata *)&eu_number_metadata)
-DEFINE_SHIM_DESCRIPTOR(integer,
-		       (const struct eu_metadata *)&eu_integer_metadata)
+DEFINE_SHIM_DESCRIPTOR(double, &eu_double_metadata)
+DEFINE_SHIM_DESCRIPTOR(integer, &eu_integer_metadata)
 DEFINE_SHIM_DESCRIPTOR(bool, &eu_bool_metadata)
 DEFINE_SHIM_DESCRIPTOR(null, &eu_null_metadata)
 DEFINE_SHIM_DESCRIPTOR(variant, &eu_variant_metadata)

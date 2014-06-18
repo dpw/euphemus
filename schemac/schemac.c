@@ -400,7 +400,7 @@ static void codegen_init(struct codegen *codegen, const char *source_path)
 	codegen->n_defs = 0;
 
 	codegen->number_type
-		= make_simple_type(codegen, "eu_number_t", "eu_number");
+		= make_simple_type(codegen, "double", "eu_double");
 	codegen->integer_type
 		= make_simple_type(codegen, "eu_integer_t", "eu_integer");
 	codegen->bool_type

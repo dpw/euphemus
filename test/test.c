@@ -25,37 +25,37 @@ static void test_parse_string(void)
 static void test_parse_number(void)
 {
 	TEST_PARSE("  123456789.0123456789e0  ",
-		   eu_number_t,
-		   eu_number_value,
-		   assert(result == (eu_number_t)123456789.0123456789e0),);
+		   double,
+		   eu_double_value,
+		   assert(result == 123456789.0123456789e0),);
 	TEST_PARSE("  -0.0123456789e-10  ",
-		   eu_number_t,
-		   eu_number_value,
-		   assert(result == (eu_number_t)-0.0123456789e-10),);
+		   double,
+		   eu_double_value,
+		   assert(result == -0.0123456789e-10),);
 	TEST_PARSE("  0  ",
-		   eu_number_t,
-		   eu_number_value,
+		   double,
+		   eu_double_value,
 		   assert(result == 0),);
 	TEST_PARSE("  123456789  ",
-		   eu_number_t,
-		   eu_number_value,
-		   assert(result == (eu_number_t)123456789),);
+		   double,
+		   eu_double_value,
+		   assert(result == 123456789),);
 	TEST_PARSE("  -123456789  ",
-		   eu_number_t,
-		   eu_number_value,
-		   assert(result == (eu_number_t)-123456789),);
+		   double,
+		   eu_double_value,
+		   assert(result == -123456789),);
 	TEST_PARSE("  1000000000000000000000000  ",
-		   eu_number_t,
-		   eu_number_value,
-		   assert(result == (eu_number_t)1000000000000000000000000.0),);
+		   double,
+		   eu_double_value,
+		   assert(result == 1000000000000000000000000.0),);
 }
 
 static void test_parse_number_truncated(void)
 {
 	struct eu_parse *parse;
-	eu_number_t result;
+	double result;
 
-	parse = eu_parse_create(eu_number_value(&result));
+	parse = eu_parse_create(eu_double_value(&result));
 	assert(eu_parse(parse, "1234.567", 6));
 	assert(eu_parse_finish(parse));
 	eu_parse_destroy(parse);
@@ -281,20 +281,20 @@ static void test_gen_bool(void)
 
 static void test_gen_number(void)
 {
-	eu_number_t num = 100;
-	test_gen(eu_number_value(&num), eu_cstr("100"));
+	double num = 100;
+	test_gen(eu_double_value(&num), eu_cstr("100"));
 
 	num = 0;
-	test_gen(eu_number_value(&num), eu_cstr("0"));
+	test_gen(eu_double_value(&num), eu_cstr("0"));
 
 	num = -12345678910;
-	test_gen(eu_number_value(&num), eu_cstr("-12345678910"));
+	test_gen(eu_double_value(&num), eu_cstr("-12345678910"));
 
 	num = 1.23;
-	test_gen(eu_number_value(&num), eu_cstr("1.23"));
+	test_gen(eu_double_value(&num), eu_cstr("1.23"));
 
 	num = -1.234567891234567e-10;
-	test_gen(eu_number_value(&num), eu_cstr("-1.234567891234567e-10"));
+	test_gen(eu_double_value(&num), eu_cstr("-1.234567891234567e-10"));
 }
 
 static void test_gen_variant(void)

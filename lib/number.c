@@ -125,7 +125,7 @@ static enum eu_result int_parse_resume(struct eu_stack_frame *gframe,
 }
 
 static int convert(struct eu_parse *ep, const char *start,
-		   const char *end, eu_number_t *result)
+		   const char *end, double *result)
 {
 	char *strtod_end;
 	double val;
@@ -169,7 +169,7 @@ static enum eu_result nonint_parse(const struct eu_metadata *metadata,
 
 	switch (res.type) {
 	case PARSED_INTEGER:
-		*(eu_number_t *)result = res.u.integer;
+		*(double *)result = res.u.integer;
 		return EU_OK;
 
 	case PARSED_HUGE_INTEGER:
@@ -204,7 +204,7 @@ static enum eu_result nonint_parse_resume(struct eu_stack_frame *gframe,
 
 	switch (res.type) {
 	case PARSED_INTEGER:
-		*(eu_number_t *)result = res.u.integer;
+		*(double *)result = res.u.integer;
 		return EU_OK;
 
 	case PARSED_HUGE_INTEGER:
@@ -254,7 +254,7 @@ enum eu_result eu_variant_number(const void *unused, struct eu_parse *ep,
 	case PARSED_HUGE_INTEGER:
 	case PARSED_NON_INTEGER:
 		if (convert(ep, ep->input, res.u.p, &variant->u.number)) {
-			variant->metadata = &eu_number_metadata;
+			variant->metadata = &eu_double_metadata;
 			ep->input = res.u.p;
 			return EU_OK;
 		}
@@ -297,7 +297,7 @@ static enum eu_result variant_number_resume(struct eu_stack_frame *gframe,
 		if (convert(ep, eu_stack_scratch(&ep->stack),
 			    eu_stack_scratch_end(&ep->stack) - 1,
 			    &variant->u.number)) {
-			variant->metadata = &eu_number_metadata;
+			variant->metadata = &eu_double_metadata;
 			ep->input = res.u.p;
 			eu_stack_reset_scratch(&ep->stack);
 			return EU_OK;
@@ -400,12 +400,12 @@ static enum eu_result integer_generate(const struct eu_metadata *metadata,
 static enum eu_result number_generate(const struct eu_metadata *metadata,
 				      struct eu_generate *eg, void *value)
 {
-	eu_number_t dvalue = *(eu_number_t *)value;
+	double dvalue = *(double *)value;
 	int64_t ivalue = (int64_t)dvalue;
 	int len;
 	size_t space;
 
-	if ((eu_number_t)ivalue == dvalue)
+	if ((double)ivalue == dvalue)
 		return integer_generate(metadata, eg, &ivalue);
 
 	if (!isfinite(dvalue))
@@ -467,21 +467,21 @@ static enum eu_result number_gen_resume(struct eu_stack_frame *gframe,
 
 static struct eu_maybe_double number_to_double(struct eu_value val)
 {
-	struct eu_maybe_double res = { 1, *(eu_number_t *)val.value };
+	struct eu_maybe_double res = { 1, *(double *)val.value };
 	return res;
 }
 
 static struct eu_maybe_integer number_to_integer(struct eu_value val)
 {
-	eu_number_t d = *(eu_number_t *)val.value;
+	double d = *(double *)val.value;
 	eu_integer_t i = d;
 	struct eu_maybe_integer res = { i == d, i };
 	return res;
 }
 
-const struct eu_metadata eu_number_metadata = {
+const struct eu_metadata eu_double_metadata = {
 	EU_JSON_NUMBER,
-	sizeof(eu_number_t),
+	sizeof(double),
 	nonint_parse,
 	number_generate,
 	eu_noop_fini,
