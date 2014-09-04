@@ -1,4 +1,4 @@
-BASE_CFLAGS:=-I$(SROOT)include -D_GNU_SOURCE $(BASE_CFLAGS)
+PROJECT_CFLAGS:=-I$(SROOT)include -D_GNU_SOURCE
 
 # The euphemus library source files
 LIB_SRCS=$(addprefix lib/,euphemus.c stack.c parse.c generate.c path.c struct.c \
