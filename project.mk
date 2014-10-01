@@ -36,6 +36,7 @@ $(foreach E,$(EXECUTABLES) $(TEST_EXECUTABLES),$(eval MAINOBJ_$(ROOT)$(E):=$(ROO
 $(ROOT)test/test_schema.c $(ROOT)test/test_schema.h: $(ROOT)test/test_schema.json $(ROOT)schemac/schemac
 	$(ROOT)schemac/schemac -c $(ROOT)test/test_schema.c -i $(ROOT)test/test_schema.h $< || (rm -f $(ROOT)test/test_schema.c $(ROOT)test/test_schema.h ; false)
 
-HDROBJS_$(SROOT)test/test_schema.h:=$(ROOT)test/test_schema.o
+# Because this is generated, it starts with HDROBJS_$(ROOT), not HDROBJS_$(SROOT)
+HDROBJS_$(ROOT)test/test_schema.h:=$(ROOT)test/test_schema.o
 
 TO_CLEAN+=test/test_schema.c test/test_schema.h
