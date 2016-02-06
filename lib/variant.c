@@ -36,7 +36,7 @@ enum char_type {
 };
 
 /* Mapping from characters to character types. */
-static const unsigned char char_types[UCHAR_MAX] CACHE_ALIGN = {
+static const unsigned char char_types[UCHAR_MAX+1] CACHE_ALIGN = {
 	[' '] = CHAR_TYPE_WS,
 	['\t'] = CHAR_TYPE_WS,
 	['\n'] = CHAR_TYPE_WS,
