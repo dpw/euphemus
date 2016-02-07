@@ -209,15 +209,32 @@ RESUME_ONLY(case NUMBER_PARSE_E:)
 		goto pause;
 
 	switch (*p) {
+	case ZERO_TO_9:
+		goto e_digits;
+
 	case '+':
 	case '-':
-	case ZERO_TO_9:
 		break;
 
 	default:
 		goto error;
 	}
 
+	p++;
+	state = NUMBER_PARSE_E_PLUS_MINUS;
+RESUME_ONLY(case NUMBER_PARSE_E_PLUS_MINUS:)
+	if (p == end)
+		goto pause;
+
+	switch (*p) {
+	case ZERO_TO_9:
+		goto e_digits;
+
+	default:
+		goto error;
+	}
+
+e_digits:
 	p++;
 	state = NUMBER_PARSE_E_DIGITS;
 RESUME_ONLY(case NUMBER_PARSE_E_DIGITS:)

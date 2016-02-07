@@ -32,6 +32,14 @@ static void test_parse_number(void)
 		   double,
 		   eu_double_value,
 		   assert(result == -0.0123456789e-10),);
+	TEST_PARSE("  -0.0123456789e10  ",
+		   double,
+		   eu_double_value,
+		   assert(result == -0.0123456789e10),);
+	TEST_PARSE("  -0.0123456789e+10  ",
+		   double,
+		   eu_double_value,
+		   assert(result == -0.0123456789e+10),);
 	TEST_PARSE("  0  ",
 		   double,
 		   eu_double_value,
