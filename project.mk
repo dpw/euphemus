@@ -1,14 +1,16 @@
 PROJECT_CFLAGS:=-I$(SROOT)include -D_GNU_SOURCE
 
 # The euphemus library source files
-LIB_SRCS=$(addprefix lib/,euphemus.c stack.c parse.c generate.c path.c struct.c \
-	array.c string.c variant.c number.c bool.c null.c unescape.c escape.c)
+LIB_SRCS=$(addprefix lib/,euphemus.c stack.c parse.c generate.c path.c \
+	struct.c array.c string.c variant.c number.c bool.c null.c unescape.c \
+	escape.c)
 
 SRCS+=$(LIB_SRCS) schemac/schemac.c schemac/schema_schema.c
-SRCS+=$(addprefix test/,test.c test_codegen.c test_schema.c test_common.c)
+SRCS+=$(addprefix test/,test.c test_codegen.c test_schema.c test_common.c \
+	util.c test_parse.c)
 
 # Main exectuables that get built
-EXECUTABLES=schemac/schemac
+EXECUTABLES=schemac/schemac test/test_parse
 
 # parse_perf requires json-c to build
 ifneq "$(wildcard /usr/include/json/json.h)" ""
@@ -23,7 +25,8 @@ TEST_EXECUTABLES=test/test test/test_codegen
 HDROBJS_$(SROOT)include/euphemus.h:=$(LIB_SRCS:%.c=$(ROOT)%.o)
 HDROBJS_$(SROOT)lib/euphemus_int.h:=$(LIB_SRCS:%.c=$(ROOT)%.o)
 HDROBJS_$(SROOT)lib/unescape.h:=$(ROOT)lib/unescape.o
-HDROBJS_$(SROOT)test/test_parse.h:=
+HDROBJS_$(SROOT)test/test_parse_macro.h:=
+HDROBJS_$(SROOT)test/util.h:=$(ROOT)test/util.o
 HDROBJS_$(SROOT)test/test_common.h:=$(ROOT)test/test_common.o
 HDROBJS_$(SROOT)schemac/schema_schema.h:=$(ROOT)schemac/schema_schema.o
 

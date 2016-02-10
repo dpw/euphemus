@@ -11,4 +11,5 @@ test/test_schema.h
 test/test
 test/test_codegen
 test/parse_perf
+test/test_parse
 schemac/schemac

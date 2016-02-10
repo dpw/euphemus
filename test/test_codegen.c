@@ -5,7 +5,7 @@
 
 #include "test_common.h"
 #include "test_schema.h"
-#include "test_parse.h"
+#include "test_parse_macro.h"
 
 static void check_test_schema(struct test_schema *test_schema)
 {

@@ -4,7 +4,7 @@
 #include <euphemus.h>
 
 #include "test_common.h"
-#include "test_parse.h"
+#include "test_parse_macro.h"
 
 static void test_parse_string(void)
 {
