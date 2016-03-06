@@ -375,7 +375,7 @@ static enum eu_result integer_generate(const struct eu_metadata *metadata,
 	}
 	else {
 		*eg->output++ = '-';
-		uvalue = -ivalue;
+		uvalue = -(uint64_t)ivalue;
 	}
 
 	/* A 63-bit integer needs at most 19 digits */

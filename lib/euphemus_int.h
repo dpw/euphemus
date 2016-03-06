@@ -418,8 +418,8 @@ struct expect {
 	(e).str = s;                                                  \
 } while (0);
 
-static __inline__ enum eu_result eu_parse_expect(struct eu_parse *ep,
-						 struct expect e)
+static __inline__ __attribute__((no_sanitize_undefined))
+enum eu_result eu_parse_expect(struct eu_parse *ep, struct expect e)
 {
 	if (ep->input_end - ep->input >= 4) {
 		if (likely((*(uint32_t *)ep->input & e.mask) == e.val)) {
@@ -434,10 +434,9 @@ static __inline__ enum eu_result eu_parse_expect(struct eu_parse *ep,
 	}
 }
 
-static __inline__ enum eu_result eu_fixed_gen_32(struct eu_generate *eg,
-						 unsigned int len,
-						 uint32_t chars,
-						 const char *str)
+static __inline__ __attribute__((no_sanitize_undefined))
+enum eu_result eu_fixed_gen_32(struct eu_generate *eg, unsigned int len,
+			       uint32_t chars, const char *str)
 {
 	if (eg->output_end - eg->output >= 4) {
 		*(uint32_t *)eg->output = chars;
@@ -457,8 +456,8 @@ struct fixed_gen_64 {
 
 #define FIXED_GEN_64_INIT(l, chars, str) { (chars), (l), str }
 
-static __inline__ enum eu_result eu_fixed_gen_64(struct eu_generate *eg,
-						 struct fixed_gen_64 fg)
+static __inline__ __attribute__((no_sanitize_undefined))
+enum eu_result eu_fixed_gen_64(struct eu_generate *eg, struct fixed_gen_64 fg)
 {
 	if (eg->output_end - eg->output >= 8) {
 		*(uint64_t *)eg->output = fg.chars;
