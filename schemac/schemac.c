@@ -478,13 +478,13 @@ static void codegen_delete_output_files(struct codegen *codegen)
 	if (codegen->c_out) {
 		fclose(codegen->c_out);
 		codegen->c_out = NULL;
-		remove(codegen->c_out_path);
+		(void)remove(codegen->c_out_path);
 	}
 
 	if (codegen->h_out) {
 		fclose(codegen->h_out);
 		codegen->h_out = NULL;
-		remove(codegen->h_out_path);
+		(void)remove(codegen->h_out_path);
 	}
 }
 

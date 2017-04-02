@@ -48,7 +48,6 @@ RESUME_ONLY(case NUMBER_PARSE_LEADING_MINUS:)
 		break;
 
 	case ONE_TO_9:
-		int_value = *p - '0';
 		goto int_digits;
 
 	default:

@@ -259,7 +259,7 @@ static enum eu_result struct_parse(const struct eu_metadata *gmetadata,
 		= (const struct eu_struct_metadata *)gmetadata;
 	enum struct_parse_state state = STRUCT_PARSE_OPEN;
 	const struct eu_metadata *member_metadata = NULL;
-	void *member_value;
+	void *member_value = NULL;
 	eu_unescape_state_t unescape = 0;
 	const char *p = ep->input + 1;
 	const char *end = ep->input_end;
