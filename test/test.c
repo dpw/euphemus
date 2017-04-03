@@ -1,5 +1,4 @@
 #include <string.h>
-#include <assert.h>
 
 #include <euphemus.h>
 
@@ -11,13 +10,13 @@ static void test_parse_string(void)
 	TEST_PARSE("  \"hello, world!\"  ",
 		   struct eu_string,
 		   eu_string_value,
-		   assert(eu_string_ref_equal(eu_string_to_ref(&result),
+		   require(eu_string_ref_equal(eu_string_to_ref(&result),
 					      eu_cstr("hello, world!"))),
 		   eu_string_fini(&result));
 	TEST_PARSE("  \"\\\" \\/ \\b \\f \\n \\r \\t \\u0041 \\u03Bb \\u2f08 \\\\\"  ",
 		   struct eu_string,
 		   eu_string_value,
-		   assert(eu_string_ref_equal(eu_string_to_ref(&result),
+		   require(eu_string_ref_equal(eu_string_to_ref(&result),
 		    eu_cstr("\" / \b \f \n \r \t A \316\273 \342\274\210 \\"))),
 		   eu_string_fini(&result));
 }
@@ -27,35 +26,35 @@ static void test_parse_number(void)
 	TEST_PARSE("  123456789.0123456789e0  ",
 		   double,
 		   eu_double_value,
-		   assert(result == 123456789.0123456789e0),);
+		   require(result == 123456789.0123456789e0),);
 	TEST_PARSE("  -0.0123456789e-10  ",
 		   double,
 		   eu_double_value,
-		   assert(result == -0.0123456789e-10),);
+		   require(result == -0.0123456789e-10),);
 	TEST_PARSE("  -0.0123456789e10  ",
 		   double,
 		   eu_double_value,
-		   assert(result == -0.0123456789e10),);
+		   require(result == -0.0123456789e10),);
 	TEST_PARSE("  -0.0123456789e+10  ",
 		   double,
 		   eu_double_value,
-		   assert(result == -0.0123456789e+10),);
+		   require(result == -0.0123456789e+10),);
 	TEST_PARSE("  0  ",
 		   double,
 		   eu_double_value,
-		   assert(result == 0),);
+		   require(result == 0),);
 	TEST_PARSE("  123456789  ",
 		   double,
 		   eu_double_value,
-		   assert(result == 123456789),);
+		   require(result == 123456789),);
 	TEST_PARSE("  -123456789  ",
 		   double,
 		   eu_double_value,
-		   assert(result == -123456789),);
+		   require(result == -123456789),);
 	TEST_PARSE("  1000000000000000000000000  ",
 		   double,
 		   eu_double_value,
-		   assert(result == 1000000000000000000000000.0),);
+		   require(result == 1000000000000000000000000.0),);
 }
 
 static void test_parse_number_truncated(void)
@@ -64,19 +63,19 @@ static void test_parse_number_truncated(void)
 	double result;
 
 	parse = eu_parse_create(eu_double_value(&result));
-	assert(eu_parse(parse, "1234.567", 6));
-	assert(eu_parse_finish(parse));
+	require(eu_parse(parse, "1234.567", 6));
+	require(eu_parse_finish(parse));
 	eu_parse_destroy(parse);
-	assert(result == 1234.5);
+	require(result == 1234.5);
 }
 
 
 static void test_parse_bool(void)
 {
 	TEST_PARSE("  true  ", eu_bool_t, eu_bool_value,
-		   assert(result),);
+		   require(result),);
 	TEST_PARSE("  false  ", eu_bool_t, eu_bool_value,
-		   assert(!result),);
+		   require(!result),);
 }
 
 
@@ -85,39 +84,39 @@ static void check_variant(struct eu_variant *var)
 	struct eu_value var_val = eu_variant_value(var);
 	struct eu_value val, num, int_;
 
-	assert(eu_value_type(var_val) == EU_JSON_OBJECT);
+	require(eu_value_type(var_val) == EU_JSON_OBJECT);
 
 	val = eu_value_get_cstr(var_val, "str\\\"");
-	assert(eu_value_type(val) == EU_JSON_STRING);
-	assert(eu_string_ref_equal(eu_value_to_string_ref(val),
+	require(eu_value_type(val) == EU_JSON_STRING);
+	require(eu_string_ref_equal(eu_value_to_string_ref(val),
 				   eu_cstr("hello, world!")));
 
 	val = eu_value_get_cstr(var_val, "obj");
-	assert(eu_value_type(val) == EU_JSON_OBJECT);
+	require(eu_value_type(val) == EU_JSON_OBJECT);
 
 	num = eu_value_get_cstr(val, "num");
-	assert(eu_value_type(num) == EU_JSON_NUMBER);
-	assert(eu_value_to_double(num).ok);
-	assert(eu_value_to_double(num).value == 4.2);
-	assert(!eu_value_to_integer(num).ok);
+	require(eu_value_type(num) == EU_JSON_NUMBER);
+	require(eu_value_to_double(num).ok);
+	require(eu_value_to_double(num).value == 4.2);
+	require(!eu_value_to_integer(num).ok);
 
 	int_ = eu_value_get_cstr(val, "int");
-	assert(eu_value_type(int_) == EU_JSON_NUMBER);
-	assert(eu_value_to_integer(int_).ok);
-	assert(eu_value_to_integer(int_).value == 100);
-	assert(eu_value_to_double(int_).ok);
-	assert(eu_value_to_double(int_).value == 100);
+	require(eu_value_type(int_) == EU_JSON_NUMBER);
+	require(eu_value_to_integer(int_).ok);
+	require(eu_value_to_integer(int_).value == 100);
+	require(eu_value_to_double(int_).ok);
+	require(eu_value_to_double(int_).value == 100);
 
 	val = eu_value_get_cstr(var_val, "bool");
-	assert(eu_value_type(val) == EU_JSON_BOOL);
-	assert(*eu_value_to_bool(val));
+	require(eu_value_type(val) == EU_JSON_BOOL);
+	require(*eu_value_to_bool(val));
 
 	val = eu_value_get_cstr(var_val, "null");
-	assert(eu_value_type(val) == EU_JSON_NULL);
+	require(eu_value_type(val) == EU_JSON_NULL);
 
 	val = eu_value_get_cstr(var_val, "array");
-	assert(eu_value_type(val) == EU_JSON_ARRAY);
-	assert(eu_value_to_array(val)->len == 2);
+	require(eu_value_type(val) == EU_JSON_ARRAY);
+	require(eu_value_to_array(val)->len == 2);
 }
 
 static void test_parse_variant(void)
@@ -170,10 +169,10 @@ static void test_parse_deep(void)
 
 	for (j = 0; j < len; j++) {
 		char c = s[j];
-		assert(eu_parse(parse, &c, 1));
+		require(eu_parse(parse, &c, 1));
 	}
 
-	assert(eu_parse_finish(parse));
+	require(eu_parse_finish(parse));
 	eu_parse_destroy(parse);
 
 	/* check the result */
@@ -181,13 +180,13 @@ static void test_parse_deep(void)
 	for (i = 0; i < depth; i++) {
 		struct eu_variant_array *a
 			= (struct eu_variant_array *)eu_value_to_array(val);
-		assert(a->len == 1);
+		require(a->len == 1);
 		val = eu_variant_value(&a->a[0]);
-		assert(eu_value_ok(val = eu_value_get_cstr(val, "ab")));
+		require(eu_value_ok(val = eu_value_get_cstr(val, "ab")));
 	}
 
-	assert(eu_value_to_double(val).ok);
-	assert(eu_value_to_double(val).value == 100);
+	require(eu_value_to_double(val).ok);
+	require(eu_value_to_double(val).value == 100);
 	eu_variant_fini(&var);
 	free(s);
 }
@@ -197,8 +196,8 @@ static void parse_variant(const char *json, struct eu_variant *var)
 	struct eu_parse *parse;
 
 	parse = eu_parse_create(eu_variant_value(var));
-	assert(eu_parse(parse, json, strlen(json)));
-	assert(eu_parse_finish(parse));
+	require(eu_parse(parse, json, strlen(json)));
+	require(eu_parse_finish(parse));
 	eu_parse_destroy(parse);
 }
 
@@ -217,8 +216,8 @@ static void test_non_numbers(void)
 	for (i = 0; i < 6; i++) {
 		struct eu_variant var;
 		parse_variant(cases[i], &var);
-		assert(!eu_value_to_double(eu_variant_value(&var)).ok);
-		assert(!eu_value_to_integer(eu_variant_value(&var)).ok);
+		require(!eu_value_to_double(eu_variant_value(&var)).ok);
+		require(!eu_value_to_integer(eu_variant_value(&var)).ok);
 	}
 }
 
@@ -229,18 +228,18 @@ static void test_path(void)
 
 	parse_variant("{\"a\":{\"b\":null,\"c\":true}}", &var);
 	val = eu_variant_value(&var);
-	assert(!eu_value_ok(eu_get_path(val, eu_cstr("/nosuch"))));
+	require(!eu_value_ok(eu_get_path(val, eu_cstr("/nosuch"))));
 	val = eu_get_path(val, eu_cstr("/a/c"));
-	assert(eu_value_type(val) == EU_JSON_BOOL);
-	assert(*eu_value_to_bool(val));
+	require(eu_value_type(val) == EU_JSON_BOOL);
+	require(*eu_value_to_bool(val));
 	eu_variant_fini(&var);
 
 	parse_variant("[10, 20, 30]", &var);
 	val = eu_variant_value(&var);
 	val = eu_get_path(val, eu_cstr("/1"));
-	assert(eu_value_type(val) == EU_JSON_NUMBER);
-	assert(eu_value_to_double(val).ok);
-	assert(eu_value_to_double(val).value == 20);
+	require(eu_value_type(val) == EU_JSON_NUMBER);
+	require(eu_value_to_double(val).ok);
+	require(eu_value_to_double(val).value == 20);
 	eu_variant_fini(&var);
 }
 
@@ -249,7 +248,7 @@ static void check_size(const char *json, size_t size)
 	struct eu_variant var;
 
 	parse_variant(json, &var);
-	assert(eu_object_size(eu_variant_value(&var)) == size);
+	require(eu_object_size(eu_variant_value(&var)) == size);
 	eu_variant_fini(&var);
 }
 
@@ -265,10 +264,10 @@ static void test_gen_string(void)
 {
 	struct eu_string str;
 
-	assert(eu_string_init(&str, eu_cstr("hello")));
+	require(eu_string_init(&str, eu_cstr("hello")));
 	test_gen(eu_string_value(&str), eu_cstr("\"hello\""));
 
-	assert(eu_string_assign(&str, eu_cstr("\\\"\b\t\n\f\r\036")));
+	require(eu_string_assign(&str, eu_cstr("\\\"\b\t\n\f\r\036")));
 	test_gen(eu_string_value(&str),
 		 eu_cstr("\"\\\\\\\"\\b\\t\\n\\f\\r\\u001e\""));
 
@@ -326,7 +325,7 @@ static void test_gen_variant(void)
 	eu_variant_assign_integer(&var, 100);
 	test_gen(eu_variant_value(&var), eu_cstr("100"));
 
-	assert(eu_variant_assign_string(&var, eu_cstr("hello")));
+	require(eu_variant_assign_string(&var, eu_cstr("hello")));
 	test_gen(eu_variant_value(&var), eu_cstr("\"hello\""));
 
 	eu_variant_fini(&var);
@@ -341,22 +340,22 @@ static void test_gen_object(void)
 	eu_object_init(&obj);
 	test_gen(eu_object_value(&obj), eu_cstr("{}"));
 
-	assert(var = eu_object_get(&obj, eu_cstr("foo")));
-	assert(eu_variant_assign_string(var, eu_cstr("bar")));
+	require(var = eu_object_get(&obj, eu_cstr("foo")));
+	require(eu_variant_assign_string(var, eu_cstr("bar")));
 	test_gen(eu_object_value(&obj), eu_cstr("{\"foo\":\"bar\"}"));
 
-	assert(var = eu_object_get(&obj, eu_cstr("bar")));
+	require(var = eu_object_get(&obj, eu_cstr("bar")));
 	eu_variant_assign_number(var, 100);
 	test_gen(eu_object_value(&obj),
 		 eu_cstr("{\"foo\":\"bar\",\"bar\":100}"));
 
-	assert(var = eu_object_get(&obj, eu_cstr("foo")));
+	require(var = eu_object_get(&obj, eu_cstr("foo")));
 	eu_variant_assign_bool(var, 1);
 	test_gen(eu_object_value(&obj), eu_cstr("{\"foo\":true,\"bar\":100}"));
 
-	assert(var = eu_object_get(&obj, eu_cstr("\\\"\b\t\n\f\r\036")));
+	require(var = eu_object_get(&obj, eu_cstr("\\\"\b\t\n\f\r\036")));
 	subobj = eu_variant_assign_object(var);
-	assert(var = eu_object_get(subobj, eu_cstr("null")));
+	require(var = eu_object_get(subobj, eu_cstr("null")));
 	eu_variant_assign_null(var);
 	test_gen(eu_object_value(&obj),
 		 eu_cstr("{\"foo\":true,\"bar\":100,"
@@ -375,7 +374,7 @@ static void test_gen_array(void)
 	test_gen(eu_variant_array_value(&a), eu_cstr("[]"));
 
 	for (i = 0; i < 10; i++) {
-		assert(var = eu_variant_array_push(&a));
+		require(var = eu_variant_array_push(&a));
 		eu_variant_assign_number(var, i);
 	}
 

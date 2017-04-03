@@ -1,6 +1,9 @@
-#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include <euphemus.h>
+
+#include "test_common.h"
 
 void test_gen(struct eu_value value, struct eu_string_ref expected)
 {
@@ -12,24 +15,24 @@ void test_gen(struct eu_value value, struct eu_string_ref expected)
 	/* Test generation in one go. */
 	eg = eu_generate_create(value);
 	len = eu_generate(eg, buf, expected.len + 100);
-	assert(len <= expected.len);
-	assert(!eu_generate(eg, buf + len, 1));
-	assert(eu_generate_ok(eg));
+	require(len <= expected.len);
+	require(!eu_generate(eg, buf + len, 1));
+	require(eu_generate_ok(eg));
 	eu_generate_destroy(eg);
-	assert(eu_string_ref_equal(eu_string_ref(buf, len), expected));
+	require(eu_string_ref_equal(eu_string_ref(buf, len), expected));
 
 	/* Test generation broken into two chunks */
 	for (i = 0;; i++) {
 		eg = eu_generate_create(value);
 		len = eu_generate(eg, buf, i);
-		assert(len <= i);
+		require(len <= i);
 		len2 = eu_generate(eg, buf2, expected.len + 1);
-		assert(len + len2 <= expected.len);
-		assert(eu_generate_ok(eg));
+		require(len + len2 <= expected.len);
+		require(eu_generate_ok(eg));
 		eu_generate_destroy(eg);
 
 		memcpy(buf + i, buf2, len2);
-		assert(eu_string_ref_equal(eu_string_ref(buf, len + len2),
+		require(eu_string_ref_equal(eu_string_ref(buf, len + len2),
 					   expected));
 
 		if (len2 == 0)
@@ -41,13 +44,13 @@ void test_gen(struct eu_value value, struct eu_string_ref expected)
 	len = 0;
 
 	while (eu_generate(eg, buf2, 1)) {
-		assert(len < expected.len);
+		require(len < expected.len);
 		buf[len++] = *buf2;
 	}
 
-	assert(eu_generate_ok(eg));
+	require(eu_generate_ok(eg));
 	eu_generate_destroy(eg);
-	assert(eu_string_ref_equal(eu_string_ref(buf, len), expected));
+	require(eu_string_ref_equal(eu_string_ref(buf, len), expected));
 
 	/* Test that resources are released after an unfinished generation. */
 	eg = eu_generate_create(value);
@@ -66,3 +69,10 @@ void test_gen(struct eu_value value, struct eu_string_ref expected)
 	free(buf2);
 }
 
+void require_fail(const char *requirement, const char *file,
+		  int line, const char *func)
+{
+	fprintf(stderr, "Test failed: Required \"%s\" at %s %s:%d",
+		requirement, func, file, line);
+	abort();
+}

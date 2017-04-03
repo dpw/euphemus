@@ -1,5 +1,4 @@
 #include <string.h>
-#include <assert.h>
 
 #include <euphemus.h>
 
@@ -9,15 +8,15 @@
 
 static void check_test_schema(struct test_schema *test_schema)
 {
-	assert(eu_string_ref_equal(eu_string_to_ref(&test_schema->str),
+	require(eu_string_ref_equal(eu_string_to_ref(&test_schema->str),
 				   eu_cstr("x")));
-	assert(test_schema->num == 42.1);
-	assert(test_schema->int_ == 42);
-	assert(test_schema->bool);
-	assert(eu_value_type(eu_variant_value(&test_schema->any)) == EU_JSON_NULL);
-	assert(test_schema->bar);
-	assert(test_schema->array.len == 1);
-	assert(eu_string_ref_equal(eu_string_to_ref(&test_schema->array.a[0].str),
+	require(test_schema->num == 42.1);
+	require(test_schema->int_ == 42);
+	require(test_schema->bool);
+	require(eu_value_type(eu_variant_value(&test_schema->any)) == EU_JSON_NULL);
+	require(test_schema->bar);
+	require(test_schema->array.len == 1);
+	require(eu_string_ref_equal(eu_string_to_ref(&test_schema->array.a[0].str),
 				   eu_cstr("y")));
 }
 
@@ -41,7 +40,7 @@ static void test_bad_struct_ptr(void)
 	size_t len = strlen(json);
 	size_t i;
 
-	assert(!eu_parse(parse, json, len));
+	require(!eu_parse(parse, json, len));
 	eu_parse_destroy(parse);
 	test_schema_destroy(result);
 
@@ -49,7 +48,7 @@ static void test_bad_struct_ptr(void)
 	for (i = 0;; i++) {
 		char c;
 
-		assert(i < len);
+		require(i < len);
 		c = json[i];
 		if (!eu_parse(parse, &c, 1))
 			break;
@@ -73,14 +72,14 @@ static void test_nested(void)
 	TEST_PARSE("{\"bar\":{\"bar\":{\"bar\":{\"bar\":{}}}}}",
 		   struct test_schema *,
 		   test_schema_ptr_to_eu_value,
-		   assert(result->bar->bar->bar->bar),
+		   require(result->bar->bar->bar->bar),
 		   test_schema_destroy(result));
 }
 
 static void check_extras(struct test_schema *test_schema)
 {
 	struct eu_value val = eu_value_get_cstr(test_schema_to_eu_value(test_schema), "quux");
-	assert(eu_string_ref_equal(eu_value_to_string_ref(val),
+	require(eu_string_ref_equal(eu_value_to_string_ref(val),
 				   eu_cstr("foo")));
 }
 
@@ -102,23 +101,23 @@ static void test_path(void)
 	struct bar *p;
 
 	parse = eu_parse_create(test_schema_to_eu_value(&test_schema));
-	assert(eu_parse(parse, json, strlen(json)));
-	assert(eu_parse_finish(parse));
+	require(eu_parse(parse, json, strlen(json)));
+	require(eu_parse_finish(parse));
 	eu_parse_destroy(parse);
 
 	val = test_schema_to_eu_value(&test_schema);
-	assert(!eu_value_ok(eu_get_path(val, eu_cstr("/baz"))));
+	require(!eu_value_ok(eu_get_path(val, eu_cstr("/baz"))));
 	val = eu_get_path(val, eu_cstr("/bar/bar/bar/hello"));
-	assert(eu_value_type(val) == EU_JSON_STRING);
-	assert(eu_string_ref_equal(eu_value_to_string_ref(val),
+	require(eu_value_type(val) == EU_JSON_STRING);
+	require(eu_string_ref_equal(eu_value_to_string_ref(val),
 				   eu_cstr("world")));
 
 	val = test_schema_to_eu_value(&test_schema);
 	val = eu_get_path(val, eu_cstr("/array/1"));
-	assert(eu_value_type(val) == EU_JSON_OBJECT);
-	assert(val.metadata == struct_bar_metadata());
+	require(eu_value_type(val) == EU_JSON_OBJECT);
+	require(val.metadata == struct_bar_metadata());
 	p = val.value;
-	assert(eu_string_ref_equal(eu_string_to_ref(&p->str), eu_cstr("y")));
+	require(eu_string_ref_equal(eu_string_to_ref(&p->str), eu_cstr("y")));
 
 	test_schema_fini(&test_schema);
 }
@@ -131,14 +130,14 @@ static void test_path_extras(void)
 	struct eu_value val;
 
 	parse = eu_parse_create(bar_to_eu_value(&bar));
-	assert(eu_parse(parse, json, strlen(json)));
-	assert(eu_parse_finish(parse));
+	require(eu_parse(parse, json, strlen(json)));
+	require(eu_parse_finish(parse));
 	eu_parse_destroy(parse);
 
 	val = bar_to_eu_value(&bar);
 	val = eu_get_path(val, eu_cstr("/x"));
-	assert(eu_value_type(val) == EU_JSON_STRING);
-	assert(eu_string_ref_equal(eu_value_to_string_ref(val), eu_cstr("y")));
+	require(eu_value_type(val) == EU_JSON_STRING);
+	require(eu_string_ref_equal(eu_value_to_string_ref(val), eu_cstr("y")));
 
 	bar_fini(&bar);
 }
@@ -149,11 +148,11 @@ static void check_size(const char *json, size_t size)
 	struct eu_parse *parse;
 
 	parse = eu_parse_create(bar_to_eu_value(&bar));
-	assert(eu_parse(parse, json, strlen(json)));
-	assert(eu_parse_finish(parse));
+	require(eu_parse(parse, json, strlen(json)));
+	require(eu_parse_finish(parse));
 	eu_parse_destroy(parse);
 
-	assert(eu_object_size(bar_to_eu_value(&bar)) == size);
+	require(eu_object_size(bar_to_eu_value(&bar)) == size);
 
 	bar_fini(&bar);
 }
@@ -177,7 +176,7 @@ static void test_gen_struct(void)
 	eu_string_assign_empty(&ts.str);
 	test_gen(test_schema_to_eu_value(&ts), eu_cstr("{\"str\":\"\"}"));
 
-	assert(eu_string_assign(&ts.str, eu_cstr("hello")));
+	require(eu_string_assign(&ts.str, eu_cstr("hello")));
 	test_gen(test_schema_to_eu_value(&ts), eu_cstr("{\"str\":\"hello\"}"));
 	eu_string_reset(&ts.str);
 
@@ -193,7 +192,7 @@ static void test_gen_struct(void)
 	test_gen(test_schema_to_eu_value(&ts), eu_cstr("{\"any\":123}"));
 
 	eu_variant_reset(&ts.any);
-	assert(struct_bar_array_push(&ts.array));
+	require(struct_bar_array_push(&ts.array));
 	test_gen(test_schema_to_eu_value(&ts), eu_cstr("{\"array\":[{}]}"));
 
 	test_schema_fini(&ts);
@@ -205,9 +204,9 @@ static void test_gen_parsed_struct(void)
 	struct test_schema ts;
 	struct eu_parse *parse;
 
-	assert(parse = eu_parse_create(test_schema_to_eu_value(&ts)));
-	assert(eu_parse(parse, json.chars, json.len));
-	assert(eu_parse_finish(parse));
+	require(parse = eu_parse_create(test_schema_to_eu_value(&ts)));
+	require(eu_parse(parse, json.chars, json.len));
+	require(eu_parse_finish(parse));
 	eu_parse_destroy(parse);
 
 	test_gen(test_schema_to_eu_value(&ts), json);
@@ -220,9 +219,9 @@ static void test_escaped_member_names(void)
 	struct test_schema ts;
 	struct eu_parse *parse;
 
-	assert(parse = eu_parse_create(test_schema_to_eu_value(&ts)));
-	assert(eu_parse(parse, json.chars, json.len));
-	assert(eu_parse_finish(parse));
+	require(parse = eu_parse_create(test_schema_to_eu_value(&ts)));
+	require(eu_parse(parse, json.chars, json.len));
+	require(eu_parse_finish(parse));
 	eu_parse_destroy(parse);
 
 	test_gen(test_schema_to_eu_value(&ts),
@@ -235,11 +234,11 @@ static void test_int(struct eu_string_ref json, eu_integer_t i)
 	struct test_schema ts;
 	struct eu_parse *parse;
 
-	assert(parse = eu_parse_create(test_schema_to_eu_value(&ts)));
-	assert(eu_parse(parse, json.chars, json.len));
-	assert(eu_parse_finish(parse));
+	require(parse = eu_parse_create(test_schema_to_eu_value(&ts)));
+	require(eu_parse(parse, json.chars, json.len));
+	require(eu_parse_finish(parse));
 	eu_parse_destroy(parse);
-	assert(ts.int_ == i);
+	require(ts.int_ == i);
 
 	test_gen(test_schema_to_eu_value(&ts), json);
 	test_schema_fini(&ts);
@@ -250,8 +249,8 @@ static void test_int_overflow(struct eu_string_ref json)
 	struct test_schema ts;
 	struct eu_parse *parse;
 
-	assert(parse = eu_parse_create(test_schema_to_eu_value(&ts)));
-	assert(!eu_parse(parse, json.chars, json.len));
+	require(parse = eu_parse_create(test_schema_to_eu_value(&ts)));
+	require(!eu_parse(parse, json.chars, json.len));
 	eu_parse_destroy(parse);
 	test_schema_fini(&ts);
 }
@@ -276,8 +275,8 @@ static void test_bad_int(struct eu_string_ref json)
 	struct test_schema ts;
 	struct eu_parse *parse;
 
-	assert(parse = eu_parse_create(test_schema_to_eu_value(&ts)));
-	assert(!eu_parse(parse, json.chars, json.len));
+	require(parse = eu_parse_create(test_schema_to_eu_value(&ts)));
+	require(!eu_parse(parse, json.chars, json.len));
 	eu_parse_destroy(parse);
 	test_schema_fini(&ts);
 }

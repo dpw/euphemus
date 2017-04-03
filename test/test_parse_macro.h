@@ -9,8 +9,8 @@ do {                                                                  \
                                                                       \
 	/* Test parsing in one go */                                  \
 	parse = eu_parse_create(to_value(&result));                   \
-	assert(eu_parse(parse, json, len));                           \
-	assert(eu_parse_finish(parse));                               \
+	require(eu_parse(parse, json, len));                           \
+	require(eu_parse_finish(parse));                               \
 	eu_parse_destroy(parse);                                      \
 	check;                                                        \
 	cleanup;                                                      \
@@ -21,15 +21,15 @@ do {                                                                  \
                                                                       \
 		buf = malloc(i);                                      \
 		memcpy(buf, json, i);                                 \
-		assert(eu_parse(parse, buf, i));                      \
+		require(eu_parse(parse, buf, i));                      \
 		free(buf);                                            \
                                                                       \
 		buf = malloc(len - i);                                \
 		memcpy(buf, json + i, len - i);                       \
-		assert(eu_parse(parse, buf, len - i));                \
+		require(eu_parse(parse, buf, len - i));                \
 		free(buf);                                            \
                                                                       \
-		assert(eu_parse_finish(parse));                       \
+		require(eu_parse_finish(parse));                       \
 		eu_parse_destroy(parse);                              \
 		check;                                                \
 		cleanup;                                              \
@@ -39,11 +39,11 @@ do {                                                                  \
 	parse = eu_parse_create(to_value(&result));                   \
 	for (i = 0; i < len; i++) {                                   \
 		char c = json[i];                                     \
-		assert(eu_parse(parse, &c, 1));                       \
-		assert(eu_parse(parse, &c, 0));                       \
+		require(eu_parse(parse, &c, 1));                       \
+		require(eu_parse(parse, &c, 0));                       \
 	}                                                             \
                                                                       \
-	assert(eu_parse_finish(parse));                               \
+	require(eu_parse_finish(parse));                               \
 	eu_parse_destroy(parse);                                      \
 	check;                                                        \
 	cleanup;                                                      \
@@ -54,7 +54,7 @@ do {                                                                  \
                                                                       \
 	for (i = 0; i < len; i++) {                                   \
 		parse = eu_parse_create(to_value(&result));           \
-		assert(eu_parse(parse, json, i));                     \
+		require(eu_parse(parse, json, i));                     \
 		eu_parse_destroy(parse);                              \
 	}                                                             \
 } while (0)
